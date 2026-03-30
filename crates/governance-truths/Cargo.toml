@@ -1,0 +1,8 @@
+[package]
+name = "governance-truths"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+converge-core = { workspace = true }
+serde = { workspace = true }
