@@ -224,7 +224,9 @@ Desktop packaging commands are also prepared in the top-level `Justfile`:
 - `just deploy`
 
 The desktop commands use Bun as the frontend package manager and task runner.
-`just package-desktop` and `just deploy` currently target the macOS `.app` bundle path, which succeeds locally without the extra DMG bundling step.
+The desktop app is configured to build for macOS, Windows, and Linux. Tauri produces native binaries, so you can only build for the OS you are running on.
+
+Tauri 2 also supports iOS and Android, but mobile builds require additional setup (Xcode for iOS, Android SDK for Android) and are not in scope for this hackathon. If someone wants to pursue it, the Tauri mobile docs cover what is needed.
 
 Then exercise the reference truth:
 
