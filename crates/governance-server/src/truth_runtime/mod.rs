@@ -1,5 +1,6 @@
 pub mod common;
 pub mod evaluate_vendor;
+pub mod source_import;
 
 use std::collections::HashMap;
 

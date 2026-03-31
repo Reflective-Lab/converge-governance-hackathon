@@ -1,0 +1,8 @@
+{
+  "title": "Enterprise AI vendor selection",
+  "truth_key": "evaluate-vendor",
+  "vendors": ["Acme AI", "Beta ML", "Gamma LLM"],
+  "inputs": {
+    "decision_context": "Select a primary AI vendor for an enterprise rollout with strong governance and auditability requirements."
+  }
+}

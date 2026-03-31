@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Converge Governance Desktop">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b54e25" />
+      <stop offset="100%" stop-color="#2f6a45" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#f8f1e6" />
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#bg)" />
+  <path d="M162 152h188v56H218v48h108v56H218v48h132v56H162z" fill="#fff6eb" />
+  <circle cx="390" cy="374" r="38" fill="#fff6eb" opacity="0.92" />
+</svg>

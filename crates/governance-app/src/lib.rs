@@ -4,6 +4,10 @@ use governance_kernel::{AuditEntry, DecisionRecord, InMemoryStore, Vendor};
 use governance_server::truth_runtime;
 use serde::{Deserialize, Serialize};
 
+pub use governance_server::truth_runtime::source_import::{
+    TruthSourceFile, TruthSourceFormat, VendorSelectionSourcePreview,
+};
+
 // ---------------------------------------------------------------------------
 // View models — what the UI sees
 // ---------------------------------------------------------------------------
@@ -71,6 +75,21 @@ impl GovernanceApp {
         truth_runtime::execute_truth(&self.store, key, inputs, persist)
     }
 
+    pub fn preview_vendor_selection_source(
+        &self,
+        source: TruthSourceFile,
+    ) -> Result<VendorSelectionSourcePreview, String> {
+        truth_runtime::source_import::preview_vendor_selection_source(source)
+    }
+
+    pub fn execute_vendor_selection_source(
+        &self,
+        source: TruthSourceFile,
+        persist: bool,
+    ) -> Result<truth_runtime::TruthExecutionResult, String> {
+        truth_runtime::source_import::execute_vendor_selection_source(&self.store, source, persist)
+    }
+
     pub fn list_vendors(&self) -> Vec<Vendor> {
         self.store
             .read(|k| k.vendors_list().into_iter().cloned().collect())
@@ -120,5 +139,51 @@ mod tests {
 
         let dashboard = app.dashboard();
         assert_eq!(dashboard.recent_decisions.len(), 1);
+    }
+
+    #[test]
+    fn previews_vendor_selection_from_gherkin_source() {
+        let store = InMemoryStore::new();
+        let app = GovernanceApp::new(store);
+
+        let preview = app
+            .preview_vendor_selection_source(TruthSourceFile {
+                name: "vendor-selection.feature".into(),
+                content: r#"
+Feature: Evaluate AI vendors
+
+  Scenario: shortlist
+    Given vendors "Acme AI, Beta ML"
+"#
+                .into(),
+            })
+            .unwrap();
+
+        assert_eq!(preview.format, TruthSourceFormat::Gherkin);
+        assert_eq!(preview.vendors, vec!["Acme AI", "Beta ML"]);
+    }
+
+    #[test]
+    fn executes_vendor_selection_from_truth_spec_source() {
+        let store = InMemoryStore::new();
+        let app = GovernanceApp::new(store);
+
+        let result = app
+            .execute_vendor_selection_source(
+                TruthSourceFile {
+                    name: "vendor-selection.truths.json".into(),
+                    content: r#"{
+  "title": "Desktop vendor selection",
+  "truth_key": "evaluate-vendor",
+  "vendors": ["Acme AI", "Beta ML"]
+}"#
+                    .into(),
+                },
+                true,
+            )
+            .unwrap();
+
+        assert!(result.converged);
+        assert_eq!(app.list_decisions().len(), 1);
     }
 }

@@ -6,7 +6,19 @@ Your enterprise needs to select AI vendors (LLM providers, embedding services, i
 
 ## What You're Building
 
-A system where specialized agents evaluate vendors from different angles, propose their findings as facts, and converge on a defensible recommendation. Every step is traceable. If the system can't decide with confidence, it says so.
+A self-contained desktop app where specialized agents evaluate vendors from different angles, propose their findings as facts, and converge on a defensible recommendation. Every step is traceable. If the system can't decide with confidence, it says so.
+
+The primary operator flow should be:
+
+1. Load a local vendor-selection source file.
+2. Preview the parsed vendor list and truth execution intent.
+3. Run the `evaluate-vendor` truth locally in the Rust core.
+4. Call out to Kong only when an agent needs LLM or business-service access.
+
+The starter repo now includes example inputs for this flow:
+
+- [vendor-selection.feature](/Users/kpernyer/dev/work/converge-governance-hackathon/examples/vendor-selection/vendor-selection.feature)
+- [vendor-selection.truths.json](/Users/kpernyer/dev/work/converge-governance-hackathon/examples/vendor-selection/vendor-selection.truths.json)
 
 ## Agents to Build
 
@@ -52,7 +64,7 @@ A system where specialized agents evaluate vendors from different angles, propos
 
 ## What's Already Built
 
-The reference executor in `governance-server/src/truth_runtime/evaluate_vendor.rs` has 3 placeholder agents that produce hardcoded facts. Your job is to make them real:
+The reference executor in [evaluate_vendor.rs](/Users/kpernyer/dev/work/converge-governance-hackathon/crates/governance-server/src/truth_runtime/evaluate_vendor.rs) has 3 placeholder agents that produce hardcoded facts. The shared app layer can also preview and execute local Gherkin or truth-spec inputs for the `evaluate-vendor` flow. Your job is to make the rest real:
 
 - Replace hardcoded compliance results with actual policy evaluation
 - Replace hardcoded cost estimates with real pricing analysis
