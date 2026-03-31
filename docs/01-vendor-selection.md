@@ -17,8 +17,8 @@ The primary operator flow should be:
 
 The starter repo now includes example inputs for this flow:
 
-- [vendor-selection.feature](/Users/kpernyer/dev/work/converge-governance-hackathon/examples/vendor-selection/vendor-selection.feature)
-- [vendor-selection.truths.json](/Users/kpernyer/dev/work/converge-governance-hackathon/examples/vendor-selection/vendor-selection.truths.json)
+- [vendor-selection.feature](../examples/vendor-selection/vendor-selection.feature)
+- [vendor-selection.truths.json](../examples/vendor-selection/vendor-selection.truths.json)
 
 ## Agents to Build
 
@@ -64,7 +64,7 @@ The starter repo now includes example inputs for this flow:
 
 ## What's Already Built
 
-The reference executor in [evaluate_vendor.rs](/Users/kpernyer/dev/work/converge-governance-hackathon/crates/governance-server/src/truth_runtime/evaluate_vendor.rs) has 3 placeholder agents that produce hardcoded facts. The shared app layer can also preview and execute local Gherkin or truth-spec inputs for the `evaluate-vendor` flow. Your job is to make the rest real:
+The reference executor in [evaluate_vendor.rs](../crates/governance-server/src/truth_runtime/evaluate_vendor.rs) has 3 placeholder agents that produce hardcoded facts. The shared app layer can also preview and execute local Gherkin or truth-spec inputs for the `evaluate-vendor` flow. Your job is to make the rest real:
 
 - Replace hardcoded compliance results with actual policy evaluation
 - Replace hardcoded cost estimates with real pricing analysis

@@ -7,6 +7,16 @@ The default challenge in this repo is AI vendor selection, but the real point is
 **Sponsors:** Kong · Vivicta
 **Challenge contributor:** Reflective Labs
 
+## How to Use This Template
+
+This repo is a GitHub template. Do not clone it directly — use the green **"Use this template"** button on GitHub to create your own copy. That gives your team a clean repo with the full starter kit and no upstream link.
+
+Once you have your own repo:
+
+1. Each team member clones the team repo.
+2. Work on branches and merge through pull requests, or push to main — your repo, your rules.
+3. Nothing flows back to this template unless you explicitly open a PR here.
+
 ## What This Repo Should Do
 
 This repo should help a team get from zero to a working governed demo quickly:
@@ -83,8 +93,8 @@ The intended runtime shape is:
 
 The repo now includes example vendor-selection inputs:
 
-- [vendor-selection.feature](/Users/kpernyer/dev/work/converge-governance-hackathon/examples/vendor-selection/vendor-selection.feature)
-- [vendor-selection.truths.json](/Users/kpernyer/dev/work/converge-governance-hackathon/examples/vendor-selection/vendor-selection.truths.json)
+- [vendor-selection.feature](examples/vendor-selection/vendor-selection.feature)
+- [vendor-selection.truths.json](examples/vendor-selection/vendor-selection.truths.json)
 
 The shared Rust app layer can preview or execute either format, which is the boundary a Tauri app should use.
 
@@ -181,7 +191,7 @@ examples/                Sample vendor-selection Gherkin and truth files
 docs/                    Architecture and Kong guidance
 ```
 
-The reference implementation lives in [evaluate_vendor.rs](/Users/kpernyer/dev/work/converge-governance-hackathon/crates/governance-server/src/truth_runtime/evaluate_vendor.rs). It currently uses placeholder agents so teams can focus on replacing them with real logic.
+The reference implementation lives in [evaluate_vendor.rs](crates/governance-server/src/truth_runtime/evaluate_vendor.rs). It currently uses placeholder agents so teams can focus on replacing them with real logic.
 
 ## Before You Get Started
 
@@ -205,15 +215,28 @@ curl -fsSL https://bun.sh/install | bash
 ```bash
 git clone <this-repo>
 cd converge-governance-hackathon
+cp .env.example .env   # edit with your team's Kong credentials
 
-just test
-just build
-just install-desktop
-just dev-desktop
-just server
+just hit-the-ground-running
+```
+
+This builds the workspace, runs all tests, and checks lint. If it passes, you are ready to go.
+
+After that:
+
+```bash
+just server             # start the local harness (http://localhost:8080)
+just install-desktop    # install desktop frontend dependencies
+just dev-desktop        # run the desktop app in dev mode
 ```
 
 `just server` is only a local harness for exercising the runtime while the Tauri shell is still being built.
+
+To start fresh:
+
+```bash
+just clean              # delete all build artifacts
+```
 
 Desktop packaging commands are also prepared in the top-level `Justfile`:
 
@@ -259,6 +282,7 @@ GET  /v1/audit
 
 ## Supporting Docs
 
-- [Architecture](/Users/kpernyer/dev/work/converge-governance-hackathon/docs/architecture.md)
-- [Kong Integration](/Users/kpernyer/dev/work/converge-governance-hackathon/docs/kong-integration.md)
-- [Vendor Selection Challenge](/Users/kpernyer/dev/work/converge-governance-hackathon/docs/01-vendor-selection.md)
+- [Developers Handbook](docs/developers-handbook.md) — end-to-end walkthrough from Gherkin to convergence
+- [Architecture](docs/architecture.md)
+- [Kong Integration](docs/kong-integration.md)
+- [Vendor Selection Challenge](docs/01-vendor-selection.md)

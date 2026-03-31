@@ -1,5 +1,3 @@
-mod truth_runtime;
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -9,6 +7,7 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use governance_kernel::InMemoryStore;
+use governance_server::truth_runtime;
 use serde::{Deserialize, Serialize};
 
 type AppState = Arc<InMemoryStore>;

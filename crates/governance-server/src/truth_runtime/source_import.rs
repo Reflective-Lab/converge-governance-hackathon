@@ -147,11 +147,10 @@ fn preview_truths_json_vendor_selection(
         .map_err(|e| format!("invalid truth spec JSON in {}: {e}", source.name))?;
 
     let mut vendors = spec.vendors;
-    if vendors.is_empty() {
-        if let Some(raw_vendors) = spec.inputs.get("vendors") {
+    if vendors.is_empty()
+        && let Some(raw_vendors) = spec.inputs.get("vendors") {
             vendors.extend(split_csv(raw_vendors));
         }
-    }
 
     let mut preview = build_preview(
         source.name,
@@ -187,9 +186,7 @@ fn build_preview(
 
     let vendors = normalize_vendors(vendors);
     if vendors.is_empty() {
-        return Err(format!(
-            "no vendors found in source; add a vendor list so the vendor-selection flow can run"
-        ));
+        return Err("no vendors found in source; add a vendor list so the vendor-selection flow can run".to_string());
     }
 
     let title = title

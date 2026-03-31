@@ -1,3 +1,4 @@
+pub mod audit_vendor_decision;
 pub mod common;
 pub mod evaluate_vendor;
 pub mod source_import;
@@ -43,6 +44,7 @@ pub fn execute_truth(
 ) -> Result<TruthExecutionResult, String> {
     match truth_key {
         "evaluate-vendor" => evaluate_vendor::execute(store, &inputs, persist),
+        "audit-vendor-decision" => audit_vendor_decision::execute(store, &inputs, persist),
         // ---------------------------------------------------------------
         // Add your truth executor here:
         // "your-truth-key" => your_module::execute(store, &inputs, persist),

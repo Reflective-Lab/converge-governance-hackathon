@@ -1,5 +1,6 @@
 /target
 .DS_Store
+.env
 apps/desktop/node_modules
 apps/desktop/dist
 apps/desktop/src-tauri/target

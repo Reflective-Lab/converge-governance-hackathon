@@ -1,6 +1,26 @@
 default:
     @just --list
 
+# First time setup: build, test, and verify everything works
+hit-the-ground-running:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> Checking toolchain"
+    rustc --version
+    cargo --version
+    echo "==> Building workspace"
+    cargo build --workspace
+    echo "==> Running tests"
+    cargo test --workspace
+    echo "==> Lint check"
+    cargo clippy --workspace
+    echo "==> Ready. Run 'just server' to start the local harness."
+
+# Delete all build artifacts and start fresh
+clean:
+    cargo clean
+    rm -rf apps/desktop/node_modules apps/desktop/dist apps/desktop/src-tauri/target
+
 test:
     cargo test --workspace
 
@@ -57,7 +77,7 @@ package-desktop:
       exit 1
     fi
     cd "$desktop_dir"
-    bun run tauri build --bundles app
+    bun run tauri build
 
 deploy:
     @just package-desktop

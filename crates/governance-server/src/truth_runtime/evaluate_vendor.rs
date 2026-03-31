@@ -112,6 +112,67 @@ impl Agent for CostAnalysisAgent {
     }
 }
 
+struct VendorRiskAgent;
+
+impl Agent for VendorRiskAgent {
+    fn name(&self) -> &str {
+        "vendor-risk"
+    }
+
+    fn dependencies(&self) -> &[ContextKey] {
+        &[ContextKey::Seeds, ContextKey::Evaluations]
+    }
+
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
+        let has_compliance = ctx
+            .get(ContextKey::Seeds)
+            .iter()
+            .any(|f| f.id.starts_with("compliance:screen:"));
+        let has_costs = ctx
+            .get(ContextKey::Evaluations)
+            .iter()
+            .any(|f| f.id.starts_with("cost:estimate:"));
+        let has_risks = ctx
+            .get(ContextKey::Evaluations)
+            .iter()
+            .any(|f| f.id.starts_with("risk:score:"));
+        has_compliance && has_costs && !has_risks
+    }
+
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+        let mut proposals = vec![];
+        for fact in ctx.get(ContextKey::Seeds).iter() {
+            if !fact.id.starts_with("compliance:screen:") {
+                continue;
+            }
+            let vendor_slug = fact.id.strip_prefix("compliance:screen:").unwrap_or("unknown");
+            let risk_id = format!("risk:score:{vendor_slug}");
+            if ctx.get(ContextKey::Evaluations).iter().any(|f| f.id == risk_id) {
+                continue;
+            }
+            // Placeholder: replace with real risk scoring via Kong/LLM
+            proposals.push(ProposedFact {
+                key: ContextKey::Evaluations,
+                id: risk_id,
+                content: serde_json::json!({
+                    "vendor_slug": vendor_slug,
+                    "lock_in_risk": "medium",
+                    "compliance_risk": "low",
+                    "operational_risk": "low",
+                    "overall_risk": "low",
+                })
+                .to_string(),
+                confidence: 0.70,
+                provenance: "agent:vendor-risk".into(),
+            });
+        }
+        AgentEffect {
+            proposals,
+            ..Default::default()
+        }
+    }
+}
+
 struct DecisionSynthesisAgent;
 
 impl Agent for DecisionSynthesisAgent {
@@ -131,6 +192,10 @@ impl Agent for DecisionSynthesisAgent {
                 .get(ContextKey::Evaluations)
                 .iter()
                 .any(|f| f.id.starts_with("cost:estimate:"))
+            && ctx
+                .get(ContextKey::Evaluations)
+                .iter()
+                .any(|f| f.id.starts_with("risk:score:"))
     }
 
     fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
@@ -173,6 +238,7 @@ pub fn execute(
 
     let mut engine = Engine::new();
     engine.register_in_pack("compliance-pack", ComplianceScreenerAgent { vendor_names });
+    engine.register_in_pack("risk-pack", VendorRiskAgent);
     engine.register_in_pack("cost-pack", CostAnalysisAgent);
     engine.register_in_pack("cost-pack", DecisionSynthesisAgent);
 

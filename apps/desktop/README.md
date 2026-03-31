@@ -46,7 +46,7 @@ The desktop toolchain uses Bun:
 - `just install-desktop`
 - `just dev-desktop`
 - `just build-desktop`
-- `just package-desktop` for the macOS `.app` bundle
-- `just deploy` as the default `.app` packaging path
+- `just package-desktop` to build a native bundle for your platform
+- `just deploy` as the default packaging path
 
 The current Tauri command validates specs offline-first using `converge-tool::gherkin::GherkinValidator`. Business-sense and compilability checks are intentionally disabled until a Kong-backed LLM validator is wired in.

@@ -26,6 +26,16 @@ pub const TRUTHS: &[TruthDef] = &[
             ("recommendation-produced", "A decision recommendation fact exists"),
         ],
     },
+    TruthDef {
+        key: "audit-vendor-decision",
+        display_name: "Audit Vendor Decision",
+        summary: "Trust pack: audit trail, provenance, and compliance scan for a vendor decision",
+        packs: &["trust-pack"],
+        criteria: &[
+            ("audit-entries-written", "All access decisions have audit entries"),
+            ("compliance-scanned", "Compliance scan has been performed"),
+        ],
+    },
     // Add your truths here.
 ];
 
