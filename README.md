@@ -26,7 +26,7 @@ This project depends directly on Converge. It is not just inspired by Converge p
 - `converge-core`
 - `converge-domain`
 
-Those dependencies are currently wired as local path dependencies in [Cargo.toml](/Users/kpernyer/dev/work/converge-governance-hackathon/Cargo.toml), which makes this repo a thin application layer on top of Converge.
+Those dependencies are pulled from crates.io, which makes this repo a thin application layer on top of Converge.
 
 Converge provides the core mechanics:
 
@@ -182,6 +182,23 @@ docs/                    Architecture and Kong guidance
 ```
 
 The reference implementation lives in [evaluate_vendor.rs](/Users/kpernyer/dev/work/converge-governance-hackathon/crates/governance-server/src/truth_runtime/evaluate_vendor.rs). It currently uses placeholder agents so teams can focus on replacing them with real logic.
+
+## Before You Get Started
+
+You need Rust (1.93+). Install it from [rustup.rs](https://rustup.rs) if you don't have it.
+
+Once you have Rust, install the tools you need with cargo:
+
+```bash
+cargo install just
+cargo install tauri-cli    # only needed for desktop work
+```
+
+For the desktop app you also need [Bun](https://bun.sh):
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
 
 ## Getting Started
 

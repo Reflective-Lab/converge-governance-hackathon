@@ -3,13 +3,13 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
-edition = "2021"
-rust-version = "1.80"
+edition = "2024"
+rust-version = "1.93"
 
 [workspace.dependencies]
-# Converge — local path until crates.io publish
-converge-core = { path = "../converge.zone/crates/core" }
-converge-domain = { path = "../converge.zone/crates/domain" }
+# Converge
+converge-core = "2.1.0"
+converge-domain = "2.1.0"
 
 # Server
 axum = "0.8"

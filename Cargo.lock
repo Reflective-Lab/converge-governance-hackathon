@@ -140,7 +140,9 @@ dependencies = [
 
 [[package]]
 name = "converge-core"
-version = "2.0.0"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "249a0badfa6815ba4952f7cde79c558affa3fd9510ceded07d29bb45783a4694"
 dependencies = [
  "converge-traits",
  "hex",
@@ -154,7 +156,9 @@ dependencies = [
 
 [[package]]
 name = "converge-traits"
-version = "2.0.0"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9bc9fb0a8f90e1be4884df6ee155cdb9a06ce235c6b119711ba3f1ad59a50d17"
 dependencies = [
  "serde",
  "strum",
