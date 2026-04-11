@@ -9,10 +9,9 @@ This project works well with Codex, but the workflow looks slightly different th
 
 ## What to Read First
 
-1. `AGENTS.md`
-2. `CLAUDE.md` for the shared project rules and architecture
-3. `kb/Home.md`
-4. The specific `kb/` page your task needs
+1. `AGENTS.md` — shared project rules, architecture, and Converge guidance
+2. `kb/Home.md`
+3. The specific `kb/` page your task needs
 
 Do not bulk-read the whole knowledgebase. Start with `kb/Home.md` and follow one relevant link at a time.
 
