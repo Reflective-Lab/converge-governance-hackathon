@@ -8,8 +8,8 @@ rust-version = "1.93"
 
 [workspace.dependencies]
 # Converge
-converge-core = "2.1.0"
-converge-domain = "2.1.0"
+converge-core = "2.1.2"
+converge-domain = "2.1.2"
 
 # Server
 axum = "0.8"

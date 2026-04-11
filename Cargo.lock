@@ -166,9 +166,9 @@ dependencies = [
 
 [[package]]
 name = "converge-core"
-version = "2.1.0"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "249a0badfa6815ba4952f7cde79c558affa3fd9510ceded07d29bb45783a4694"
+checksum = "3bdf8e8c42b5ff840436e3ff3ed1c8872fba20bfaf5ad4ae11442abaea06d022"
 dependencies = [
  "converge-traits",
  "hex",
@@ -182,9 +182,9 @@ dependencies = [
 
 [[package]]
 name = "converge-domain"
-version = "2.1.0"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6bdc0a5f3a1821502986a34492ce2e4df5c0523b00df899bda620ea7558f891"
+checksum = "77b9fc8f5b034d13c207840663978499d9827f4ddf926dd6bb0a2d35e0a8428a"
 dependencies = [
  "converge-core",
  "converge-provider",
@@ -195,9 +195,9 @@ dependencies = [
 
 [[package]]
 name = "converge-mcp"
-version = "2.1.0"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d895bb00892822f71403885ae4b8e9f649437af0344bc06160a18c54383d4ef"
+checksum = "fdd6cdef9f5701eb886b05b1e2bddeb7f0d7ec0a1a7b719f420cccbdc22626fa"
 dependencies = [
  "async-trait",
  "serde",
@@ -209,9 +209,9 @@ dependencies = [
 
 [[package]]
 name = "converge-provider"
-version = "2.1.0"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8200caefad7f92fb68470a0fc4aa71419ecd8c764d5ee6d40fec01effb41a585"
+checksum = "c732c2af7fdba9650982667759142dbb6415b6a3f3596f858fe09293a810b82f"
 dependencies = [
  "base64",
  "converge-core",
@@ -231,9 +231,9 @@ dependencies = [
 
 [[package]]
 name = "converge-traits"
-version = "2.1.0"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bc9fb0a8f90e1be4884df6ee155cdb9a06ce235c6b119711ba3f1ad59a50d17"
+checksum = "e8de9cb839ec1e1477bc58a5282bd7ead30318c5ef64e86382c3630f65eb1a0d"
 dependencies = [
  "serde",
  "strum",

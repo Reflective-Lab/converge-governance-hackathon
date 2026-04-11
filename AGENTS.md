@@ -1,54 +1,34 @@
 # AGENTS
 
-This repository is intentionally opinionated. These choices are defaults, not suggestions.
+This repository supports both Claude Code and Codex. `kb/` is the canonical documentation. The root files are entrypoints for different agents, not the long-form docs.
 
-## Product Shape
+Start here:
 
-- Build a self-contained desktop app.
-- The primary use case is AI vendor selection.
-- The UI is local. It should not depend on a remote governance backend.
-- The only intended remote calls are outbound calls to Kong and the LLM or business services Kong fronts.
+1. Read this file.
+2. Read the agent-specific root file:
+   - Claude: `CLAUDE.md`
+   - Codex: `CODEX.md`
+3. Read `kb/Home.md` as the index. Follow only the links you need. Do not bulk-read `kb/`.
+4. Run the session opener:
+   - Claude: `/focus`
+   - Codex or terminal-first workflows: `just focus`
+5. Update `kb/` when you learn something the next human or agent will need.
 
-## Stack
+## Quick Rules
 
-- Use Rust for as much of the system as possible.
-- Use Converge as the execution model for governed multi-agent behavior.
-- Use Svelte for the desktop UI.
-- Use Tauri as the desktop shell.
-- Use Bun for the frontend package manager and task runner.
+- This is an opinionated project. Rust, Svelte, Tauri. No React. No VMs.
+- `kb/` is the knowledgebase. Obsidian vault. Update it when you learn something.
+- Converge is the execution model. Agents propose facts. Facts are promoted through governance gates.
+- All external access goes through Kong. No direct API calls.
+- No `unsafe` code. Typed enums, not strings. `just lint` clean.
+- Read `kb/Home.md` first, then follow only relevant pages.
+- Run the session focus workflow at the start of a session. Read the kb. Check team activity.
 
-## App Boundary
+## Workflow
 
-- The Svelte frontend should call local Rust commands through Tauri.
-- Do not make HTTP, REST, OpenAPI, or gRPC the default app boundary.
-- The existing Rust server is a local harness for development, not the product surface.
+- Claude skills live in `.claude/skills/`.
+- Shared deterministic workflow helpers live in `scripts/workflow/` and are exposed as `just focus`, `just sync`, and `just status`.
+- Codex users should read `CODEX.md`, then `kb/Workflow/Working with Codex.md`.
+- If a user refers to `/focus`, `/sync`, `/checkpoint`, `/fix`, `/ticket`, `/parallel`, `/review`, `/pr`, `/merge`, `/status`, `/quality`, `/audit`, `/wip`, or `/feedback`, treat that as the workflow name even if your client does not support slash commands.
 
-## Validation
-
-- Accept Gherkin or Converge Truth syntax as input.
-- Use `converge-tool` for spec validation.
-- The current desktop validator is offline-first:
-  syntax, Truth governance blocks, and Converge conventions are checked locally.
-- Business-sense and compilability validation should only be enabled once a Kong-backed LLM path is defined.
-
-## Domain Focus
-
-- Keep vendor selection as the anchor workflow.
-- Prefer flows that produce traceable evidence:
-  compliance screening, cost analysis, capability matching, risk scoring, recommendation.
-- If the system cannot justify a decision, it should stop honestly and ask for human review.
-
-## Integration Rules
-
-- Route LLM access through `converge-provider` and `KongGateway::from_env()`.
-- Use Kong-hosted MCP or Kong-defined service contracts for business integrations.
-- Read Kong credentials from `.env` with `KONG_AI_GATEWAY_URL` and `KONG_API_KEY`.
-- Define LLM routes with `KongRoute` in app code instead of scattering raw gateway URLs through the codebase.
-- If a business service is unavailable, mock it locally but preserve the same adapter boundary.
-
-## Build Workflow
-
-- Use `just install-desktop` to install Bun dependencies.
-- Use `just dev-desktop` for the Tauri development shell.
-- Use `just build-desktop` for the frontend bundle.
-- Use `just package-desktop` or `just deploy` for the packaged desktop `.app` bundle.
+See `CODEX.md`, `CLAUDE.md`, `kb/Workflow/Working with Codex.md`, `kb/Workflow/Working with Claude.md`, `kb/Workflow/Daily Journey.md`, and `kb/Workflow/Skills Reference.md`.

@@ -178,6 +178,10 @@ Every agent contributes evidence. Converge decides when the workflow has enough 
 ## Current Repo Structure
 
 ```text
+kb/                      Obsidian knowledgebase — THE documentation
+.claude/skills/          Claude Code slash commands for team workflow
+scripts/workflow/        Shared workflow helpers for Claude, Codex, and terminal users
+
 apps/
   desktop/               Svelte + Tauri shell to be built during the hackathon
 
@@ -188,7 +192,6 @@ crates/
   governance-app/        Shared Rust app layer for the desktop shell
 
 examples/                Sample vendor-selection Gherkin and truth files
-docs/                    Architecture and Kong guidance
 ```
 
 The reference implementation lives in [evaluate_vendor.rs](crates/governance-server/src/truth_runtime/evaluate_vendor.rs). It currently uses placeholder agents so teams can focus on replacing them with real logic.
@@ -280,9 +283,25 @@ GET  /v1/vendors
 GET  /v1/audit
 ```
 
-## Supporting Docs
+## Documentation
 
-- [Developers Handbook](docs/developers-handbook.md) — end-to-end walkthrough from Gherkin to convergence
-- [Architecture](docs/architecture.md)
-- [Kong Integration](docs/kong-integration.md)
-- [Vendor Selection Challenge](docs/01-vendor-selection.md)
+The canonical documentation lives in `kb/` — an Obsidian vault that humans open in Obsidian and AI agents read with file tools. Start with `kb/Home.md`.
+
+| Section | What's there |
+|---|---|
+| `kb/Architecture/` | System design, layers, convergence loop |
+| `kb/Domain/` | Vendor selection challenge, agents, truths, types |
+| `kb/Development/` | Getting started, writing agents, writing truths |
+| `kb/Integrations/` | Kong, MCP, external services |
+| `kb/Converge/` | Platform concepts, building blocks, domain packs |
+| `kb/Workflow/` | Claude guide, Codex guide, daily journey cheat sheet |
+
+## Agent Workflows
+
+This project supports both Claude Code and Codex.
+
+- Claude users can use the project skills in `.claude/skills/`. Start with `/focus` and end with `/checkpoint`.
+- Codex users should start with `AGENTS.md`, then read `CODEX.md`. The detailed workflow mapping lives in `kb/Workflow/Working with Codex.md`.
+- Shared deterministic repo-state checks are available to everyone as `just focus`, `just sync`, and `just status`.
+
+See `CLAUDE.md`, `CODEX.md`, `kb/Workflow/Working with Claude.md`, `kb/Workflow/Working with Codex.md`, `kb/Workflow/Daily Journey.md`, and `kb/Workflow/Skills Reference.md`.

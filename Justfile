@@ -93,3 +93,12 @@ lint:
 
 check:
     cargo check --workspace
+
+focus:
+    scripts/workflow/focus.sh
+
+sync:
+    scripts/workflow/sync.sh
+
+status:
+    scripts/workflow/status.sh
