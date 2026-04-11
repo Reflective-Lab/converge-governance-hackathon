@@ -3,7 +3,7 @@ tags: [domain, truths]
 ---
 # Truths
 
-A truth is a governed job: it declares which agent packs participate and what criteria must be met.
+A truth is a governed job: it declares which suggestor packs participate and what criteria must be met.
 
 ## Truth Catalog
 
@@ -20,6 +20,16 @@ Uses the [[Converge/Domain Packs|trust pack]] with zero custom agents. Demonstra
 
 - **Packs:** trust-pack
 - **Agents:** SessionValidatorAgent, RbacEnforcerAgent, AuditWriterAgent, ProvenanceTrackerAgent, ComplianceScannerAgent
+
+### authorize-vendor-commitment
+Uses `converge-policy` as a pure library inside the governance runtime. This is
+the business authorization step after a recommendation exists and before a team
+commits budget or contract.
+
+- **Packs:** policy-pack
+- **Inputs:** principal identity and authority, commitment id, vendor, amount, gates, human approval
+- **Outcomes:** authorize, escalate for human approval, or reject
+- **Projection:** writes a `DecisionRecord` so the audit trail captures the policy outcome
 
 ## Truth Definition Shape
 
@@ -44,7 +54,7 @@ fn execute(store, inputs, persist) -> Result<TruthExecutionResult> {
     let intent = build_intent(truth);
 
     let mut engine = Engine::new();
-    engine.register_in_pack("your-pack", YourAgent { ... });
+    engine.register_suggestor_in_pack("your-pack", YourAgent { ... });
 
     let result = engine.run_with_types_intent_and_hooks(
         context, &intent, hooks

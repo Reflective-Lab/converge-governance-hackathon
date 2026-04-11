@@ -15,6 +15,7 @@ governance-kernel = { path = "../governance-kernel" }
 governance-truths = { path = "../governance-truths" }
 converge-core = { workspace = true }
 converge-domain = { workspace = true }
+converge-policy = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true }
 tower-http = { workspace = true }

@@ -1,3 +1,4 @@
+pub mod authorize_vendor_commitment;
 pub mod audit_vendor_decision;
 pub mod common;
 pub mod evaluate_vendor;
@@ -43,6 +44,9 @@ pub fn execute_truth(
     persist: bool,
 ) -> Result<TruthExecutionResult, String> {
     match truth_key {
+        "authorize-vendor-commitment" => {
+            authorize_vendor_commitment::execute(store, &inputs, persist)
+        }
         "evaluate-vendor" => evaluate_vendor::execute(store, &inputs, persist),
         "audit-vendor-decision" => audit_vendor_decision::execute(store, &inputs, persist),
         // ---------------------------------------------------------------

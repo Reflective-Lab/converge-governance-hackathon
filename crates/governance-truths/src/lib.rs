@@ -36,6 +36,16 @@ pub const TRUTHS: &[TruthDef] = &[
             ("compliance-scanned", "Compliance scan has been performed"),
         ],
     },
+    TruthDef {
+        key: "authorize-vendor-commitment",
+        display_name: "Authorize Vendor Commitment",
+        summary: "Policy decision for committing a vendor recommendation into a real procurement flow",
+        packs: &["policy-pack"],
+        criteria: &[
+            ("policy-decision-produced", "A policy decision fact exists for the commitment"),
+            ("commitment-authorized", "The commitment is either authorized or blocked honestly for human review"),
+        ],
+    },
     // Add your truths here.
 ];
 

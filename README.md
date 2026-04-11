@@ -175,6 +175,13 @@ The intended multi-agent flow is:
 
 Every agent contributes evidence. Converge decides when the workflow has enough evidence to converge.
 
+There is also a focused policy example for the last mile of the business flow:
+
+- [examples/policy-vendor-commitment/README.md](examples/policy-vendor-commitment/README.md)
+
+That example shows how `converge-policy` is used to authorize, escalate, or
+reject a vendor commitment before procurement acts on a recommendation.
+
 ## Current Repo Structure
 
 ```text

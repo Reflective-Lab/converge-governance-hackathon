@@ -8,8 +8,9 @@ rust-version = "1.93"
 
 [workspace.dependencies]
 # Converge
-converge-core = "2.1.2"
-converge-domain = "2.1.2"
+converge-core = "3.0.0"
+converge-domain = "3.0.0"
+converge-policy = "3.0.0"
 
 # Server
 axum = "0.8"
@@ -29,3 +30,11 @@ thiserror = "2"
 # Observability
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Local path overrides until converge v3.0.0 is published to crates.io
+[patch.crates-io]
+converge-core = { path = "../converge/crates/core" }
+converge-domain = { path = "../converge/crates/domain" }
+converge-pack = { path = "../converge/crates/pack" }
+converge-policy = { path = "../converge/crates/policy" }
+converge-provider-api = { path = "../converge/crates/provider-api" }

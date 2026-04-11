@@ -1,0 +1,16 @@
+{
+  "inputs": {
+    "principal_id": "agent:cost-analyst",
+    "principal_authority": "advisory",
+    "domains": "finance,procurement",
+    "commitment_id": "commitment:vendor-b-pilot",
+    "vendor_name": "Vendor B",
+    "commitment_type": "spend",
+    "action": "propose",
+    "amount_minor": "15000",
+    "currency_code": "USD",
+    "human_approval_present": "false",
+    "required_gates_met": "true"
+  },
+  "persist_projection": false
+}

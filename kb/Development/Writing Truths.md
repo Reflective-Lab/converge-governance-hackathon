@@ -29,7 +29,12 @@ At `governance-server/src/truth_runtime/assess_risk.rs`.
 
 ### 3. Write agents
 
-Implement the `Agent` trait. See [[Development/Writing Agents]].
+Implement the `Suggestor` trait. See [[Development/Writing Suggestors]].
+
+Not every truth needs an LLM or a large agent chain. The
+`authorize-vendor-commitment` truth is intentionally narrow: one policy
+suggestor calls `converge-policy` and emits a governed decision fact. That is a
+good pattern for hard business gates.
 
 ### 4. Write criterion evaluator
 

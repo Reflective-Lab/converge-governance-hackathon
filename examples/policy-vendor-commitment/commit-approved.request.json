@@ -1,0 +1,16 @@
+{
+  "inputs": {
+    "principal_id": "user:procurement-lead",
+    "principal_authority": "supervisory",
+    "domains": "procurement,vendor-selection",
+    "commitment_id": "commitment:vendor-a-2026-04",
+    "vendor_name": "Vendor A",
+    "commitment_type": "contract",
+    "action": "commit",
+    "amount_minor": "75000",
+    "currency_code": "USD",
+    "human_approval_present": "true",
+    "required_gates_met": "true"
+  },
+  "persist_projection": true
+}
