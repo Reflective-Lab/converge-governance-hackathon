@@ -11,7 +11,7 @@ Types and traits from `converge-core` that you use, not implement.
 | `Context` | Shared state all agents read. Partitioned by [[Converge/Context Keys|ContextKey]]. |
 | `ContextKey` | Partition labels: Seeds, Hypotheses, Evaluations, Corrections, Metadata. |
 | `Fact` | Immutable evidence in the context. Has `id`, `key`, `content`. |
-| `ProposedFact` | What agents emit. Includes `confidence` and `provenance`. Promoted to Fact by the engine. |
+| `ProposedFact` | What suggestors emit. Includes `confidence` and `provenance`. Promoted to Fact by the engine. |
 | `AgentEffect` | Return value of `execute()`. Contains proposed facts. |
 | `TypesRootIntent` | Declares objective, active packs, success criteria, budgets. |
 | `Criterion` | A success condition. Engine checks these after convergence. |
@@ -20,10 +20,10 @@ Types and traits from `converge-core` that you use, not implement.
 | `Budget` | Max cycles and max facts. Guarantees termination. |
 | `HitlPolicy` | [[Converge/HITL Gates|Human-in-the-loop]] gate configuration. |
 
-## Agent Trait
+## Suggestor Trait
 
 ```rust
-trait Agent: Send + Sync {
+trait Suggestor: Send + Sync {
     fn name(&self) -> &str;
     fn dependencies(&self) -> &[ContextKey];
     fn accepts(&self, ctx: &dyn ContextView) -> bool;

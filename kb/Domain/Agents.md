@@ -36,9 +36,9 @@ Five agents for the [[Domain/Vendor Selection|vendor selection]] challenge. Each
 - If confidence < 7000 bps → set `needs_human_review: true`
 - **Kong:** final synthesis LLM call through Kong
 
-## Agent Patterns
+## Suggestor Patterns
 
-Agents in this repo follow one of:
+Suggestors in this repo follow one of:
 - **Rule-based** — Rust logic, no external calls
 - **Analytics/scoring** — Rust computation
 - **LLM-backed** — calls model through [[Integrations/Kong Gateway|Kong]]

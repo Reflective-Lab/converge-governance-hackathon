@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use converge_core::{
-    Agent, AgentEffect, Context, ContextKey, Engine, ProposedFact, TypesRunHooks,
+    AgentEffect, Context, ContextKey, Engine, ProposedFact, Suggestor, TypesRunHooks,
 };
 use governance_kernel::{Actor, DecisionRecord, InMemoryStore};
 use governance_truths::{EvaluateVendorEvaluator, build_intent, find_truth};
@@ -23,7 +23,7 @@ struct ComplianceScreenerAgent {
     vendor_names: Vec<String>,
 }
 
-impl Agent for ComplianceScreenerAgent {
+impl Suggestor for ComplianceScreenerAgent {
     fn name(&self) -> &str {
         "compliance-screener"
     }
@@ -66,7 +66,7 @@ impl Agent for ComplianceScreenerAgent {
 
 struct CostAnalysisAgent;
 
-impl Agent for CostAnalysisAgent {
+impl Suggestor for CostAnalysisAgent {
     fn name(&self) -> &str {
         "cost-analysis"
     }
@@ -114,7 +114,7 @@ impl Agent for CostAnalysisAgent {
 
 struct VendorRiskAgent;
 
-impl Agent for VendorRiskAgent {
+impl Suggestor for VendorRiskAgent {
     fn name(&self) -> &str {
         "vendor-risk"
     }
@@ -175,7 +175,7 @@ impl Agent for VendorRiskAgent {
 
 struct DecisionSynthesisAgent;
 
-impl Agent for DecisionSynthesisAgent {
+impl Suggestor for DecisionSynthesisAgent {
     fn name(&self) -> &str {
         "decision-synthesis"
     }
@@ -237,10 +237,10 @@ pub fn execute(
     }
 
     let mut engine = Engine::new();
-    engine.register_in_pack("compliance-pack", ComplianceScreenerAgent { vendor_names });
-    engine.register_in_pack("risk-pack", VendorRiskAgent);
-    engine.register_in_pack("cost-pack", CostAnalysisAgent);
-    engine.register_in_pack("cost-pack", DecisionSynthesisAgent);
+    engine.register_suggestor_in_pack("compliance-pack", ComplianceScreenerAgent { vendor_names });
+    engine.register_suggestor_in_pack("risk-pack", VendorRiskAgent);
+    engine.register_suggestor_in_pack("cost-pack", CostAnalysisAgent);
+    engine.register_suggestor_in_pack("cost-pack", DecisionSynthesisAgent);
 
     let result = engine
         .run_with_types_intent_and_hooks(

@@ -20,7 +20,7 @@ tags: [architecture]
 │           governance-kernel             │  Domain model + in-memory store
 │                                         │  Vendor, Decision, AuditEntry
 ├─────────────────────────────────────────┤
-│           converge-core                 │  Engine, Agent, Fact, Context
+│           converge-core                 │  Engine, Suggestor, Fact, Context
 │                                         │  Promotion gate, convergence loop
 └─────────────────────────────────────────┘
 ```

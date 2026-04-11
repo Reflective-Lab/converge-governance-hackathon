@@ -102,23 +102,23 @@ These are not suggestions.
 
 - No `unsafe` code. Ever.
 - Use typed enums, not strings with semantics.
-- Agents emit proposals, not direct facts — Converge promotes them.
+- Suggestors emit proposals, not direct facts — Converge promotes them.
 - Every mutation needs an Actor.
 - `just lint` clean before considering work done.
 - No feature flags. No backwards-compat shims. Change the code.
 - No unnecessary abstractions. Three similar lines beat a premature helper.
-- If a real service is unavailable, mock it behind the same trait boundary. Don't hardcode data into agents.
+- If a real service is unavailable, mock it behind the same trait boundary. Don't hardcode data into suggestors.
 
 ## Converge
 
 Use it. This project exists to demonstrate governed multi-agent convergence.
 
-All crates at **v2.1.2** on crates.io.
+All crates at **v3.0.0**.
 
 | Crate | What it gives you | Status |
 |---|---|---|
-| `converge-core` | Engine, Agent, Fact, Context, promotion gates, convergence loop, HITL gates, budgets | In use |
-| `converge-domain` | Pre-built packs: trust, money, delivery, knowledge, data_metrics | In use |
+| `converge-core` | Engine, Suggestor, Fact, Context, promotion gates, convergence loop, HITL gates, budgets | In use |
+| `converge-domain` | Pre-built suggestor packs: trust, money, delivery, knowledge, data_metrics | In use |
 | `converge-provider` | KongGateway, KongRoute, LlmProvider, McpClient | In use (desktop) |
 | `converge-tool` | Spec validation, Gherkin parsing, truth-spec parsing | In use (desktop) |
 | `converge-experience` | Experience tracking and recall across runs | Available |
@@ -134,7 +134,7 @@ See `kb/Converge/Crate Catalog.md` for the full catalog with usage guidance.
 
 1. Define in `governance-truths/src/lib.rs` (key, packs, criteria)
 2. Create `governance-server/src/truth_runtime/your_truth.rs`
-3. Write agents implementing `converge_core::Agent`
+3. Write suggestors implementing `converge_core::Suggestor`
 4. Write a criterion evaluator implementing `CriterionEvaluator`
 5. Wire in `truth_runtime/mod.rs` dispatcher
 6. Add domain types to `governance-kernel` if needed

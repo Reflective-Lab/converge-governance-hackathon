@@ -80,9 +80,9 @@ All external API access is logged and governed through one gateway object.
 
 1. Svelte and Tauri run as the local shell
 2. The shell calls the Rust app layer locally
-3. Rust agents run inside the Converge runtime
-4. LLM-backed agents call models through Kong
-5. Service-backed agents use Kong-routed APIs or Kong-exposed [[Integrations/MCP Tools|MCP tools]]
+3. Rust suggestors run inside the Converge runtime
+4. LLM-backed suggestors call models through Kong
+5. Service-backed suggestors use Kong-routed APIs or Kong-exposed [[Integrations/MCP Tools|MCP tools]]
 6. Missing enterprise systems are mocked locally and still accessed through Kong-facing adapters
 
 Converge governs decision-making inside the app. Kong governs the only remote AI and business access outside the app.

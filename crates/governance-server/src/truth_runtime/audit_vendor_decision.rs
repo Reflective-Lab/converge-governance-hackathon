@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use converge_core::{
-    Context, ContextKey, Criterion, CriterionEvaluator, CriterionResult, Engine, Fact,
+    Context, ContextKey, Criterion, CriterionEvaluator, CriterionResult, Engine,
     TypesRunHooks,
 };
 use converge_domain::packs::trust::{
@@ -76,25 +76,26 @@ pub fn execute(
     // Seed the context with a session token to trigger the trust pack chain.
     let mut initial_context = Context::new();
     initial_context
-        .add_fact(Fact {
-            key: ContextKey::Seeds,
-            id: format!("vendor-decision:{decision_id}"),
-            content: serde_json::json!({
+        .add_input_with_provenance(
+            ContextKey::Seeds,
+            format!("vendor-decision:{decision_id}"),
+            serde_json::json!({
                 "session.token": true,
                 "decision_id": decision_id,
                 "action": "vendor_evaluation",
             })
             .to_string(),
-        })
+            "audit-executor",
+        )
         .map_err(|e| format!("failed to seed context: {e}"))?;
 
     // All agents come from converge-domain's trust pack. No custom agents needed.
     let mut engine = Engine::new();
-    engine.register_in_pack("trust-pack", SessionValidatorAgent);
-    engine.register_in_pack("trust-pack", RbacEnforcerAgent);
-    engine.register_in_pack("trust-pack", AuditWriterAgent);
-    engine.register_in_pack("trust-pack", ProvenanceTrackerAgent);
-    engine.register_in_pack("trust-pack", ComplianceScannerAgent);
+    engine.register_suggestor_in_pack("trust-pack", SessionValidatorAgent);
+    engine.register_suggestor_in_pack("trust-pack", RbacEnforcerAgent);
+    engine.register_suggestor_in_pack("trust-pack", AuditWriterAgent);
+    engine.register_suggestor_in_pack("trust-pack", ProvenanceTrackerAgent);
+    engine.register_suggestor_in_pack("trust-pack", ComplianceScannerAgent);
 
     let result = engine
         .run_with_types_intent_and_hooks(

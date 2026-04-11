@@ -8,10 +8,10 @@ Converge is a correctness-first multi-agent runtime. Instead of letting agents d
 ## The Model
 
 ```
-Agent proposes a fact
+Suggestor proposes a fact
   → Promotion gate validates it (authority, schema, confidence)
   → Fact is promoted into the shared context
-  → Other agents read the updated context
+  → Other suggestors read the updated context
   → Engine runs cycles until criteria are met or budget is exhausted
 ```
 
@@ -25,10 +25,10 @@ Agent proposes a fact
 ## Dependencies
 
 This repo uses:
-- `converge-core` 2.1.0 — Engine, Agent, Fact, Context, promotion gate, convergence loop
-- `converge-domain` 2.1.0 — pre-built [[Converge/Domain Packs|domain packs]] (trust, money, delivery, knowledge, data_metrics)
-- `converge-provider` 2.1.0 — [[Integrations/Kong Gateway|Kong]] integration for LLM and API access
-- `converge-tool` 2.1.0 — spec validation (used in desktop app)
+- `converge-core` 3.0.0 — Engine, Suggestor, Fact, Context, promotion gate, convergence loop
+- `converge-domain` 3.0.0 — pre-built [[Converge/Domain Packs|domain packs]] (trust, money, delivery, knowledge, data_metrics)
+- `converge-provider` 3.0.0 — [[Integrations/Kong Gateway|Kong]] integration for LLM and API access
+- `converge-tool` 3.0.0 — spec validation (used in desktop app)
 
 > **TODO:** Scan converge crate sources for deeper documentation of internals.
 

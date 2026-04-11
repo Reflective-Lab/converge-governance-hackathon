@@ -3,7 +3,7 @@ tags: [converge, domain-packs]
 ---
 # Domain Packs
 
-Pre-built agent packs from `converge-domain`. Ready to register and run — no custom agents needed.
+Pre-built suggestor packs from `converge-domain`. Ready to register and run — no custom suggestors needed.
 
 ## Available Packs
 
@@ -21,11 +21,11 @@ Uses the trust pack with zero custom agents:
 
 ```rust
 let mut engine = Engine::new();
-engine.register_in_pack("trust-pack", SessionValidatorAgent);
-engine.register_in_pack("trust-pack", RbacEnforcerAgent);
-engine.register_in_pack("trust-pack", AuditWriterAgent);
-engine.register_in_pack("trust-pack", ProvenanceTrackerAgent);
-engine.register_in_pack("trust-pack", ComplianceScannerAgent);
+engine.register_suggestor_in_pack("trust-pack", SessionValidatorAgent);
+engine.register_suggestor_in_pack("trust-pack", RbacEnforcerAgent);
+engine.register_suggestor_in_pack("trust-pack", AuditWriterAgent);
+engine.register_suggestor_in_pack("trust-pack", ProvenanceTrackerAgent);
+engine.register_suggestor_in_pack("trust-pack", ComplianceScannerAgent);
 ```
 
 Convergence chain: validate session → enforce RBAC → write audit → track provenance → scan compliance → converged.
@@ -34,12 +34,12 @@ Convergence chain: validate session → enforce RBAC → write audit → track p
 
 ```rust
 // Custom agents
-engine.register_in_pack("compliance-pack", ComplianceScreenerAgent { vendor_names });
-engine.register_in_pack("cost-pack", CostAnalysisAgent);
+engine.register_suggestor_in_pack("compliance-pack", ComplianceScreenerAgent { vendor_names });
+engine.register_suggestor_in_pack("cost-pack", CostAnalysisAgent);
 
 // Domain pack agents (free audit trails)
-engine.register_in_pack("trust-pack", AuditWriterAgent);
-engine.register_in_pack("trust-pack", ProvenanceTrackerAgent);
+engine.register_suggestor_in_pack("trust-pack", AuditWriterAgent);
+engine.register_suggestor_in_pack("trust-pack", ProvenanceTrackerAgent);
 ```
 
 Trust pack agents automatically pick up access decisions and audit the entire evaluation flow.
@@ -55,7 +55,7 @@ Domain packs also provide invariants checked during convergence:
 ## When to Use What
 
 - **Domain packs** for cross-cutting concerns: audit, access control, provenance
-- **Custom agents** for business logic: vendor scoring, cost analysis, risk assessment
+- **Custom suggestors** for business logic: vendor scoring, cost analysis, risk assessment
 - **Both** in the same engine for maximum governance
 
 See also: [[Domain/Truths]], [[Converge/Building Blocks]]

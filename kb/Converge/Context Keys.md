@@ -3,7 +3,7 @@ tags: [converge]
 ---
 # Context Keys
 
-Facts are partitioned by `ContextKey`. Agents declare which keys they depend on — the engine only wakes agents when their dependencies change.
+Facts are partitioned by `ContextKey`. Suggestors declare which keys they depend on — the engine only wakes suggestors when their dependencies change.
 
 | Key | Purpose | Example facts |
 |-----|---------|---------------|

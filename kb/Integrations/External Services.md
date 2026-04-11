@@ -7,12 +7,12 @@ During the hackathon, real enterprise services are unavailable. Don't collapse t
 
 ## Pattern
 
-1. Define a trait for the capability the agent needs
+1. Define a trait for the capability the suggestor needs
 2. Implement it against [[Integrations/Kong Gateway|Kong]] for production
 3. Implement it as a local mock for development
-4. Inject it into the agent at construction time
+4. Inject it into the suggestor at construction time
 
-The agent never knows whether it talks to a real service or a mock.
+The suggestor never knows whether it talks to a real service or a mock.
 
 ```rust
 trait PolicyService: Send + Sync {

@@ -13,8 +13,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-converge-provider = { version = "2.1.2", features = ["kong"] }
-converge-tool = "2.1.2"
+converge-provider = { version = "3.0.0", features = ["kong"] }
+converge-tool = "3.0.0"
 dotenv = "0.15"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

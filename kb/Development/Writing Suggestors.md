@@ -1,15 +1,15 @@
 ---
-tags: [development, agents]
+tags: [development, suggestors]
 ---
-# Writing Agents
+# Writing Suggestors
 
-Every agent implements the `Agent` trait from `converge-core`.
+Every suggestor implements the `Suggestor` trait from `converge-core`.
 
-## Agent Trait
+## Suggestor Trait
 
 ```rust
-impl Agent for YourAgent {
-    fn name(&self) -> &str { "your-agent" }
+impl Suggestor for YourSuggestor {
+    fn name(&self) -> &str { "your-suggestor" }
 
     fn dependencies(&self) -> &[ContextKey] {
         &[]  // or &[ContextKey::Seeds] to wait for seed facts
@@ -21,28 +21,26 @@ impl Agent for YourAgent {
 
     fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         // Read context, do analysis, return proposals
-        AgentEffect { proposals: vec![
-            ProposedFact {
-                key: ContextKey::Seeds,
-                id: "your:fact:id".into(),
-                content: serde_json::json!({ "result": "data" }).to_string(),
-                confidence: 0.85,
-                provenance: "agent:your-agent".into(),
-            }
-        ], ..Default::default() }
+        AgentEffect::with_proposal(ProposedFact {
+            key: ContextKey::Seeds,
+            id: "your:fact:id".into(),
+            content: serde_json::json!({ "result": "data" }).to_string(),
+            confidence: 0.85,
+            provenance: "suggestor:your-suggestor".into(),
+        })
     }
 }
 ```
 
 ## Rules
 
-- **`dependencies()`** declares which [[Converge/Context Keys|ContextKey]] partitions the agent watches. The engine only wakes the agent when those keys change.
+- **`dependencies()`** declares which [[Converge/Context Keys|ContextKey]] partitions the suggestor watches. The engine only wakes the suggestor when those keys change.
 - **`accepts()`** is a pure predicate. No I/O, no side effects.
 - **`execute()`** reads the context and returns proposals. Never mutates the context directly.
-- **Agents never call each other.** All communication through the shared context.
+- **Suggestors never call each other.** All communication through the shared context.
 - **Check before proposing.** If a fact already exists, skip it. This gives idempotency.
 
-## Agent Patterns
+## Suggestor Patterns
 
 | Pattern | When to use |
 |---|---|
@@ -58,7 +56,7 @@ struct ComplianceScreenerAgent {
     vendor_names: Vec<String>,
 }
 
-impl Agent for ComplianceScreenerAgent {
+impl Suggestor for ComplianceScreenerAgent {
     fn name(&self) -> &str {
         "compliance-screener"
     }
@@ -88,17 +86,17 @@ impl Agent for ComplianceScreenerAgent {
                     "ai_act_pass": true,
                 }).to_string(),
                 confidence: 0.85,
-                provenance: "agent:compliance-screener".into(),
+                provenance: "suggestor:compliance-screener".into(),
             });
         }
-        AgentEffect { proposals, ..Default::default() }
+        AgentEffect::with_proposals(proposals)
     }
 }
 ```
 
-## Service-Backed Agent Example
+## Service-Backed Suggestor Example
 
-Inject a trait so the agent works with real services or mocks. See [[Integrations/External Services]] for the full pattern.
+Inject a trait so the suggestor works with real services or mocks. See [[Integrations/External Services]] for the full pattern.
 
 ```rust
 struct ComplianceScreenerAgent {
@@ -107,14 +105,14 @@ struct ComplianceScreenerAgent {
 }
 ```
 
-## LLM-Backed Agent Example
+## LLM-Backed Suggestor Example
 
 ```rust
 struct SmartComplianceAgent {
     provider: Arc<dyn LlmProvider>,
 }
 
-impl Agent for SmartComplianceAgent {
+impl Suggestor for SmartComplianceAgent {
     fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let prompt = format!("Evaluate GDPR compliance for vendor: {}", vendor_name);
         let response = self.provider.complete(&prompt);

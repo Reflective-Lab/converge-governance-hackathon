@@ -60,7 +60,7 @@ Example input files are in the repo:
 
 ## What's Already Built
 
-The reference executor in `evaluate_vendor.rs` has 3 placeholder agents producing hardcoded facts. What needs to become real:
+The reference executor in `evaluate_vendor.rs` has 3 placeholder suggestors producing hardcoded facts. What needs to become real:
 
 - Replace hardcoded compliance results with actual policy evaluation
 - Replace hardcoded cost estimates with real pricing analysis

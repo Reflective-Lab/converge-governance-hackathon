@@ -17,7 +17,7 @@ The state machine enforces valid transitions and tracks who changed what.
 
 ## When to Use
 
-Use when agent outputs become operational artifacts:
+Use when suggestor outputs become operational artifacts:
 
 - Approved vendor lists
 - Policy documents

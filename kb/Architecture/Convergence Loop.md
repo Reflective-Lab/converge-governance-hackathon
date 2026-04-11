@@ -43,9 +43,9 @@ The engine guarantees termination through budgets. `TypesBudgets::with_cycles(10
 Register multiple agents in the same pack to run them in parallel on the same cycle:
 
 ```rust
-engine.register_in_pack("compliance-pack", ComplianceScreenerAgent { vendor_names });
-engine.register_in_pack("compliance-pack", DataResidencyAgent { vendor_names });
-engine.register_in_pack("compliance-pack", CertificationAgent { vendor_names });
+engine.register_suggestor_in_pack("compliance-pack", ComplianceScreenerAgent { vendor_names });
+engine.register_suggestor_in_pack("compliance-pack", DataResidencyAgent { vendor_names });
+engine.register_suggestor_in_pack("compliance-pack", CertificationAgent { vendor_names });
 ```
 
 All three share dependencies. In a single cycle, all run and propose facts into Seeds. The engine merges all effects deterministically (sorted by agent name).
@@ -96,13 +96,13 @@ Every fact has provenance. Every decision has evidence. Every run has a stop rea
 
 Each cycle, the engine:
 
-1. Checks all registered agents
-2. For each agent, calls `dependencies()` — which [[Converge/Context Keys|ContextKey]] partitions does it watch?
+1. Checks all registered suggestors
+2. For each suggestor, calls `dependencies()` — which [[Converge/Context Keys|ContextKey]] partitions does it watch?
 3. If any watched partition changed since last cycle, calls `accepts()` — pure predicate, no I/O
-4. If `accepts()` returns true, calls `execute()` — agent reads context, returns proposals
+4. If `accepts()` returns true, calls `execute()` — suggestor reads context, returns proposals
 5. Engine promotes all proposals through the governance gate
 6. If no new facts were promoted, fixed point detected → convergence
 
-Agents that have no dependencies run on cycle 1. Agents that depend on Seeds run when Seeds changes. This is how the cascade works without agents calling each other.
+Suggestors that have no dependencies run on cycle 1. Suggestors that depend on Seeds run when Seeds changes. This is how the cascade works without agents calling each other.
 
 See also: [[Domain/Agents]], [[Converge/Context Keys]], [[Converge/Building Blocks]]

@@ -11,7 +11,7 @@ This repo is an application starter built on top of [[Converge/Core Concepts|Con
 ## Repo Ownership Split
 
 **Converge owns:**
-- Agent execution cycles
+- Suggestor execution cycles
 - Shared context and context partitions
 - Fact proposal and promotion
 - Criteria evaluation

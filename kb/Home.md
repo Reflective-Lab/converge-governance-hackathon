@@ -12,13 +12,13 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 
 ## Domain
 - [[Domain/Vendor Selection]] — the challenge and success criteria
-- [[Domain/Agents]] — the five agents to build
+- [[Domain/Agents]] — the five suggestors to build
 - [[Domain/Truths]] — truth definitions and catalog
 - [[Domain/Key Types]] — Engine, Context, Fact, Criterion, etc.
 
 ## Development
 - [[Development/Getting Started]] — toolchain, build commands, quick reference
-- [[Development/Writing Agents]] — agent trait, patterns, rules
+- [[Development/Writing Suggestors]] — suggestor trait, patterns, rules
 - [[Development/Writing Truths]] — step-by-step guide to adding a new truth
 - [[Development/Streaming]] — real-time convergence callbacks
 
@@ -39,7 +39,7 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 - [[Converge/Core Concepts]] — correctness-first multi-agent runtime
 - [[Converge/Building Blocks]] — types and traits from converge-core
 - [[Converge/Context Keys]] — partitioning evidence in the shared context
-- [[Converge/Domain Packs]] — pre-built agent packs from converge-domain
+- [[Converge/Domain Packs]] — pre-built suggestor packs from converge-domain
 - [[Converge/HITL Gates]] — human-in-the-loop gated decisions
 - [[Converge/Experience and Recall]] — learning from past runs
 - [[Converge/Governed Artifacts]] — lifecycle management for system outputs
