@@ -1,0 +1,19 @@
+# Gemini CLI Ignore Patterns
+
+# Build artifacts
+target/
+dist/
+node_modules/
+bun.lock
+Cargo.lock
+
+# Version control
+.git/
+
+# Claude skills (Gemini uses Justfile/scripts instead)
+.claude/
+
+# Temporary files
+.DS_Store
+*.log
+tmp/

@@ -30,6 +30,7 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 ## Workflow
 - [[Workflow/Working with Claude]] — skills vs Justfile, when to use which
 - [[Workflow/Working with Codex]] — prompt patterns and workflow equivalents for Codex users
+- [[Workflow/Working with Gemini]] — tool integration and delegation for Gemini users
 - [[Workflow/Daily Journey]] — start-to-finish cheat sheet for your day
 - [[Workflow/Skills Reference]] — all `/slash` commands and what they do
 
