@@ -1,4 +1,8 @@
 /target
+build/
+dist/
+.svelte-kit/
+.obsidian/
 .DS_Store
 .env
 .env.*
@@ -6,4 +10,3 @@
 apps/desktop/node_modules
 apps/desktop/dist
 apps/desktop/src-tauri/target
-kb/.obsidian/
