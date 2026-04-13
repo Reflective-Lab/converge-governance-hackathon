@@ -1,6 +1,9 @@
 /target
 .DS_Store
 .env
+.env.*
+!.env.example
 apps/desktop/node_modules
 apps/desktop/dist
 apps/desktop/src-tauri/target
+kb/.obsidian/
