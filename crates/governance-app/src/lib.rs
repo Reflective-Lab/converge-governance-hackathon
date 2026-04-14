@@ -113,21 +113,24 @@ impl GovernanceApp {
 mod tests {
     use super::*;
 
-    #[test]
-    fn execute_vendor_evaluation_and_query() {
+    #[tokio::test]
+    async fn execute_vendor_evaluation_and_query() {
         let store = InMemoryStore::new();
         let app = GovernanceApp::new(store);
 
         let inputs = HashMap::from([("vendors".into(), "Acme AI, Beta ML".into())]);
-        let result = app.execute_truth("evaluate-vendor", inputs, true).unwrap();
+        let result = app
+            .execute_truth("evaluate-vendor", inputs, true)
+            .await
+            .unwrap();
 
         assert!(result.converged);
         assert_eq!(app.list_decisions().len(), 1);
         assert!(!app.list_audit(100).is_empty());
     }
 
-    #[test]
-    fn dashboard_reflects_execution() {
+    #[tokio::test]
+    async fn dashboard_reflects_execution() {
         let store = InMemoryStore::new();
         let app = GovernanceApp::new(store);
 
@@ -135,7 +138,9 @@ mod tests {
         assert_eq!(dashboard.recent_decisions.len(), 0);
 
         let inputs = HashMap::from([("vendors".into(), "Acme AI".into())]);
-        app.execute_truth("evaluate-vendor", inputs, true).unwrap();
+        app.execute_truth("evaluate-vendor", inputs, true)
+            .await
+            .unwrap();
 
         let dashboard = app.dashboard();
         assert_eq!(dashboard.recent_decisions.len(), 1);
@@ -163,8 +168,8 @@ Feature: Evaluate AI vendors
         assert_eq!(preview.vendors, vec!["Acme AI", "Beta ML"]);
     }
 
-    #[test]
-    fn executes_vendor_selection_from_truth_spec_source() {
+    #[tokio::test]
+    async fn executes_vendor_selection_from_truth_spec_source() {
         let store = InMemoryStore::new();
         let app = GovernanceApp::new(store);
 
@@ -181,6 +186,7 @@ Feature: Evaluate AI vendors
                 },
                 true,
             )
+            .await
             .unwrap();
 
         assert!(result.converged);
