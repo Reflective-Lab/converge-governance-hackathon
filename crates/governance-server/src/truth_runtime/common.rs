@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use converge_core::ConvergeResult;
+use converge_kernel::{ContextKey, ConvergeResult};
 use serde::de::DeserializeOwned;
 
 pub fn required_input<'a>(
@@ -30,7 +30,7 @@ pub fn converge_confidence_to_bps(confidence: f64) -> u16 {
 
 pub fn payload_from_result<T: DeserializeOwned>(
     result: &ConvergeResult,
-    key: converge_core::ContextKey,
+    key: ContextKey,
     fact_id: &str,
 ) -> Result<T, String> {
     let fact = result

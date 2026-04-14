@@ -29,12 +29,21 @@ At `governance-server/src/truth_runtime/assess_risk.rs`.
 
 ### 3. Write agents
 
-Implement the `Suggestor` trait. See [[Development/Writing Suggestors]].
+Implement the `Suggestor` trait from `converge-pack`. Use `converge-kernel` as the student-facing runtime import for `Engine`, `Context`, and budgets. See [[Development/Writing Suggestors]].
 
 Not every truth needs an LLM or a large agent chain. The
 `authorize-vendor-commitment` truth is intentionally narrow: one policy
 suggestor calls `converge-policy` and emits a governed decision fact. That is a
 good pattern for hard business gates.
+
+When you do need a more dynamic loop, study
+`governance-server/src/truth_runtime/dynamic_due_diligence.rs`. It shows a
+student-safe pattern for:
+
+- seeding typed research strategies from `organism-pack`
+- refining those strategies through follow-up gaps
+- making contradictions explicit instead of hiding them in a final summary
+- returning a structured projection payload that the UI or API can render
 
 ### 4. Write criterion evaluator
 

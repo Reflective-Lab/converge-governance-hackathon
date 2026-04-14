@@ -38,20 +38,22 @@ pub fn preview_vendor_selection_source(
     }
 }
 
-pub fn execute_vendor_selection_source(
+pub async fn execute_vendor_selection_source(
     store: &InMemoryStore,
     source: TruthSourceFile,
     persist: bool,
 ) -> Result<TruthExecutionResult, String> {
     let preview = preview_vendor_selection_source(source)?;
-    super::execute_truth(store, &preview.truth_key, preview.inputs, persist)
+    super::execute_truth(store, &preview.truth_key, preview.inputs, persist).await
 }
 
 fn detect_format(source: &TruthSourceFile) -> Result<TruthSourceFormat, String> {
     let name = source.name.to_ascii_lowercase();
     let trimmed = source.content.trim_start();
 
-    if name.ends_with(".feature") || trimmed.contains("\nFeature:") || trimmed.starts_with("Feature:")
+    if name.ends_with(".feature")
+        || trimmed.contains("\nFeature:")
+        || trimmed.starts_with("Feature:")
     {
         return Ok(TruthSourceFormat::Gherkin);
     }
@@ -88,8 +90,7 @@ fn preview_gherkin_vendor_selection(
             continue;
         }
 
-        if let Some(value) = extract_step_value(line, &["Given truth", "And truth", "When truth"])
-        {
+        if let Some(value) = extract_step_value(line, &["Given truth", "And truth", "When truth"]) {
             truth_key = Some(value);
             collecting_vendor_table = false;
             continue;
@@ -148,9 +149,10 @@ fn preview_truths_json_vendor_selection(
 
     let mut vendors = spec.vendors;
     if vendors.is_empty()
-        && let Some(raw_vendors) = spec.inputs.get("vendors") {
-            vendors.extend(split_csv(raw_vendors));
-        }
+        && let Some(raw_vendors) = spec.inputs.get("vendors")
+    {
+        vendors.extend(split_csv(raw_vendors));
+    }
 
     let mut preview = build_preview(
         source.name,
@@ -165,7 +167,9 @@ fn preview_truths_json_vendor_selection(
             preview.inputs.insert(key, value.trim().to_string());
         }
     }
-    preview.inputs.insert("vendors".into(), preview.vendors.join(", "));
+    preview
+        .inputs
+        .insert("vendors".into(), preview.vendors.join(", "));
 
     Ok(preview)
 }
@@ -186,7 +190,10 @@ fn build_preview(
 
     let vendors = normalize_vendors(vendors);
     if vendors.is_empty() {
-        return Err("no vendors found in source; add a vendor list so the vendor-selection flow can run".to_string());
+        return Err(
+            "no vendors found in source; add a vendor list so the vendor-selection flow can run"
+                .to_string(),
+        );
     }
 
     let title = title

@@ -1,0 +1,7 @@
+{
+  "inputs": {
+    "company": "Acme AI",
+    "focus_areas": "financials, compliance, competition"
+  },
+  "persist_projection": true
+}

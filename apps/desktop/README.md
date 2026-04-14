@@ -15,22 +15,24 @@ The first end-to-end desktop flow is vendor-selection spec validation:
 3. Show Converge syntax, governance, and convention findings.
 4. Expand this into full truth execution after validation is clean.
 
-The only intended remote calls are outbound calls from the Rust core to Kong and the LLM or business services it fronts.
+Remote calls should originate from the Rust core, not the UI. They may go through Kong or direct provider and service adapters for now.
 
-For Kong integration, the desktop app should use `converge-provider`, not raw gateway HTTP calls:
+For student-facing code, the desktop app should stay on the canonical Converge capability surface, not a separate gateway-specific contract:
 
 1. Load `.env` in the Tauri layer.
-2. Build `KongGateway::from_env()`.
-3. Define a `KongRoute` for the editor LLM use case.
-4. Call `gateway.llm_provider(route)` for guided validation or rewrite flows.
-5. Use `gateway.mcp_url(...)` or `gateway.api_url(...)` for Kong-routed tools and services.
+2. Build or inject the chat backend at the app edge.
+3. Use `ChatRequest` / `ChatResponse` in app code and suggestors.
+4. Keep any Kong-specific routing below that boundary.
+5. Use the same typed surface for live backends, Kong-backed routing, direct providers, mocks, and offline validators.
 
-Required `.env`:
+If using Kong:
 
 ```dotenv
 KONG_AI_GATEWAY_URL=https://<provided-at-hackathon>
 KONG_API_KEY=<your-team-key>
 ```
+
+Direct provider keys are also acceptable during the current transition, as long as the app stays on the same typed capability surface.
 
 Optional desktop LLM settings:
 
@@ -49,4 +51,6 @@ The desktop toolchain uses Bun:
 - `just package-desktop` to build a native bundle for your platform
 - `just deploy` as the default packaging path
 
-The current Tauri command validates specs offline-first using `converge-tool::gherkin::GherkinValidator`. Business-sense and compilability checks are intentionally disabled until a Kong-backed LLM validator is wired in.
+The current Tauri command validates specs offline-first using `converge-tool::gherkin::GherkinValidator`. Business-sense and compilability checks are intentionally disabled until a fuller live validator is added on top of the same `ChatBackend` contract.
+
+Current status: `apps/desktop/src-tauri` is on the canonical template: the Tauri layer selects a live `ChatBackend`, passes `ChatRequest` into the app logic, and uses `StaticChatBackend` for offline fallback. A future `KongProvider` or `RouterProvider` should sit under that same surface rather than replace it. See [Programming API Surfaces](../../kb/Development/Programming%20API%20Surfaces.md).

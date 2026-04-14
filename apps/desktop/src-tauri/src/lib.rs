@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 mod config;
 
-use converge_provider::{KongGateway, LlmProvider, LlmRequest};
+use converge_core::traits::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
+use converge_provider::{ChatBackendSelectionConfig, select_chat_backend};
+use converge_tool::StaticChatBackend;
 use converge_tool::gherkin::{
     GherkinValidator, InvariantClassTag, IssueCategory, ScenarioKind, Severity, ValidationConfig,
     ValidationError,
 };
-use converge_tool::truths::{parse_truth_document, TruthGovernance};
-use converge_tool::StaticLlmProvider;
+use converge_tool::truths::{TruthGovernance, parse_truth_document};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
@@ -112,7 +113,7 @@ fn validate_gherkin(spec: String) -> Result<ValidationResponse, String> {
         confidence: validation.confidence,
         validation_mode: "offline-syntax-and-conventions",
         notes: vec![String::from(
-            "Local validation checks Converge Truth parsing, governance blocks, and Gherkin conventions. Business-sense and compilability checks stay disabled until a Kong-backed LLM validator is configured.",
+            "Local validation checks Converge Truth parsing, governance blocks, and Gherkin conventions. Business-sense and compilability checks stay disabled until a live ChatBackend validator is configured.",
         )],
         governance: summarize_governance(&validation.governance),
         scenarios: validation
@@ -142,17 +143,17 @@ fn validate_gherkin(spec: String) -> Result<ValidationResponse, String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn guide_truth_heading(spec: String) -> Result<Option<TruthGuidanceResponse>, String> {
+async fn guide_truth_heading(spec: String) -> Result<Option<TruthGuidanceResponse>, String> {
     let Some(current_title) = extract_truth_title(&spec) else {
         return Ok(None);
     };
 
-    Ok(Some(kong_guided_heading(&spec, &current_title)))
+    Ok(Some(guided_heading(&spec, &current_title).await))
 }
 
 fn offline_validator() -> GherkinValidator {
     GherkinValidator::new(
-        Arc::new(StaticLlmProvider::constant("VALID")),
+        Arc::new(StaticChatBackend::constant("VALID")),
         ValidationConfig {
             check_business_sense: false,
             check_compilability: false,
@@ -162,39 +163,26 @@ fn offline_validator() -> GherkinValidator {
     )
 }
 
-fn kong_guided_heading(spec: &str, current_title: &str) -> TruthGuidanceResponse {
-    if config::editor_config().kong_gateway_configured() {
-        match request_kong_heading_guidance(spec, current_title) {
-            Ok(response) => return response,
-            Err(error) => {
-                return local_heading_guidance(
-                    spec,
-                    current_title,
-                    format!(
-                        "Kong LLM guidance failed, so the editor is showing a local rewrite instead: {error}"
-                    ),
-                );
-            }
-        }
+async fn guided_heading(spec: &str, current_title: &str) -> TruthGuidanceResponse {
+    match request_live_heading_guidance(spec, current_title).await {
+        Ok(response) => response,
+        Err(error) => local_heading_guidance(
+            spec,
+            current_title,
+            format!(
+                "Live ChatBackend guidance failed, so the editor is showing a local rewrite instead: {error}"
+            ),
+        ),
     }
-
-    local_heading_guidance(
-        spec,
-        current_title,
-        "Set KONG_AI_GATEWAY_URL and KONG_API_KEY in .env to enable Kong-backed rewrite guidance. The editor is currently using a local fallback.".to_string(),
-    )
 }
 
-fn request_kong_heading_guidance(
+async fn request_live_heading_guidance(
     spec: &str,
     current_title: &str,
 ) -> Result<TruthGuidanceResponse, String> {
     let editor_config = config::editor_config();
     let draft_context = draft_context(spec, current_title);
-    let gateway = KongGateway::from_env()
-        .map_err(|error| format!("Kong gateway configuration failed: {error}"))?;
-    let route_name = editor_config.kong_heading_route_name().to_string();
-    let provider = gateway.llm_provider(editor_config.kong_heading_route());
+    let selected = select_heading_backend(editor_config)?;
     let prompt = format!(
         r#"You are improving a Converge Truth heading inside a desktop editor.
 
@@ -234,13 +222,27 @@ Rules:
             .map_err(|error| format!("Failed to serialize draft context: {error}"))?,
         spec_excerpt = truncated_spec_excerpt(spec)
     );
-    let request = LlmRequest::new(prompt)
-        .with_system("You are a strict Converge Truth editor. Respond with JSON only.")
-        .with_max_tokens(300)
-        .with_temperature(0.2);
-    let response = provider
-        .complete(&request)
-        .map_err(|error| format!("LLM request failed: {error}"))?;
+    let response = selected
+        .backend
+        .chat(ChatRequest {
+            messages: vec![ChatMessage {
+                role: ChatRole::User,
+                content: prompt,
+                tool_calls: Vec::new(),
+                tool_call_id: None,
+            }],
+            system: Some("You are a strict Converge Truth editor. Respond with JSON only.".into()),
+            tools: Vec::new(),
+            response_format: ResponseFormat::Json,
+            max_tokens: Some(300),
+            temperature: Some(0.2),
+            stop_sequences: Vec::new(),
+            model: editor_config
+                .heading_model_override()
+                .map(ToString::to_string),
+        })
+        .await
+        .map_err(|error| format!("ChatBackend request failed: {error}"))?;
     let parsed = parse_llm_truth_guidance(&response.content)?;
     let suggested_title = sanitize_suggested_title(&parsed.suggested_title, current_title);
 
@@ -248,15 +250,36 @@ Rules:
         current_title: current_title.to_string(),
         suggested_title,
         should_rewrite: parsed.should_rewrite,
-        source: "kong-llm",
+        source: "live-chat-backend",
         rationale: normalize_rationale(
             parsed.rationale,
             "The current heading was evaluated against the full Truth context.".to_string(),
         ),
         description_hints: normalize_description_hints(parsed.description_hints),
         note: format!(
-            "Kong-backed LLM guidance is active for Truth heading formulation through route `{route_name}`."
+            "Live guidance is active through ChatBackend provider `{}`.",
+            selected.provider
         ),
+    })
+}
+
+struct SelectedHeadingBackend {
+    backend: Arc<dyn DynChatBackend>,
+    provider: String,
+}
+
+fn select_heading_backend(config: &config::EditorConfig) -> Result<SelectedHeadingBackend, String> {
+    let mut selection = ChatBackendSelectionConfig::from_env()
+        .map_err(|error| format!("ChatBackend selection configuration failed: {error}"))?;
+    if let Some(provider) = config.heading_provider_override() {
+        selection = selection.with_provider_override(provider.to_string());
+    }
+    let selected = select_chat_backend(&selection)
+        .map_err(|error| format!("No live chat backend is available: {error}"))?;
+    let provider = selected.provider().to_string();
+    Ok(SelectedHeadingBackend {
+        backend: selected.backend,
+        provider,
     })
 }
 
@@ -444,13 +467,7 @@ fn join_phrases(items: &[&str]) -> String {
         [] => String::new(),
         [one] => (*one).to_string(),
         [first, second] => format!("{first} and {second}"),
-        [first, middle @ .., last] => {
-            format!(
-                "{}, and {}",
-                format!("{first}, {}", middle.join(", ")),
-                last
-            )
-        }
+        [first, middle @ .., last] => format!("{first}, {}, and {last}", middle.join(", ")),
     }
 }
 
@@ -634,7 +651,7 @@ fn scenario_kind_label(kind: ScenarioKind) -> &'static str {
     match kind {
         ScenarioKind::Invariant => "invariant",
         ScenarioKind::Validation => "validation",
-        ScenarioKind::Agent => "agent",
+        ScenarioKind::Suggestor => "agent",
         ScenarioKind::EndToEnd => "end-to-end",
     }
 }
@@ -697,10 +714,12 @@ Scenario: Missing expectation
         .unwrap();
 
         assert!(!result.is_valid);
-        assert!(result
-            .issues
-            .iter()
-            .any(|issue| issue.message.contains("lacks Then steps")));
+        assert!(
+            result
+                .issues
+                .iter()
+                .any(|issue| issue.message.contains("lacks Then steps"))
+        );
     }
 
     #[test]

@@ -61,18 +61,18 @@ impl GovernanceApp {
                 key: t.key.into(),
                 display_name: t.display_name.into(),
                 summary: t.summary.into(),
-                executable: t.key == "evaluate-vendor", // only the reference is executable
+                executable: matches!(t.key, "evaluate-vendor" | "dynamic-due-diligence"),
             })
             .collect()
     }
 
-    pub fn execute_truth(
+    pub async fn execute_truth(
         &self,
         key: &str,
         inputs: HashMap<String, String>,
         persist: bool,
     ) -> Result<truth_runtime::TruthExecutionResult, String> {
-        truth_runtime::execute_truth(&self.store, key, inputs, persist)
+        truth_runtime::execute_truth(&self.store, key, inputs, persist).await
     }
 
     pub fn preview_vendor_selection_source(
@@ -82,12 +82,12 @@ impl GovernanceApp {
         truth_runtime::source_import::preview_vendor_selection_source(source)
     }
 
-    pub fn execute_vendor_selection_source(
+    pub async fn execute_vendor_selection_source(
         &self,
         source: TruthSourceFile,
         persist: bool,
     ) -> Result<truth_runtime::TruthExecutionResult, String> {
-        truth_runtime::source_import::execute_vendor_selection_source(&self.store, source, persist)
+        truth_runtime::source_import::execute_vendor_selection_source(&self.store, source, persist).await
     }
 
     pub fn list_vendors(&self) -> Vec<Vendor> {
@@ -123,7 +123,7 @@ mod tests {
 
         assert!(result.converged);
         assert_eq!(app.list_decisions().len(), 1);
-        assert!(app.list_audit(100).len() > 0);
+        assert!(!app.list_audit(100).is_empty());
     }
 
     #[test]

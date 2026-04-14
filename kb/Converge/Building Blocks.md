@@ -31,4 +31,4 @@ trait Suggestor: Send + Sync {
 }
 ```
 
-See also: [[Domain/Key Types]], [[Development/Writing Agents]]
+See also: [[Domain/Key Types]], [[Development/Writing Suggestors]]

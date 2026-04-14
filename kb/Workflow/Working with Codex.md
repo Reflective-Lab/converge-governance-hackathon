@@ -3,9 +3,7 @@ tags: [workflow, codex]
 ---
 # Working with Codex
 
-This project works well with Codex, but the workflow looks slightly different than Claude Code. Start from the root `CODEX.md` entrypoint, then use this page for the long-form workflow guidance. Codex does not use the repo's Claude slash commands directly. Instead, it uses `AGENTS.md`, the knowledgebase, the shared `just` recipes, and plain-language workflow requests.
-
-`AGENTS.md` also tells Codex to treat names like `/focus`, `/fix`, or `/checkpoint` as workflow intents when a user uses Claude-style shorthand.
+This project works well with Codex. Start from the root `CODEX.md` entrypoint, then use this page for the long-form workflow guidance. Keep the same workflow names used in Claude docs. In Codex, name the workflow directly in plain text: `focus`, `run focus`, `check`, `done`, `audit`, `fix issue 42`, `review PR 17`.
 
 ## What to Read First
 
@@ -36,23 +34,25 @@ Use Codex when the task needs reading, synthesis, code changes, or GitHub workfl
 - writing an issue
 - updating `kb/`
 
-## Workflow Equivalents
+## Canonical Workflows
 
-| Claude workflow | Use with Codex |
+| Workflow | Use with Codex |
 |---|---|
-| `/focus` | Ask Codex to "run the focus workflow for this repo" or run `just focus` and discuss the result |
-| `/sync` | Ask Codex to "run a team sync for this repo" or run `just sync` |
-| `/status` | Ask Codex to "run the project status workflow" or run `just status` |
-| `/fix 42` | Ask Codex to "fix issue 42 end to end: read the issue, make the smallest safe change, run `just check && just test && just lint`, and prepare the PR" |
-| `/ticket add risk agent` | Ask Codex to "create an agent-ready GitHub issue for adding the risk agent" |
-| `/review 17` | Ask Codex to "review PR 17; findings first, with blockers, suggestions, and questions" |
-| `/checkpoint` | Ask Codex to "write a session checkpoint: what moved, what kb pages changed, and what the next teammate needs to know" |
-| `/parallel a \| b \| c` | Ask Codex explicitly to split the work into parallel subtasks if your client supports that; otherwise use separate sessions or worktrees |
+| `/focus` | `focus`, `run focus`, or `just focus` |
+| `/sync` | `sync`, `run sync`, or `just sync` |
+| `/next` | `next` or `pick next task from MILESTONES.md` |
+| `/fix 42` | `fix 42` or `fix issue #42` |
+| `/check` | `check` or `run lint and check` |
+| `/done` | `done` or `update MILESTONES.md and CHANGELOG.md` |
+| `/ticket <desc>` | `ticket` or `create a GitHub issue for <desc>` |
+| `/review 17` | `review 17` or `review PR 17; findings first, with blockers, suggestions, and questions` |
+| `/pr` | `pr` or `create a PR from the current branch` |
+| `/audit` | `audit` or `run security and dependency audit` |
 
 ## Prompt Patterns That Work Well
 
 ```text
-Run the focus workflow for this repository. Read AGENTS.md, CLAUDE.md, and kb/Home.md, then summarize build health, recent activity, and what I should read next.
+Read MILESTONES.md, show current milestone, and summarize build health and recent activity.
 ```
 
 ```text
@@ -64,7 +64,7 @@ Review PR 17. Findings first, ordered by severity, with file references.
 ```
 
 ```text
-Write a checkpoint for this session. Include what moved, whether kb/ needs updates, and what the next teammate should know.
+Update MILESTONES.md and CHANGELOG.md with what moved this session. Include what the next teammate should know.
 ```
 
 ## GitHub and Network Notes
@@ -78,5 +78,7 @@ When Codex learns something that should outlive the session:
 - code changes go in code
 - architecture and process knowledge go in `kb/`
 - new workflow expectations should be documented where the next student will actually read them
+
+Older repos may still refer to `checkpoint` and `quality`. In this repo, keep `/done` and `/check` as the public workflow names in docs and daily use.
 
 See also: [[Workflow/Daily Journey]], [[Workflow/Working with Claude]], [[Workflow/Skills Reference]]

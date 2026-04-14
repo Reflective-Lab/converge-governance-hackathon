@@ -6,13 +6,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use converge_core::{
-    Context, ContextKey, Criterion, CriterionEvaluator, CriterionResult, Engine,
-    TypesRunHooks,
-};
 use converge_domain::packs::trust::{
     AuditWriterAgent, ComplianceScannerAgent, ProvenanceTrackerAgent, RbacEnforcerAgent,
     SessionValidatorAgent,
+};
+use converge_kernel::{
+    Context, ContextKey, Criterion, CriterionEvaluator, CriterionResult, Engine, TypesRunHooks,
 };
 use governance_kernel::InMemoryStore;
 use governance_truths::{build_intent, find_truth};
@@ -63,7 +62,7 @@ impl CriterionEvaluator for AuditVendorDecisionEvaluator {
 // Executor
 // ---------------------------------------------------------------------------
 
-pub fn execute(
+pub async fn execute(
     _store: &InMemoryStore,
     inputs: &HashMap<String, String>,
     _persist: bool,
@@ -106,6 +105,7 @@ pub fn execute(
                 event_observer: None,
             },
         )
+        .await
         .map_err(|e| format!("convergence failed: {e}"))?;
 
     Ok(TruthExecutionResult {
@@ -128,17 +128,17 @@ pub fn execute(
 mod tests {
     use super::*;
 
-    #[test]
-    fn audit_vendor_decision_converges() {
+    #[tokio::test]
+    async fn audit_vendor_decision_converges() {
         let store = InMemoryStore::new();
         let inputs = HashMap::from([("decision_id".into(), "eval-001".into())]);
-        let result = execute(&store, &inputs, false).unwrap();
+        let result = execute(&store, &inputs, false).await.unwrap();
         assert!(result.converged);
     }
 
-    #[test]
-    fn missing_decision_id_returns_error() {
+    #[tokio::test]
+    async fn missing_decision_id_returns_error() {
         let store = InMemoryStore::new();
-        assert!(execute(&store, &HashMap::new(), false).is_err());
+        assert!(execute(&store, &HashMap::new(), false).await.is_err());
     }
 }

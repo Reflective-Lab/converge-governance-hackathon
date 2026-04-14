@@ -1,72 +1,27 @@
 ---
 name: sync
-description: Team sync — see what everyone did, what's open, avoid duplicate work
-disable-model-invocation: true
+description: Pull latest, show PRs, issues, milestone progress, service health.
 user-invocable: true
 allowed-tools: Bash, Read, Grep
 ---
-
-# Team Sync
-
-What happened since you last looked. Designed to avoid duplicate work on a team.
-
+# Sync
+Morning briefing — catch up on everything.
 ## Steps
-
-1. **Recent commits by author** — who did what:
-   ```bash
-   git log --oneline --all --since="24 hours ago" --format="%an: %s" | sort
-   ```
-
-2. **Open PRs** — who has work waiting for review:
-   ```bash
-   gh pr list 2>/dev/null
-   ```
-
-3. **Open issues** — what's claimed vs unclaimed:
-   ```bash
-   gh issue list --limit 15 2>/dev/null
-   ```
-
-4. **Build health**
-   ```bash
-   just check && just test
-   ```
-
-5. **KB freshness** — any kb/ files older than 14 days:
-   ```bash
-   find kb/ -name "*.md" -mtime +14
-   ```
-
+1. Pull latest: `git pull --rebase origin main`
+2. Open PRs: `gh pr list`
+3. Recently merged: `gh pr list --state=merged --limit=5`
+4. Open issues: `gh issue list --limit=10`
+5. Milestone progress from `MILESTONES.md`
+6. Compile check: `just check 2>&1 | tail -3` or `bun run check 2>&1 | tail -3`
 ## Output
-
 ```
-── Team Sync ──────────────────────────────────────
-
-Recent work (last 24h):
-  <author>: <commit message>
-  <author>: <commit message>
-  ...
-
-PRs awaiting review:
-  #<num> <title> (by <author>)
-  ...
-
-Unclaimed issues:
-  #<num> <title>
-  ...
-
-Build:       <clean | broken>
-Tests:       <N passed>
-
-Stale KB pages (>14 days):
-  <list or "None">
-
+── Sync ───────────────────────────────────────────
+PRs:       <N> open
+Merged:    <N> since last sync
+Issues:    <N> open
+Milestone: <done>/<total>
+Build:     <green|red>
 ────────────────────────────────────────────────────
 ```
-
 ## Rules
-
-- Under 2 minutes to run.
-- Group commits by author so you can see who's working on what.
-- Highlight PRs that have been open >24h — they need review.
-- Do not suggest priorities. Show state.
+- Under 2 minutes. Brevity over completeness.

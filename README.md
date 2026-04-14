@@ -25,15 +25,16 @@ This repo should help a team get from zero to a working governed demo quickly:
 - Show how Converge is used as the multi-agent runtime, not as an optional add-on.
 - Encourage a strongly opinionated implementation style: Rust for as much of the system as possible, including backend logic, agent orchestration, policy evaluation, projections, and shared application code.
 - Prepare for a self-contained desktop operator experience built with Svelte and Tauri.
-- Keep the app local-first: the desktop UI talks to the Rust core locally, and the only remote calls go outward to Kong and the LLM providers behind it.
+- Keep the app local-first: the desktop UI talks to the Rust core locally, and remote calls stay behind capability adapters in the Rust layer. Kong is useful when present, but direct provider wiring is acceptable for now.
 
 Today, the repo already contains the Rust workspace, the reference `evaluate-vendor` truth, a shared app layer, and a simple server harness for local development. Teams are expected to extend it during the hackathon with real agents, real integrations, and the Svelte/Tauri shell in `apps/desktop/`.
 
 ## How This Depends On Converge
 
-This project depends directly on Converge. It is not just inspired by Converge patterns; it is built on the Converge runtime crates:
+This project depends directly on Converge. It is not just inspired by Converge patterns; it is built on the Converge runtime and authoring crates:
 
-- `converge-core`
+- `converge-pack`
+- `converge-kernel`
 - `converge-domain`
 
 Those dependencies are pulled from crates.io, which makes this repo a thin application layer on top of Converge.
@@ -54,6 +55,23 @@ This repo adds the hackathon-specific pieces on top of that foundation:
 - A lightweight local server harness for development and testing
 
 If Converge is removed, the main execution model of this repo disappears with it. That dependency should be explicit to every team.
+
+## Canonical Programming Surface
+
+This repo family has been aligned to the current curated surfaces. `converge` presents `converge-pack` / `converge-kernel` and `ChatBackend` as the stable developer-facing shape, and this repo now uses the same shape in its reference truth and desktop path.
+
+Students should learn this surface first:
+
+- Author suggestors with `converge-pack`
+- Embed the runtime with `converge-kernel`
+- Keep LLM calls on `ChatBackend` + `ChatRequest`
+- Use `converge-tool::mock_llm::StaticChatBackend` for offline validation and tests
+- Use `organism-pack` for `IntentPacket`, `Plan`, and reasoning primitives when crossing into Organism
+- Use `organism-runtime::Registry::with_standard_packs()` when you need built-in Organism packs
+
+Kong is still a useful operational path for the hackathon, but it is not a requirement right now. It should stay below the same capability contract instead of becoming a second programming model students have to learn.
+
+See [kb/Development/Programming API Surfaces.md](kb/Development/Programming%20API%20Surfaces.md) for the canonical import and layering rules.
 
 ## Opinionated Stack
 
@@ -98,11 +116,11 @@ The repo now includes example vendor-selection inputs:
 
 The shared Rust app layer can preview or execute either format, which is the boundary a Tauri app should use.
 
-## Kong: Only Outbound Remote Integration
+## Kong: Optional Remote Integration
 
-This is a self-contained app. The UI should not call a remote governance backend by default. The only remote traffic should be outbound calls from the Rust core to Kong and the services it fronts.
+This is a self-contained app. The UI should not call a remote governance backend by default. Remote traffic should originate in the Rust core and may go through Kong or direct provider and service adapters for now.
 
-Use Kong for:
+Use Kong when it adds value for:
 
 - **LLM traffic**: prompts, completions, token usage, rate limiting, cost tracking, and guardrails
 - **MCP tools**: business-service access exposed through Model Context Protocol
@@ -111,23 +129,19 @@ Use Kong for:
 That means the intended pattern is:
 
 1. Agents run inside the local Rust application and Converge runtime.
-2. When an agent needs model reasoning, it calls the LLM through Kong.
-3. When an agent needs business context, it uses whatever Kong-exposed API or MCP contract the Kong team defines.
-4. If real business services are not available during the hackathon, mock them locally and expose them through the same Kong-facing adapter shape.
+2. When an agent needs model reasoning, it should stay on `ChatBackend`. Kong routing is optional for now.
+3. When an agent needs business context, MCP and service adapters are preferred, and Kong can front them later.
+4. If real business services are not available during the hackathon, mock them locally behind the same capability contracts.
 
-This keeps the demo realistic: one governed path for both model access and tool access.
+This keeps the programming model realistic: one capability surface for model and tool access, with routing choices hidden underneath.
 
-Use `converge-provider` as the default Kong adapter. Do not hand-roll Kong HTTP calls in app code unless you are doing something the provider crate does not support yet.
+Keep the application-facing API on the canonical Converge capability surface. In other words: present `ChatBackend` / `ChatRequest` to students and keep any Kong-specific routing or credential handling behind that adapter.
 
-The current desktop app follows this pattern:
+Future direction: add a `KongProvider` or more general `RouterProvider` under that same capability surface, with Kong especially valuable when it can bridge shared MCP tools.
 
-1. Load `.env` in the Tauri layer.
-2. Read `KONG_AI_GATEWAY_URL` and `KONG_API_KEY`.
-3. Create `KongGateway::from_env()`.
-4. Build a `KongRoute` for the LLM use case.
-5. Call `gateway.llm_provider(route)` for guided validation or rewrite flows.
+The desktop scaffold now follows that contract: the Tauri edge selects a live `ChatBackend`, app code builds `ChatRequest`, and offline validation uses `converge-tool::StaticChatBackend`.
 
-Minimal `.env`:
+Kong-backed `.env` if you are using Kong:
 
 ```dotenv
 KONG_AI_GATEWAY_URL=https://<provided-at-hackathon>
@@ -142,6 +156,8 @@ KONG_LLM_UPSTREAM_PROVIDER=openai
 KONG_LLM_UPSTREAM_MODEL=gpt-4
 KONG_LLM_REASONING=true
 ```
+
+Direct provider keys are also acceptable during the current transition, as long as application code stays on the same capability contracts.
 
 ## Mocking Business Services
 
@@ -175,6 +191,14 @@ The intended multi-agent flow is:
 
 Every agent contributes evidence. Converge decides when the workflow has enough evidence to converge.
 
+There is also an advanced dynamic example inspired by Monterro:
+
+- `dynamic-due-diligence`
+- [examples/dynamic-due-diligence/README.md](examples/dynamic-due-diligence/README.md)
+
+That truth shows the research shape students are likely to want for richer demos:
+Organism seeds breadth and depth strategies, Converge drives a dynamic evidence loop, contradictions are made explicit, and the final brief is returned as structured projection data.
+
 There is also a focused policy example for the last mile of the business flow:
 
 - [examples/policy-vendor-commitment/README.md](examples/policy-vendor-commitment/README.md)
@@ -198,14 +222,14 @@ crates/
   governance-server/     Local harness and truth executors
   governance-app/        Shared Rust app layer for the desktop shell
 
-examples/                Sample vendor-selection Gherkin and truth files
+examples/                Sample vendor-selection, due-diligence, and policy request files
 ```
 
 The reference implementation lives in [evaluate_vendor.rs](crates/governance-server/src/truth_runtime/evaluate_vendor.rs). It currently uses placeholder agents so teams can focus on replacing them with real logic.
 
 ## Before You Get Started
 
-You need Rust (1.93+). Install it from [rustup.rs](https://rustup.rs) if you don't have it.
+You need Rust (1.94+). Install it from [rustup.rs](https://rustup.rs) if you don't have it.
 
 Once you have Rust, install the tools you need with cargo:
 
@@ -269,13 +293,22 @@ curl -X POST http://localhost:8080/v1/truths/evaluate-vendor/execute \
   -d '{"inputs": {"vendors": "Acme AI, Beta ML, Gamma LLM"}}'
 ```
 
+Or run the advanced dynamic due-diligence example:
+
+```bash
+curl -X POST http://localhost:8080/v1/truths/dynamic-due-diligence/execute \
+  -H 'Content-Type: application/json' \
+  -d @examples/dynamic-due-diligence/dynamic-due-diligence.request.json
+```
+
 ## What Teams Should Build
 
 - Replace placeholder agents with real logic
 - Make the desktop shell able to load local `.feature` and `.truths.json` vendor-selection files
 - Add more packs and criteria where the use case needs them
-- Push all LLM calls through Kong
-- Add business-service access through the Kong-facing contracts the platform team provides
+- Keep all model calls on `ChatBackend` and all search calls on the provider capability surface
+- Use Kong when it helps with routing, observability, or shared MCP tool access
+- Add business-service access through MCP or service contracts that can later be routed through Kong
 - Mock missing enterprise services locally instead of hardcoding everything into agents
 - Build a desktop operator experience with Svelte and Tauri on top of the Rust layers
 
@@ -307,8 +340,9 @@ The canonical documentation lives in `kb/` — an Obsidian vault that humans ope
 
 This project supports both Claude Code and Codex.
 
-- Claude users can use the project skills in `.claude/skills/`. Start with `/focus` and end with `/checkpoint`.
+- Claude users can use the 14 project skills in `.claude/skills/`. Start with `/focus`, use `/fix` or `/check` while working, and close with `/done`.
 - Codex users should start with `AGENTS.md`, then read `CODEX.md`. The detailed workflow mapping lives in `kb/Workflow/Working with Codex.md`.
 - Shared deterministic repo-state checks are available to everyone as `just focus`, `just sync`, and `just status`.
+- GitHub issue and PR workflows assume `gh` is authenticated. Local repo-health workflows still work when GitHub is unavailable.
 
 See `CLAUDE.md`, `CODEX.md`, `kb/Workflow/Working with Claude.md`, `kb/Workflow/Working with Codex.md`, `kb/Workflow/Daily Journey.md`, and `kb/Workflow/Skills Reference.md`.

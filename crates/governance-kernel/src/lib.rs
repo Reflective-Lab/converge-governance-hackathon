@@ -153,12 +153,29 @@ impl Actor {
 
 #[derive(Debug, Clone)]
 pub enum DomainEvent {
-    VendorRegistered { vendor: Vendor, actor: Actor },
-    ComplianceChecked { check: ComplianceCheck, actor: Actor },
-    RiskScored { score: RiskScore, actor: Actor },
-    CostEstimated { estimate: CostEstimate, actor: Actor },
-    DecisionRecorded { decision: DecisionRecord, actor: Actor },
-    AuditRecorded { entry: AuditEntry },
+    VendorRegistered {
+        vendor: Vendor,
+        actor: Actor,
+    },
+    ComplianceChecked {
+        check: ComplianceCheck,
+        actor: Actor,
+    },
+    RiskScored {
+        score: RiskScore,
+        actor: Actor,
+    },
+    CostEstimated {
+        estimate: CostEstimate,
+        actor: Actor,
+    },
+    DecisionRecorded {
+        decision: DecisionRecord,
+        actor: Actor,
+    },
+    AuditRecorded {
+        entry: AuditEntry,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -189,7 +206,11 @@ impl GovernanceKernel {
             created_at: Utc::now(),
         };
         self.vendors.insert(vendor.id, vendor.clone());
-        self.audit("register-vendor", actor, &format!("Registered vendor: {}", vendor.name));
+        self.audit(
+            "register-vendor",
+            actor,
+            &format!("Registered vendor: {}", vendor.name),
+        );
         self.pending_events.push(DomainEvent::VendorRegistered {
             vendor: vendor.clone(),
             actor: actor.clone(),
@@ -202,10 +223,14 @@ impl GovernanceKernel {
     }
 
     pub fn record_compliance_check(&mut self, check: ComplianceCheck, actor: &Actor) {
-        self.audit("compliance-check", actor, &format!(
-            "Compliance check for vendor {} on rule {}: {:?}",
-            check.vendor_id, check.policy_rule_id, check.status
-        ));
+        self.audit(
+            "compliance-check",
+            actor,
+            &format!(
+                "Compliance check for vendor {} on rule {}: {:?}",
+                check.vendor_id, check.policy_rule_id, check.status
+            ),
+        );
         self.pending_events.push(DomainEvent::ComplianceChecked {
             check: check.clone(),
             actor: actor.clone(),
@@ -214,10 +239,14 @@ impl GovernanceKernel {
     }
 
     pub fn record_risk_score(&mut self, score: RiskScore, actor: &Actor) {
-        self.audit("risk-score", actor, &format!(
-            "Risk score for vendor {}: {} = {} bps",
-            score.vendor_id, score.dimension, score.score_bps
-        ));
+        self.audit(
+            "risk-score",
+            actor,
+            &format!(
+                "Risk score for vendor {}: {} = {} bps",
+                score.vendor_id, score.dimension, score.score_bps
+            ),
+        );
         self.pending_events.push(DomainEvent::RiskScored {
             score: score.clone(),
             actor: actor.clone(),
@@ -226,10 +255,14 @@ impl GovernanceKernel {
     }
 
     pub fn record_cost_estimate(&mut self, estimate: CostEstimate, actor: &Actor) {
-        self.audit("cost-estimate", actor, &format!(
-            "Cost estimate for vendor {}: {} {}/month",
-            estimate.vendor_id, estimate.monthly_cost_minor, estimate.currency_code
-        ));
+        self.audit(
+            "cost-estimate",
+            actor,
+            &format!(
+                "Cost estimate for vendor {}: {} {}/month",
+                estimate.vendor_id, estimate.monthly_cost_minor, estimate.currency_code
+            ),
+        );
         self.pending_events.push(DomainEvent::CostEstimated {
             estimate: estimate.clone(),
             actor: actor.clone(),
@@ -238,11 +271,17 @@ impl GovernanceKernel {
     }
 
     pub fn record_decision(&mut self, decision: DecisionRecord, actor: &Actor) {
-        self.audit("decision", actor, &format!(
-            "Decision for {}: {} (confidence: {} bps, needs review: {})",
-            decision.truth_key, decision.recommendation,
-            decision.confidence_bps, decision.needs_human_review
-        ));
+        self.audit(
+            "decision",
+            actor,
+            &format!(
+                "Decision for {}: {} (confidence: {} bps, needs review: {})",
+                decision.truth_key,
+                decision.recommendation,
+                decision.confidence_bps,
+                decision.needs_human_review
+            ),
+        );
         self.pending_events.push(DomainEvent::DecisionRecorded {
             decision: decision.clone(),
             actor: actor.clone(),
@@ -257,11 +296,17 @@ impl GovernanceKernel {
     }
 
     pub fn compliance_for_vendor(&self, vendor_id: Uuid) -> Vec<&ComplianceCheck> {
-        self.compliance_checks.iter().filter(|c| c.vendor_id == vendor_id).collect()
+        self.compliance_checks
+            .iter()
+            .filter(|c| c.vendor_id == vendor_id)
+            .collect()
     }
 
     pub fn risk_scores_for_vendor(&self, vendor_id: Uuid) -> Vec<&RiskScore> {
-        self.risk_scores.iter().filter(|s| s.vendor_id == vendor_id).collect()
+        self.risk_scores
+            .iter()
+            .filter(|s| s.vendor_id == vendor_id)
+            .collect()
     }
 
     pub fn recent_decisions(&self, limit: usize) -> Vec<&DecisionRecord> {

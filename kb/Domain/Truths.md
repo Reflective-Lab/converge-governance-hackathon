@@ -15,6 +15,14 @@ The primary truth. Multi-agent vendor evaluation: compliance, risk, cost, decisi
 - **Packs:** compliance-pack, risk-pack, cost-pack
 - **Criteria:** all-vendors-screened, recommendation-produced
 
+### dynamic-due-diligence
+Advanced truth inspired by Monterro's dynamic research loop. Organism seeds typed breadth and depth strategies, Converge governs research signals and extracted hypotheses, contradictions are promoted explicitly, and a final due-diligence brief is synthesized as structured output.
+
+- **Packs:** planning-pack, research-pack, analysis-pack, synthesis-pack
+- **Inputs:** company, optional focus_areas
+- **Criteria:** critical-evidence-collected, final-brief-produced
+- **Projection:** writes a `DecisionRecord` and returns the final brief in `projection.details`
+
 ### audit-vendor-decision
 Uses the [[Converge/Domain Packs|trust pack]] with zero custom agents. Demonstrates domain packs out of the box.
 
@@ -45,6 +53,14 @@ TruthDef {
     ],
 }
 ```
+
+The dynamic due-diligence example is a good reference when you need a loop that is more open-ended than vendor scoring:
+
+1. Organism seeds typed strategies
+2. Research suggestors emit source-aware signals
+3. Analysis suggestors extract hypotheses and contradictions
+4. Gap suggestors propose follow-up strategies
+5. Synthesis emits the final governed brief
 
 ## Truth Execution Pattern
 

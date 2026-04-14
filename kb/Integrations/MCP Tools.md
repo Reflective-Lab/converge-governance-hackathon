@@ -3,18 +3,17 @@ tags: [integrations, mcp]
 ---
 # MCP Tools
 
-Model Context Protocol lets agents call external tools using a structured tool-call interface instead of raw HTTP. [[Integrations/Kong Gateway|Kong]] fronts MCP servers the same way it fronts REST APIs.
+Model Context Protocol lets agents call external tools using a structured tool-call interface instead of raw HTTP. [[Integrations/Kong Gateway|Kong]] can front MCP servers the same way it fronts REST APIs, but direct MCP endpoints are also fine during the current transition.
 
 ## Usage
 
 ```rust
-use converge_provider::{KongGateway, McpClient, McpTransport};
+use converge_provider::{McpClient, McpTransport};
 
-let gateway = KongGateway::from_env()?;
 let mcp = McpClient::new(
     "vendor-registry",
     McpTransport::Http {
-        url: gateway.mcp_url("vendor-registry"),
+        url: configured_mcp_url,
     },
 );
 
@@ -28,6 +27,8 @@ let result = mcp.call_tool("lookup_vendor", serde_json::json!({
 }))?;
 ```
 
+Resolve Kong-routed MCP URLs at the application edge when Kong is in use, or pass direct MCP URLs in local setups. Keep the student-facing API on `McpClient` and `McpTransport`, not on a gateway-specific object.
+
 ## MCP vs REST
 
 | Use case | Choose |
@@ -37,7 +38,7 @@ let result = mcp.call_tool("lookup_vendor", serde_json::json!({
 | Tool server exposes many actions | MCP |
 | LLM selects which tool to call based on context | MCP |
 
-Both go through Kong. Both get the same governance, logging, and rate limiting.
+Both can go through Kong when Kong is in use. Kong becomes especially valuable when multiple tools need shared governance, auth, rate limiting, and MCP bridging behind one router.
 
 ## Good MCP Candidates
 

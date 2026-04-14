@@ -18,6 +18,7 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 
 ## Development
 - [[Development/Getting Started]] — toolchain, build commands, quick reference
+- [[Development/Programming API Surfaces]] — the canonical student-facing import and layering rules
 - [[Development/Writing Suggestors]] — suggestor trait, patterns, rules
 - [[Development/Writing Truths]] — step-by-step guide to adding a new truth
 - [[Development/Streaming]] — real-time convergence callbacks

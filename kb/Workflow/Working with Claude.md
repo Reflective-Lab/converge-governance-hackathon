@@ -38,57 +38,61 @@ Recipes are deterministic, fast, and dumb. They do exactly one thing.
 | Start the desktop app | `just dev-desktop` | Deterministic shell command |
 | Check what the team did | `/sync` | Needs to read, interpret, summarize |
 | Orient myself at session start | `/focus` | Reads kb, checks build, shows team activity |
+| Pick next task | `/next` | Reads milestone, picks highest-priority task |
 | Fix a GitHub issue end-to-end | `/fix 42` | Multi-step: read issue, branch, code, test, PR |
 | Create a well-defined ticket | `/ticket add risk agent` | Needs to explore code, write requirements |
 | Review a PR | `/review 17` | Reads diff, reasons about security/correctness |
-| Run 3 tasks in parallel | `/parallel a \| b \| c` | Launches autonomous agents in worktrees |
+| Run quality checks | `/check` | Runs lint, compile check, tests |
 | Save and push WIP | `/wip` | Multi-step git workflow |
-| Capture end-of-session state | `/checkpoint` | Reads git state, updates kb, writes summary |
-| Turn feedback into issues | `/feedback ...` | Classifies, writes structured GitHub issues |
-| Check code quality trends | `/quality check` | Runs metrics, compares to history, reports |
-| Security audit | `/audit` | Scans deps, secrets, unsafe code |
+| Capture end-of-session state | `/done` | Reads git state, updates kb, writes summary |
+| Deploy | `/deploy` | Deploy to target environment |
+| Security/compliance audit | `/audit` | Scans deps, secrets, unsafe code, compliance, drift |
 
 **Rule of thumb:** if it's a single deterministic command, use `just`. If it requires reading, thinking, or multi-step orchestration, use a skill.
 
-## Skills You Should Know
+## Skills You Should Know (14 total)
 
 ### Session lifecycle
 ```
 /focus          → start of session (reads kb, shows team state)
-/checkpoint     → end of session (captures what moved, updates kb)
-```
-
-### Daily team awareness
-```
 /sync           → what did the team do since you last looked?
-/status         → is the build healthy?
+/next           → pick next task from the current milestone
+/done           → end of session (captures what moved, updates kb)
 ```
 
 ### Development workflow
 ```
+/dev [target]   → start local dev environment
 /fix <issue#>   → branch, implement, test, PR — all in one
+/check          → run lint, compile check, tests
 /ticket <desc>  → create an issue any teammate can pick up
-/parallel a|b|c → run independent work in parallel
 /pr [title]     → create a PR from current branch
 /review <pr#>   → review someone's PR
-/merge <pr#>    → squash-merge a reviewed PR
-```
-
-### Quality and safety
-```
-/quality check  → metrics snapshot with trend comparison
-/audit          → security and dependency scan
-```
-
-### Quick saves
-```
 /wip            → save everything and push before switching devices
-/feedback <obs> → turn testing observations into filed issues
+```
+
+### Operations
+```
+/deploy         → deploy to target environment
+/audit          → security, dependency, compliance, and drift scan
+/help           → show available skills
+```
+
+### The daily habit
+```
+Morning:    /focus → /sync → /next
+Work:       /fix, /check, /pr
+Evening:    /done
+Monday:     /audit
+Anytime:    /help
 ```
 
 ## Justfile Recipes
 
 ```bash
+just focus                    # session opener — repo health + recent activity
+just sync                     # recent activity, PRs, issues
+just status                   # build health, test results
 just hit-the-ground-running   # first time: build + test + lint
 just check                    # fast compile check (no tests)
 just test                     # cargo test --workspace
@@ -108,11 +112,10 @@ just package-desktop          # native desktop bundle
 A typical flow:
 
 1. `/focus` — Claude reads kb, checks build, shows team state
-2. You pick an issue to work on
+2. `/next` — pick the highest-priority task from the milestone
 3. `/fix 42` — Claude branches, implements, runs `just check && just test && just lint`, commits, creates PR
 4. Teammate runs `/review 17` on your PR
-5. `/merge 17` after review
-6. `/checkpoint` — Claude captures what moved, updates kb
+5. `/done` — Claude captures what moved, updates kb
 
 The skills call `just` recipes internally. You don't need to run `just lint` yourself if you're using `/fix` — it does that as part of the workflow.
 
@@ -123,7 +126,7 @@ Claude reads `kb/` pages when it needs context. The `/focus` skill starts by rea
 When Claude learns something during a session that should be preserved:
 - Code changes go in code
 - Everything else goes in `kb/`
-- The `/checkpoint` skill prompts you to update kb if new knowledge emerged
+- The `/done` skill prompts you to update kb if new knowledge emerged
 
 The kb is for humans AND agents. Write it so both can understand it.
 

@@ -8,7 +8,7 @@ During the hackathon, real enterprise services are unavailable. Don't collapse t
 ## Pattern
 
 1. Define a trait for the capability the suggestor needs
-2. Implement it against [[Integrations/Kong Gateway|Kong]] for production
+2. Implement it against a Kong-routed HTTP or MCP adapter for production
 3. Implement it as a local mock for development
 4. Inject it into the suggestor at construction time
 
@@ -20,15 +20,16 @@ trait PolicyService: Send + Sync {
 }
 
 struct KongPolicyService {
-    gateway: KongGateway,
+    policy_base_url: String,
 }
 
 impl PolicyService for KongPolicyService {
     fn get_policies(&self, jurisdiction: &str) -> Result<Vec<PolicyRule>, String> {
-        let url = self.gateway.api_url(
-            &format!("compliance/v1/policies?jurisdiction={jurisdiction}")
+        let url = format!(
+            "{}/compliance/v1/policies?jurisdiction={jurisdiction}",
+            self.policy_base_url,
         );
-        // HTTP call through Kong
+        // HTTP call through a Kong-routed base URL
         todo!()
     }
 }
@@ -68,4 +69,4 @@ If the mock is useful to other teams:
 3. Register or proxy it through Kong
 4. Agents call the mock through Kong, exactly as they would the real service
 
-See also: [[Development/Writing Agents]], [[Integrations/Kong Gateway]]
+See also: [[Development/Writing Suggestors]], [[Integrations/Kong Gateway]]

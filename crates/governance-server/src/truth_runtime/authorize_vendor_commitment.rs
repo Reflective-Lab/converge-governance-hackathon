@@ -7,11 +7,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use chrono::Utc;
-use converge_core::{
-    AgentEffect, Context, ContextKey, Criterion, CriterionEvaluator, CriterionResult, Engine,
-    ProposedFact, Suggestor, TypesRunHooks,
+use converge_kernel::{
+    Context, ContextKey, Criterion, CriterionEvaluator, CriterionResult, Engine, TypesRunHooks,
 };
-use converge_policy::{ContextIn, DecideRequest, PolicyEngine, PolicyOutcome, PrincipalIn, ResourceIn};
+use async_trait::async_trait;
+use converge_pack::{AgentEffect, Context as ContextView, ProposedFact, Suggestor};
+use converge_policy::{
+    ContextIn, DecideRequest, PolicyEngine, PolicyOutcome, PrincipalIn, ResourceIn,
+};
 use governance_kernel::{Actor, ActorKind, DecisionRecord, InMemoryStore};
 use governance_truths::{build_intent, find_truth};
 use serde::{Deserialize, Serialize};
@@ -30,6 +33,7 @@ struct CommitmentPolicySuggestor {
     engine: Arc<PolicyEngine>,
 }
 
+#[async_trait]
 impl Suggestor for CommitmentPolicySuggestor {
     fn name(&self) -> &str {
         "commitment-policy"
@@ -39,14 +43,13 @@ impl Suggestor for CommitmentPolicySuggestor {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
-        !ctx
-            .get(ContextKey::Evaluations)
+    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+        !ctx.get(ContextKey::Evaluations)
             .iter()
             .any(|fact| fact.id == policy_fact_id(&self.request.commitment_id))
     }
 
-    fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, _ctx: &dyn ContextView) -> AgentEffect {
         let content = match self.engine.evaluate(&self.request.to_decide_request()) {
             Ok(decision) => match serde_json::to_string(&PolicyDecisionFact::from_parts(
                 &self.request,
@@ -122,9 +125,9 @@ impl CriterionEvaluator for VendorCommitmentEvaluator {
                         approval_ref: Some(format!("approval:{}", decision.commitment_id)),
                     },
                     PolicyOutcome::Reject => CriterionResult::Unmet {
-                        reason: decision.reason.unwrap_or_else(|| {
-                            "policy rejected the commitment request".into()
-                        }),
+                        reason: decision
+                            .reason
+                            .unwrap_or_else(|| "policy rejected the commitment request".into()),
                     },
                 },
                 None => CriterionResult::Unmet {
@@ -183,7 +186,11 @@ impl VendorCommitmentRequest {
         Ok(Self {
             principal_id: super::common::required_input(inputs, "principal_id")?.to_string(),
             principal_authority: authority.to_string(),
-            domains: split_csv(inputs.get("domains").map_or("procurement,vendor-selection", String::as_str)),
+            domains: split_csv(
+                inputs
+                    .get("domains")
+                    .map_or("procurement,vendor-selection", String::as_str),
+            ),
             policy_version: inputs
                 .get("policy_version")
                 .map(|value| value.trim().to_string())
@@ -280,7 +287,7 @@ impl PolicyDecisionFact {
     }
 }
 
-pub fn execute(
+pub async fn execute(
     store: &InMemoryStore,
     inputs: &HashMap<String, String>,
     persist: bool,
@@ -322,6 +329,7 @@ pub fn execute(
                 event_observer: None,
             },
         )
+        .await
         .map_err(|err| format!("convergence failed: {err}"))?;
 
     let projection = if persist {
@@ -382,6 +390,7 @@ pub fn execute(
 
         Some(TruthProjection {
             events_emitted: write_result.events.len(),
+            details: None,
         })
     } else {
         None
@@ -486,10 +495,7 @@ mod tests {
         ])
     }
 
-    fn criterion_result<'a>(
-        result: &'a TruthExecutionResult,
-        needle: &str,
-    ) -> Option<&'a str> {
+    fn criterion_result<'a>(result: &'a TruthExecutionResult, needle: &str) -> Option<&'a str> {
         result
             .criteria_outcomes
             .iter()
@@ -497,38 +503,46 @@ mod tests {
             .map(|outcome| outcome.result.as_str())
     }
 
-    #[test]
-    fn authorizes_supervisory_commit_with_human_approval() {
+    #[tokio::test]
+    async fn authorizes_supervisory_commit_with_human_approval() {
         let store = InMemoryStore::new();
-        let result = execute(&store, &approval_inputs(), true).unwrap();
+        let result = execute(&store, &approval_inputs(), true).await.unwrap();
 
-        assert!(criterion_result(&result, "policy decision fact exists")
-            .unwrap()
-            .contains("Met"));
-        assert!(criterion_result(&result, "authorized or blocked honestly")
-            .unwrap()
-            .contains("Met"));
+        assert!(
+            criterion_result(&result, "policy decision fact exists")
+                .unwrap()
+                .contains("Met")
+        );
+        assert!(
+            criterion_result(&result, "authorized or blocked honestly")
+                .unwrap()
+                .contains("Met")
+        );
         assert_eq!(result.projection.as_ref().unwrap().events_emitted, 1);
 
-        let decisions = store.read(|kernel| kernel.recent_decisions(1).len()).unwrap();
+        let decisions = store
+            .read(|kernel| kernel.recent_decisions(1).len())
+            .unwrap();
         assert_eq!(decisions, 1);
     }
 
-    #[test]
-    fn blocks_commit_without_human_approval() {
+    #[tokio::test]
+    async fn blocks_commit_without_human_approval() {
         let store = InMemoryStore::new();
         let mut inputs = approval_inputs();
         inputs.insert("human_approval_present".into(), "false".into());
 
-        let result = execute(&store, &inputs, false).unwrap();
+        let result = execute(&store, &inputs, false).await.unwrap();
 
-        assert!(criterion_result(&result, "authorized or blocked honestly")
-            .unwrap()
-            .contains("Blocked"));
+        assert!(
+            criterion_result(&result, "authorized or blocked honestly")
+                .unwrap()
+                .contains("Blocked")
+        );
     }
 
-    #[test]
-    fn rejects_advisory_spend_above_cap() {
+    #[tokio::test]
+    async fn rejects_advisory_spend_above_cap() {
         let store = InMemoryStore::new();
         let mut inputs = approval_inputs();
         inputs.insert("principal_id".into(), "agent:cost-analyst".into());
@@ -538,10 +552,12 @@ mod tests {
         inputs.insert("amount_minor".into(), "15000".into());
         inputs.insert("human_approval_present".into(), "false".into());
 
-        let result = execute(&store, &inputs, false).unwrap();
+        let result = execute(&store, &inputs, false).await.unwrap();
 
-        assert!(criterion_result(&result, "authorized or blocked honestly")
-            .unwrap()
-            .contains("Unmet"));
+        assert!(
+            criterion_result(&result, "authorized or blocked honestly")
+                .unwrap()
+                .contains("Unmet")
+        );
     }
 }

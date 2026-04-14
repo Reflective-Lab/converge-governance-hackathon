@@ -62,6 +62,7 @@ examples/              Example input files
 
 ## Next Steps
 
+- Read [[Development/Programming API Surfaces]] before copying patterns from `apps/desktop/` or external prototypes
 - Read [[Workflow/Daily Journey]] for the daily cheat sheet
 - Read [[Workflow/Working with Claude]] if you are using Claude Code
 - Read [[Workflow/Working with Codex]] if you are using Codex
@@ -69,4 +70,4 @@ examples/              Example input files
 - Read [[Domain/Vendor Selection]] to understand the challenge
 - Study `crates/governance-server/src/truth_runtime/evaluate_vendor.rs` — the reference implementation
 
-See also: [[Architecture/Layers]], [[Development/Writing Agents]]
+See also: [[Architecture/Layers]], [[Development/Writing Suggestors]]

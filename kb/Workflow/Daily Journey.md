@@ -3,15 +3,26 @@ tags: [workflow, cheat-sheet]
 ---
 # Daily Journey
 
-Your day, start to finish. Each phase has a skill. Use them.
+Your day, start to finish. 14 skills, one habit.
 
-Claude users can run the slash commands below directly. Codex users should ask for the same workflow by name, and can use `just focus`, `just sync`, and `just status` for the deterministic repo-state checks.
+Claude users can run the slash commands below directly. Codex and Gemini users should ask for the same workflow by name (see equivalents in their respective pages).
+
+## The Daily Habit
+
+```
+Morning:    /focus → /sync → /next
+Work:       /fix, /check, /pr
+Evening:    /done
+Monday:     /audit
+Anytime:    /help
+```
 
 ## Morning
 
 ```
 /focus              Orient yourself — kb, build health, team activity
 /sync               What did the team do? PRs waiting? Unclaimed issues?
+/next               Pick the next task from the current milestone
 ```
 
 If it's your first session, `/focus` will point you to the key kb pages. Read them.
@@ -25,7 +36,7 @@ If it's your first session, `/focus` will point you to the key kb pages. Read th
 
 /ticket <desc>      Create an issue any teammate can pick up
 /fix <issue#>       Pick up an issue, branch, fix, PR
-/parallel a | b | c Run independent tasks in parallel worktrees
+/check              Run lint, compile check, tests
 ```
 
 ### Build loop
@@ -40,18 +51,17 @@ just fmt            Format everything
 
 ```
 /review <pr#>       Security, correctness, style review
-/merge <pr#>        Squash-merge, sync main, clean up
 /pr [title]         Create a PR from current branch
 ```
 
-Review each other's work. `/parallel` PRs need human review before merge.
-
-## Capturing Knowledge
+## End of Day
 
 ```
-/feedback <notes>   Turn observations into GitHub issues
-/checkpoint         End-of-session — what moved, what's left for the team
+/done               What moved? What's open? KB updated?
+/wip                Save and push everything
 ```
+
+The "left for the team" section of `/done` is the most important part. What does the next person need to know?
 
 When you learn something that isn't in the code:
 1. Find the right page in `kb/`
@@ -60,31 +70,22 @@ When you learn something that isn't in the code:
 
 The kb is shared. Keep it current. Your teammates and their agents read it too.
 
-## End of Day
-
-```
-/checkpoint         What moved? What's open? KB updated?
-/wip                Save and push everything
-```
-
-The "left for the team" section of `/checkpoint` is the most important part. What does the next person need to know?
-
 ## Quick Reference Card
 
 | I want to... | Do this |
 |---|---|
 | Start my session | `/focus` then `/dev all` |
 | See what the team did | `/sync` |
+| Pick next task | `/next` |
 | Fix a bug | `/fix 42` |
 | Create a task anyone can grab | `/ticket add risk scoring agent` |
-| Run 3 things at once | `/parallel task a \| task b \| task c` |
+| Run quality checks | `/check` |
 | Save and go | `/wip` |
 | Review a teammate's PR | `/review 17` |
-| Ship a reviewed PR | `/merge 17` |
-| File feedback | `/feedback the desktop crashes when...` |
-| Check project health | `/status` |
-| Security scan | `/audit` |
-| Quality trends | `/quality check` |
-| End the day | `/checkpoint` |
+| Create a PR | `/pr` |
+| Deploy | `/deploy` |
+| Security/compliance audit | `/audit` |
+| End the day | `/done` |
+| Get help | `/help` |
 
 See also: [[Workflow/Skills Reference]]

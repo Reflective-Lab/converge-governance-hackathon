@@ -15,28 +15,30 @@ Gemini follows the same [[Workflow/Daily Journey|Daily Journey]] as other agents
 
 | I want to... | Tool | Why |
 |---|---|---|
-| Run a session /focus | `just focus` | Shared deterministic repo-state script |
-| Sync with the team (/sync) | `just sync` | Shared script for GitHub and git status |
-| Check project health (/status) | `just status` | Shared build and test script |
+| Run a session /focus | `gemini "read MILESTONES.md, show current milestone"` | Orient yourself at session start |
+| Sync with the team (/sync) | `gemini "pull, show PRs and issues"` or `just sync` | Shared script for GitHub and git status |
+| Pick next task (/next) | `gemini "pick next task from MILESTONES.md"` | Reads milestone, picks highest-priority task |
+| Run quality checks (/check) | `gemini "run lint and check"` | Lint, compile check, tests |
 | Deep architecture research | `codebase_investigator` | Gemini's specialized tool for complex analysis |
 | Batch refactoring | `generalist` | Efficient multi-file operations |
 | Fix a bug or implement a feature | `replace`, `write_file`, `run_shell_command` | Surgical code modifications |
-| Finalize a session (/checkpoint) | Discussion + `kb/` update | Capture what moved and what the next teammate needs |
+| Finalize a session (/done) | `gemini "update MILESTONES.md and CHANGELOG.md"` | Capture what moved and what the next teammate needs |
+| Security/compliance audit (/audit) | `gemini "run security and dependency audit"` | Monday ritual |
 
 ## Workflow Patterns
 
 Gemini should be prompted using plain-language intents that mirror the project's slash commands:
 
 ```text
-Run the /focus workflow. Read AGENTS.md, GEMINI.md, and kb/Home.md, then summarize build health and recent activity.
+Read MILESTONES.md, show current milestone and recent activity.
 ```
 
 ```text
-Implement the /fix workflow for issue #42. Read the issue, find the relevant code, make the change, run `just check && just test && just lint`, and prepare the PR.
+Fix issue #42. Read the issue, find the relevant code, make the change, run `just check && just test && just lint`, and prepare the PR.
 ```
 
 ```text
-Run the /checkpoint workflow. Write a summary of what moved this session and update any relevant kb/ pages.
+Update MILESTONES.md and CHANGELOG.md with what moved this session. Note what the next teammate needs to know.
 ```
 
 ## Sub-Agent Delegation

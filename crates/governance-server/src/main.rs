@@ -57,9 +57,25 @@ async fn execute_truth(
     Json(request): Json<ExecuteTruthRequest>,
 ) -> Result<Json<truth_runtime::TruthExecutionResult>, (StatusCode, String)> {
     let persist = request.persist_projection.unwrap_or(true);
-    truth_runtime::execute_truth(&store, &key, request.inputs, persist)
-        .map(Json)
-        .map_err(|e| (StatusCode::BAD_REQUEST, e))
+    // The converge Engine future is !Send (trait-object suggestors), so run on
+    // a blocking thread with a local async runtime to satisfy axum's Send bound.
+    let store_inner = (*store).clone();
+    tokio::task::spawn_blocking(move || {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(truth_runtime::execute_truth(
+                &store_inner,
+                &key,
+                request.inputs,
+                persist,
+            ))
+    })
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .map(Json)
+    .map_err(|e| (StatusCode::BAD_REQUEST, e))
 }
 
 async fn list_decisions(State(store): State<AppState>) -> impl IntoResponse {
@@ -83,12 +99,7 @@ async fn list_vendors(State(store): State<AppState>) -> impl IntoResponse {
 
 async fn list_audit(State(store): State<AppState>) -> impl IntoResponse {
     let entries = store
-        .read(|k| {
-            k.recent_audit(50)
-                .into_iter()
-                .cloned()
-                .collect::<Vec<_>>()
-        })
+        .read(|k| k.recent_audit(50).into_iter().cloned().collect::<Vec<_>>())
         .unwrap_or_default();
     Json(entries)
 }

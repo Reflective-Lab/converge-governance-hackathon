@@ -46,4 +46,4 @@ Suggestors in this repo follow one of:
 
 If a real service is missing, mock it behind the same interface rather than embedding data directly.
 
-See also: [[Development/Writing Agents]], [[Architecture/Convergence Loop]]
+See also: [[Development/Writing Suggestors]], [[Architecture/Convergence Loop]]

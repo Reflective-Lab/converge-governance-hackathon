@@ -3,7 +3,11 @@ tags: [development, suggestors]
 ---
 # Writing Suggestors
 
-Every suggestor implements the `Suggestor` trait from `converge-core`.
+Student-facing examples should implement the `Suggestor` trait from `converge-pack`.
+
+```rust
+use converge_pack::{AgentEffect, Context, ContextKey, ProposedFact, Suggestor};
+```
 
 ## Suggestor Trait
 
@@ -15,11 +19,11 @@ impl Suggestor for YourSuggestor {
         &[]  // or &[ContextKey::Seeds] to wait for seed facts
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         true  // pure predicate, no I/O, no side effects
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         // Read context, do analysis, return proposals
         AgentEffect::with_proposal(ProposedFact {
             key: ContextKey::Seeds,
@@ -65,11 +69,11 @@ impl Suggestor for ComplianceScreenerAgent {
         &[]  // runs first, no prerequisites
     }
 
-    fn accepts(&self, _ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, _ctx: &dyn Context) -> bool {
         true
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let mut proposals = vec![];
         for name in &self.vendor_names {
             let fact_id = format!("compliance:screen:{}", slug(name));
@@ -108,17 +112,35 @@ struct ComplianceScreenerAgent {
 ## LLM-Backed Suggestor Example
 
 ```rust
+use converge_core::traits::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
+
 struct SmartComplianceAgent {
-    provider: Arc<dyn LlmProvider>,
+    backend: Arc<dyn DynChatBackend>,
 }
 
 impl Suggestor for SmartComplianceAgent {
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
-        let prompt = format!("Evaluate GDPR compliance for vendor: {}", vendor_name);
-        let response = self.provider.complete(&prompt);
+    fn execute(&self, ctx: &dyn Context) -> AgentEffect {
+        let request = ChatRequest {
+            messages: vec![ChatMessage {
+                role: ChatRole::User,
+                content: format!("Evaluate GDPR compliance for vendor: {}", vendor_name),
+                tool_calls: Vec::new(),
+                tool_call_id: None,
+            }],
+            system: Some("Return only supported claims.".into()),
+            tools: Vec::new(),
+            response_format: ResponseFormat::Json,
+            max_tokens: Some(256),
+            temperature: Some(0.0),
+            stop_sequences: Vec::new(),
+            model: None,
+        };
+        let response = run_chat_sync(&self.backend, request);
         // Parse response into ProposedFact
     }
 }
 ```
+
+Keep Kong or any other infrastructure routing below this boundary. The suggestor should see `ChatBackend`, not a second provider-specific contract.
 
 See also: [[Domain/Agents]], [[Architecture/Convergence Loop]], [[Converge/Building Blocks]]

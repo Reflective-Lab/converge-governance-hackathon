@@ -1,6 +1,7 @@
-pub mod authorize_vendor_commitment;
 pub mod audit_vendor_decision;
+pub mod authorize_vendor_commitment;
 pub mod common;
+pub mod dynamic_due_diligence;
 pub mod evaluate_vendor;
 pub mod source_import;
 
@@ -31,13 +32,14 @@ pub struct CriterionOutcomeView {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TruthProjection {
     pub events_emitted: usize,
+    pub details: Option<serde_json::Value>,
 }
 
 // ---------------------------------------------------------------------------
 // Dispatcher — routes truth key to executor
 // ---------------------------------------------------------------------------
 
-pub fn execute_truth(
+pub async fn execute_truth(
     store: &InMemoryStore,
     truth_key: &str,
     inputs: HashMap<String, String>,
@@ -45,13 +47,18 @@ pub fn execute_truth(
 ) -> Result<TruthExecutionResult, String> {
     match truth_key {
         "authorize-vendor-commitment" => {
-            authorize_vendor_commitment::execute(store, &inputs, persist)
+            authorize_vendor_commitment::execute(store, &inputs, persist).await
         }
-        "evaluate-vendor" => evaluate_vendor::execute(store, &inputs, persist),
-        "audit-vendor-decision" => audit_vendor_decision::execute(store, &inputs, persist),
+        "dynamic-due-diligence" => {
+            dynamic_due_diligence::execute(store, &inputs, persist).await
+        }
+        "evaluate-vendor" => evaluate_vendor::execute(store, &inputs, persist).await,
+        "audit-vendor-decision" => {
+            audit_vendor_decision::execute(store, &inputs, persist).await
+        }
         // ---------------------------------------------------------------
         // Add your truth executor here:
-        // "your-truth-key" => your_module::execute(store, &inputs, persist),
+        // "your-truth-key" => your_module::execute(store, &inputs, persist).await,
         // ---------------------------------------------------------------
         _ => Err(format!("no executor for truth: {truth_key}")),
     }
