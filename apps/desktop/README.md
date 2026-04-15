@@ -11,7 +11,7 @@ The intended split is:
 The first end-to-end desktop flow is vendor-selection spec validation:
 
 1. Paste or load Gherkin into one large editor.
-2. Validate it locally with `converge-tool`.
+2. Validate it locally with `converge-axiom`.
 3. Show Converge syntax, governance, and convention findings.
 4. Expand this into full truth execution after validation is clean.
 
@@ -51,6 +51,6 @@ The desktop toolchain uses Bun:
 - `just package-desktop` to build a native bundle for your platform
 - `just deploy` as the default packaging path
 
-The current Tauri command validates specs offline-first using `converge-tool::gherkin::GherkinValidator`. Business-sense and compilability checks are intentionally disabled until a fuller live validator is added on top of the same `ChatBackend` contract.
+The current Tauri command validates specs offline-first using `converge-axiom::gherkin::GherkinValidator`. Business-sense and compilability checks are intentionally disabled until a fuller live validator is added on top of the same `ChatBackend` contract.
 
 Current status: `apps/desktop/src-tauri` is on the canonical template: the Tauri layer selects a live `ChatBackend`, passes `ChatRequest` into the app logic, and uses `StaticChatBackend` for offline fallback. A future `KongProvider` or `RouterProvider` should sit under that same surface rather than replace it. See [Programming API Surfaces](../../kb/Development/Programming%20API%20Surfaces.md).

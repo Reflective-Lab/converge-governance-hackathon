@@ -36,7 +36,7 @@ All Converge crates at v3.0.0.
 |---|---|---|
 | `converge-provider` | LLM provider adapters and Kong integration | Yes — desktop Tauri crate (`features = ["kong"]`) |
 | `converge-mcp` | Model Context Protocol support | Available |
-| `converge-tool` | Spec validation, Gherkin parsing, truth-spec parsing | Yes — desktop Tauri crate |
+| `converge-axiom` | Spec validation, Gherkin parsing, truth-spec parsing | Yes — desktop Tauri crate |
 
 ## Optimization
 

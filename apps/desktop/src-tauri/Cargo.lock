@@ -443,9 +443,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-core"
-version = "3.0.4"
+name = "converge-axiom"
+version = "3.1.0"
 dependencies = [
+ "chrono",
+ "clap",
+ "colored",
+ "converge-core",
+ "converge-provider",
+ "dotenv",
+ "futures",
+ "gherkin",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "converge-core"
+version = "3.1.0"
+dependencies = [
+ "async-trait",
  "converge-pack",
  "hex",
  "serde",
@@ -458,7 +481,7 @@ dependencies = [
 
 [[package]]
 name = "converge-mcp"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "async-trait",
  "serde",
@@ -470,8 +493,9 @@ dependencies = [
 
 [[package]]
 name = "converge-pack"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
+ "async-trait",
  "serde",
  "strum",
  "thiserror 2.0.18",
@@ -479,7 +503,7 @@ dependencies = [
 
 [[package]]
 name = "converge-provider"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "base64 0.22.1",
  "converge-core",
@@ -501,32 +525,10 @@ dependencies = [
 
 [[package]]
 name = "converge-provider-api"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "serde",
  "thiserror 2.0.18",
-]
-
-[[package]]
-name = "converge-tool"
-version = "3.0.4"
-dependencies = [
- "chrono",
- "clap",
- "colored",
- "converge-core",
- "converge-provider",
- "dotenv",
- "futures",
- "gherkin",
- "regex",
- "serde",
- "serde_json",
- "serde_yaml",
- "sha2",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -1446,9 +1448,9 @@ dependencies = [
 name = "governance-desktop"
 version = "0.1.0"
 dependencies = [
+ "converge-axiom",
  "converge-core",
  "converge-provider",
- "converge-tool",
  "dotenv",
  "serde",
  "serde_json",

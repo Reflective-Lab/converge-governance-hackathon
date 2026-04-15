@@ -1593,6 +1593,7 @@ name = "organism-learning"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "converge-kernel",
  "converge-pack",
  "serde",
  "serde_json",

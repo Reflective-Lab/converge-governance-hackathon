@@ -2,15 +2,21 @@ use std::sync::Arc;
 
 mod config;
 
-use converge_core::traits::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
-use converge_provider::{ChatBackendSelectionConfig, select_chat_backend};
-use converge_tool::StaticChatBackend;
-use converge_tool::gherkin::{
+use converge_axiom::StaticChatBackend;
+use converge_axiom::gherkin::{
     GherkinValidator, InvariantClassTag, IssueCategory, ScenarioKind, Severity, ValidationConfig,
     ValidationError,
 };
-use converge_tool::truths::{TruthGovernance, parse_truth_document};
-use serde::{Deserialize, Serialize};
+use converge_axiom::guidance::{self, GuidanceConfig};
+use converge_axiom::policy_lens;
+use converge_axiom::simulation::{self, FindingSeverity, SimulationConfig};
+use converge_axiom::truths::{TruthGovernance, parse_truth_document};
+use converge_axiom::validation_view;
+use serde::Serialize;
+
+const OFFLINE_VALIDATION_MODE: &str = "offline-syntax-and-conventions";
+
+// ─── Validation response (Helm-specific serialization) ───
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,6 +29,7 @@ struct ValidationResponse {
     notes: Vec<String>,
     governance: GovernanceSummary,
     scenarios: Vec<ScenarioSummary>,
+    steps: Vec<validation_view::ValidationStep>,
     issues: Vec<ValidationIssueView>,
 }
 
@@ -57,561 +64,260 @@ struct ValidationIssueView {
     suggestion: Option<String>,
 }
 
-#[derive(Debug, Serialize, PartialEq, Eq)]
+// ─── Simulation response ───
+
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct TruthGuidanceResponse {
-    current_title: String,
-    suggested_title: String,
-    should_rewrite: bool,
-    source: &'static str,
-    rationale: Vec<String>,
-    description_hints: Vec<String>,
-    note: String,
+struct SimulationResponse {
+    verdict: &'static str,
+    can_converge: bool,
+    scenario_count: usize,
+    findings: Vec<SimulationFindingView>,
+    governance: GovernanceCoverageView,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct TruthDraftContext {
-    title: String,
-    description_line_count: usize,
-    scenario_count: usize,
+struct SimulationFindingView {
+    severity: &'static str,
+    category: &'static str,
+    message: String,
+    suggestion: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GovernanceCoverageView {
     has_intent: bool,
+    has_outcome: bool,
     has_authority: bool,
+    has_actor: bool,
+    has_approval_gate: bool,
     has_constraint: bool,
     has_evidence: bool,
+    evidence_count: usize,
     has_exception: bool,
+    has_escalation_path: bool,
 }
 
-#[derive(Debug, Deserialize, Default)]
+// ─── Policy response ───
+
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct LlmTruthGuidance {
-    #[serde(default)]
-    should_rewrite: bool,
-    #[serde(default)]
-    suggested_title: String,
-    #[serde(default)]
-    rationale: Vec<String>,
-    #[serde(default)]
-    description_hints: Vec<String>,
+struct PolicyResponse {
+    required_gates: Vec<String>,
+    gated_actions: Vec<GatedActionView>,
+    requires_human_approval: bool,
+    authority_level: Option<String>,
+    spending_limits: Vec<String>,
+    escalation_targets: Vec<String>,
+    cedar_preview: String,
 }
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GatedActionView {
+    action: String,
+    reason: String,
+}
+
+// ═══════════════════════════════════════════════
+// Tauri Commands — thin wrappers over converge-axiom
+// ═══════════════════════════════════════════════
 
 #[tauri::command(rename_all = "snake_case")]
-fn validate_gherkin(spec: String) -> Result<ValidationResponse, String> {
+async fn validate_gherkin(spec: String) -> Result<ValidationResponse, String> {
     if spec.trim().is_empty() {
         return Err("Spec is empty. Paste a Truth or Feature before validating.".into());
     }
 
-    let validator = offline_validator();
-    let validation = validator
-        .validate(&spec, "editor.truths")
-        .map_err(format_validation_error)?;
+    let config = offline_validation_config();
+    let validator = offline_validator(config.clone());
+    match validator.validate(&spec, "editor.truths").await {
+        Ok(validation) => Ok(build_validation_response(validation, &config)),
+        Err(ValidationError::ParseError(message)) => {
+            Ok(build_parse_error_response(message, &config))
+        }
+        Err(error) => Err(format_validation_error(error)),
+    }
+}
 
-    Ok(ValidationResponse {
-        is_valid: validation.is_valid,
-        summary: validation.summary(),
-        scenario_count: validation.scenario_count,
-        confidence: validation.confidence,
-        validation_mode: "offline-syntax-and-conventions",
-        notes: vec![String::from(
-            "Local validation checks Converge Truth parsing, governance blocks, and Gherkin conventions. Business-sense and compilability checks stay disabled until a live ChatBackend validator is configured.",
-        )],
-        governance: summarize_governance(&validation.governance),
-        scenarios: validation
-            .scenario_metas
-            .into_iter()
-            .map(|meta| ScenarioSummary {
-                name: meta.name,
-                kind: meta.kind.map(scenario_kind_label),
-                invariant_class: meta.invariant_class.map(invariant_class_label),
-                id: meta.id,
-                provider: meta.provider,
-                is_test: meta.is_test,
+#[tauri::command(rename_all = "snake_case")]
+async fn guide_truth_heading(
+    spec: String,
+) -> Result<Option<guidance::GuidanceResponse>, String> {
+    let editor_config = config::editor_config();
+    let gc = GuidanceConfig {
+        provider_override: editor_config.heading_provider_override().map(Into::into),
+        model_override: editor_config.heading_model_override().map(Into::into),
+    };
+    Ok(guidance::guide_heading(&spec, &gc).await)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn simulate_truth(spec: String) -> Result<SimulationResponse, String> {
+    if spec.trim().is_empty() {
+        return Err("Spec is empty.".into());
+    }
+
+    let report = simulation::simulate_spec(&spec, &SimulationConfig::default())
+        .map_err(|e| format!("{e}"))?;
+
+    Ok(SimulationResponse {
+        verdict: match report.verdict {
+            simulation::Verdict::Ready => "ready",
+            simulation::Verdict::Risky => "risky",
+            simulation::Verdict::WillNotConverge => "will-not-converge",
+        },
+        can_converge: report.can_converge(),
+        scenario_count: report.scenario_count,
+        findings: report
+            .findings
+            .iter()
+            .map(|f| SimulationFindingView {
+                severity: match f.severity {
+                    FindingSeverity::Info => "info",
+                    FindingSeverity::Warning => "warning",
+                    FindingSeverity::Error => "error",
+                },
+                category: f.category,
+                message: f.message.clone(),
+                suggestion: f.suggestion.clone(),
             })
             .collect(),
-        issues: validation
-            .issues
-            .into_iter()
-            .map(|issue| ValidationIssueView {
-                location: issue.location,
-                category: issue_category_label(issue.category),
-                severity: severity_label(issue.severity),
-                message: issue.message,
-                suggestion: issue.suggestion,
-            })
-            .collect(),
+        governance: GovernanceCoverageView {
+            has_intent: report.governance_coverage.has_intent,
+            has_outcome: report.governance_coverage.has_outcome,
+            has_authority: report.governance_coverage.has_authority,
+            has_actor: report.governance_coverage.has_actor,
+            has_approval_gate: report.governance_coverage.has_approval_gate,
+            has_constraint: report.governance_coverage.has_constraint,
+            has_evidence: report.governance_coverage.has_evidence,
+            evidence_count: report.governance_coverage.evidence_count,
+            has_exception: report.governance_coverage.has_exception,
+            has_escalation_path: report.governance_coverage.has_escalation_path,
+        },
     })
 }
 
 #[tauri::command(rename_all = "snake_case")]
-async fn guide_truth_heading(spec: String) -> Result<Option<TruthGuidanceResponse>, String> {
-    let Some(current_title) = extract_truth_title(&spec) else {
-        return Ok(None);
-    };
+fn extract_policy(spec: String) -> Result<PolicyResponse, String> {
+    if spec.trim().is_empty() {
+        return Err("Spec is empty.".into());
+    }
 
-    Ok(Some(guided_heading(&spec, &current_title).await))
+    let doc = parse_truth_document(&spec).map_err(|e| format!("{e}"))?;
+    let reqs = policy_lens::extract_requirements(&doc.governance);
+    let cedar_preview = generate_cedar_preview(&doc.governance);
+
+    Ok(PolicyResponse {
+        required_gates: reqs.required_gates,
+        gated_actions: reqs
+            .gated_actions
+            .iter()
+            .map(|a| GatedActionView {
+                action: a.action.clone(),
+                reason: a.reason.clone(),
+            })
+            .collect(),
+        requires_human_approval: reqs.requires_human_approval,
+        authority_level: reqs.authority_level,
+        spending_limits: reqs.spending_limits,
+        escalation_targets: reqs.escalation_targets,
+        cedar_preview,
+    })
 }
 
-fn offline_validator() -> GherkinValidator {
-    GherkinValidator::new(
-        Arc::new(StaticChatBackend::constant("VALID")),
-        ValidationConfig {
-            check_business_sense: false,
-            check_compilability: false,
-            check_conventions: true,
-            min_confidence: 0.0,
-        },
-    )
-}
+// ═══════════════════════════════════════════════
+// Internal helpers
+// ═══════════════════════════════════════════════
 
-async fn guided_heading(spec: &str, current_title: &str) -> TruthGuidanceResponse {
-    match request_live_heading_guidance(spec, current_title).await {
-        Ok(response) => response,
-        Err(error) => local_heading_guidance(
-            spec,
-            current_title,
-            format!(
-                "Live ChatBackend guidance failed, so the editor is showing a local rewrite instead: {error}"
-            ),
-        ),
+fn offline_validation_config() -> ValidationConfig {
+    ValidationConfig {
+        check_business_sense: false,
+        check_compilability: false,
+        check_conventions: true,
+        min_confidence: 0.0,
     }
 }
 
-async fn request_live_heading_guidance(
-    spec: &str,
-    current_title: &str,
-) -> Result<TruthGuidanceResponse, String> {
-    let editor_config = config::editor_config();
-    let draft_context = draft_context(spec, current_title);
-    let selected = select_heading_backend(editor_config)?;
-    let prompt = format!(
-        r#"You are improving a Converge Truth heading inside a desktop editor.
+fn offline_validator(config: ValidationConfig) -> GherkinValidator {
+    GherkinValidator::new(Arc::new(StaticChatBackend::constant("VALID")), config)
+}
 
-A strong heading states a durable business truth, decision rule, or governed outcome.
-A weak heading reads like a topic, workstream, or initiative label.
-
-Current heading:
-{current_title}
-
-Parsed draft context:
-{draft_context}
-
-Spec excerpt:
-{spec_excerpt}
-
-Return ONLY a JSON object with this exact schema:
-{{
-  "shouldRewrite": true,
-  "suggestedTitle": "Enterprise AI vendor selection is auditable, constrained, and approval-gated",
-  "rationale": [
-    "Current heading reads like a topic, not a governed truth."
-  ],
-  "descriptionHints": [
-    "Vendor choice must be reproducible from explicit evidence.",
-    "Final selection must stay within policy, budget, and approval boundaries."
-  ]
-}}
-
-Rules:
-- Do not include `Truth:` in suggestedTitle.
-- Keep suggestedTitle concise.
-- Prefer declarative language such as `is`, `must`, `requires`, `remains`, or `produces`.
-- Align the rewrite with the governance, evidence, and approval context in the spec.
-- If the current heading is already strong, set shouldRewrite to false and keep suggestedTitle equal to the current heading.
-- descriptionHints should be 0-2 concise lines suitable immediately below the Truth header."#,
-        draft_context = serde_json::to_string_pretty(&draft_context)
-            .map_err(|error| format!("Failed to serialize draft context: {error}"))?,
-        spec_excerpt = truncated_spec_excerpt(spec)
-    );
-    let response = selected
-        .backend
-        .chat(ChatRequest {
-            messages: vec![ChatMessage {
-                role: ChatRole::User,
-                content: prompt,
-                tool_calls: Vec::new(),
-                tool_call_id: None,
-            }],
-            system: Some("You are a strict Converge Truth editor. Respond with JSON only.".into()),
-            tools: Vec::new(),
-            response_format: ResponseFormat::Json,
-            max_tokens: Some(300),
-            temperature: Some(0.2),
-            stop_sequences: Vec::new(),
-            model: editor_config
-                .heading_model_override()
-                .map(ToString::to_string),
+fn build_validation_response(
+    validation: converge_axiom::gherkin::SpecValidation,
+    config: &ValidationConfig,
+) -> ValidationResponse {
+    let issues: Vec<ValidationIssueView> = validation
+        .issues
+        .iter()
+        .map(|issue| ValidationIssueView {
+            location: issue.location.clone(),
+            category: issue_category_label(issue.category),
+            severity: severity_label(issue.severity),
+            message: issue.message.clone(),
+            suggestion: issue.suggestion.clone(),
         })
-        .await
-        .map_err(|error| format!("ChatBackend request failed: {error}"))?;
-    let parsed = parse_llm_truth_guidance(&response.content)?;
-    let suggested_title = sanitize_suggested_title(&parsed.suggested_title, current_title);
+        .collect();
 
-    Ok(TruthGuidanceResponse {
-        current_title: current_title.to_string(),
-        suggested_title,
-        should_rewrite: parsed.should_rewrite,
-        source: "live-chat-backend",
-        rationale: normalize_rationale(
-            parsed.rationale,
-            "The current heading was evaluated against the full Truth context.".to_string(),
-        ),
-        description_hints: normalize_description_hints(parsed.description_hints),
-        note: format!(
-            "Live guidance is active through ChatBackend provider `{}`.",
-            selected.provider
-        ),
-    })
-}
+    let steps = validation_view::build_steps(&validation, config);
+    let summary = validation_view::summarize(&validation);
+    let governance = governance_summary(&validation.governance);
 
-struct SelectedHeadingBackend {
-    backend: Arc<dyn DynChatBackend>,
-    provider: String,
-}
-
-fn select_heading_backend(config: &config::EditorConfig) -> Result<SelectedHeadingBackend, String> {
-    let mut selection = ChatBackendSelectionConfig::from_env()
-        .map_err(|error| format!("ChatBackend selection configuration failed: {error}"))?;
-    if let Some(provider) = config.heading_provider_override() {
-        selection = selection.with_provider_override(provider.to_string());
-    }
-    let selected = select_chat_backend(&selection)
-        .map_err(|error| format!("No live chat backend is available: {error}"))?;
-    let provider = selected.provider().to_string();
-    Ok(SelectedHeadingBackend {
-        backend: selected.backend,
-        provider,
-    })
-}
-
-fn parse_llm_truth_guidance(content: &str) -> Result<LlmTruthGuidance, String> {
-    let payload = content.trim();
-    let json = match (payload.find('{'), payload.rfind('}')) {
-        (Some(start), Some(end)) if start <= end => &payload[start..=end],
-        _ => payload,
-    };
-
-    serde_json::from_str(json)
-        .map_err(|error| format!("LLM returned invalid Truth guidance JSON: {error}"))
-}
-
-fn local_heading_guidance(spec: &str, current_title: &str, note: String) -> TruthGuidanceResponse {
-    let draft_context = draft_context(spec, current_title);
-    let current_title_trimmed = current_title.trim();
-    let title_lower = current_title_trimmed.to_ascii_lowercase();
-    let spec_lower = spec.to_ascii_lowercase();
-    let has_authority = draft_context.has_authority;
-    let has_constraint = draft_context.has_constraint;
-    let has_evidence = draft_context.has_evidence;
-    let mentions_approval = spec_lower.contains("approval");
-    let mentions_traceability = spec_lower.contains("traceable")
-        || spec_lower.contains("audit")
-        || spec_lower.contains("provenance")
-        || spec_lower.contains("compliance");
-    let mentions_policy = spec_lower.contains("governance")
-        || spec_lower.contains("policy")
-        || spec_lower.contains("budget")
-        || spec_lower.contains("cost")
-        || has_constraint;
-    let has_assertive_verb = truth_title_is_declarative(&title_lower);
-    let sounds_like_topic = title_lower.contains(" for ")
-        || title_lower.contains(" workflow")
-        || title_lower.contains(" rollout")
-        || title_lower.contains(" process")
-        || !has_assertive_verb;
-    let subject = normalize_subject(current_title_trimmed);
-    let predicate = quality_predicate(
-        has_authority || mentions_approval,
-        has_constraint || mentions_policy,
-        has_evidence || mentions_traceability,
-    );
-    let suggested_title = if sounds_like_topic {
-        format!("{subject} {predicate}")
-    } else {
-        current_title_trimmed.to_string()
-    };
-    let mut rationale = Vec::new();
-
-    if title_lower.contains(" for ") {
-        rationale.push(
-            "The current heading reads like a topic scoped to an initiative, not a governed truth."
-                .to_string(),
-        );
-    }
-    if !has_assertive_verb {
-        rationale.push("A Converge Truth heading should state a claim or rule, usually with language like `is`, `must`, or `requires`.".to_string());
-    }
-    if !has_constraint {
-        rationale.push("Vendor-selection truths are stronger when the title is backed by explicit constraints.".to_string());
-    }
-    if !has_evidence {
-        rationale.push("Vendor-selection truths should usually imply what evidence makes the decision auditable.".to_string());
-    }
-
-    let description_hints = build_description_hints(
-        &draft_context,
-        spec,
-        has_authority,
-        has_constraint,
-        has_evidence,
-    );
-
-    TruthGuidanceResponse {
-        current_title: current_title_trimmed.to_string(),
-        suggested_title,
-        should_rewrite: sounds_like_topic,
-        source: "local-heuristic",
-        rationale: normalize_rationale(
-            rationale,
-            "The editor is checking whether the heading is written as a stable truth instead of a topic label.".to_string(),
-        ),
-        description_hints,
-        note,
+    ValidationResponse {
+        is_valid: validation.is_valid,
+        summary,
+        scenario_count: validation.scenario_count,
+        confidence: validation.confidence,
+        validation_mode: OFFLINE_VALIDATION_MODE,
+        notes: vec![validation_view::offline_note()],
+        governance,
+        scenarios: validation
+            .scenario_metas
+            .iter()
+            .map(|meta| ScenarioSummary {
+                name: meta.name.clone(),
+                kind: meta.kind.map(scenario_kind_label),
+                invariant_class: meta.invariant_class.map(invariant_class_label),
+                id: meta.id.clone(),
+                provider: meta.provider.clone(),
+                is_test: meta.is_test,
+            })
+            .collect(),
+        steps,
+        issues,
     }
 }
 
-fn build_description_hints(
-    draft_context: &TruthDraftContext,
-    spec: &str,
-    has_authority: bool,
-    has_constraint: bool,
-    has_evidence: bool,
-) -> Vec<String> {
-    let mut hints = Vec::new();
-
-    if draft_context.description_line_count == 0 {
-        hints.push("Vendor choice must be reproducible from explicit evidence.".to_string());
-    }
-    if has_authority || spec.to_ascii_lowercase().contains("approval") {
-        hints.push("Final selection must stay within accountable approval boundaries.".to_string());
-    } else if !has_constraint {
-        hints.push("Selection must stay within policy, cost, and risk boundaries.".to_string());
-    }
-    if !has_evidence && hints.len() < 2 {
-        hints.push(
-            "The recommended vendor must be justified by traceable review artifacts.".to_string(),
-        );
-    }
-
-    normalize_description_hints(hints)
-}
-
-fn draft_context(spec: &str, current_title: &str) -> TruthDraftContext {
-    if let Ok(document) = parse_truth_document(spec) {
-        return TruthDraftContext {
-            title: current_title.trim().to_string(),
-            description_line_count: description_line_count(spec),
-            scenario_count: document
-                .gherkin
-                .lines()
-                .filter(|line| line.trim_start().starts_with("Scenario:"))
-                .count(),
-            has_intent: document.governance.intent.is_some(),
-            has_authority: document.governance.authority.is_some(),
-            has_constraint: document.governance.constraint.is_some(),
-            has_evidence: document.governance.evidence.is_some(),
-            has_exception: document.governance.exception.is_some(),
-        };
-    }
-
-    TruthDraftContext {
-        title: current_title.trim().to_string(),
-        description_line_count: description_line_count(spec),
-        scenario_count: spec
-            .lines()
-            .filter(|line| line.trim_start().starts_with("Scenario:"))
-            .count(),
-        has_intent: spec.contains("\nIntent:"),
-        has_authority: spec.contains("\nAuthority:"),
-        has_constraint: spec.contains("\nConstraint:"),
-        has_evidence: spec.contains("\nEvidence:"),
-        has_exception: spec.contains("\nException:"),
+fn build_parse_error_response(message: String, config: &ValidationConfig) -> ValidationResponse {
+    ValidationResponse {
+        is_valid: false,
+        summary: "Syntax failed before local rule checks could continue.".into(),
+        scenario_count: 0,
+        confidence: 0.0,
+        validation_mode: OFFLINE_VALIDATION_MODE,
+        notes: vec![validation_view::offline_note()],
+        governance: GovernanceSummary {
+            intent: false,
+            authority: false,
+            constraint: false,
+            evidence: false,
+            exception: false,
+        },
+        scenarios: Vec::new(),
+        steps: validation_view::build_parse_error_steps(&message, config),
+        issues: vec![ValidationIssueView {
+            location: "Spec".into(),
+            category: "syntax",
+            severity: "error",
+            message,
+            suggestion: None,
+        }],
     }
 }
 
-fn normalize_description_hints(mut hints: Vec<String>) -> Vec<String> {
-    hints.retain(|hint| !hint.trim().is_empty());
-    hints.truncate(2);
-    hints
-}
-
-fn normalize_rationale(mut rationale: Vec<String>, fallback: String) -> Vec<String> {
-    rationale.retain(|item| !item.trim().is_empty());
-    if rationale.is_empty() {
-        rationale.push(fallback);
-    }
-    rationale
-}
-
-fn quality_predicate(has_authority: bool, has_constraint: bool, has_evidence: bool) -> String {
-    let mut qualities = Vec::new();
-
-    if has_evidence {
-        qualities.push("auditable");
-    }
-    if has_constraint {
-        qualities.push("constrained");
-    }
-    if has_authority {
-        qualities.push("approval-gated");
-    }
-    if qualities.is_empty() {
-        qualities.push("explicit");
-        qualities.push("reviewable");
-    }
-
-    format!("is {}", join_phrases(&qualities))
-}
-
-fn join_phrases(items: &[&str]) -> String {
-    match items {
-        [] => String::new(),
-        [one] => (*one).to_string(),
-        [first, second] => format!("{first} and {second}"),
-        [first, middle @ .., last] => format!("{first}, {}, and {last}", middle.join(", ")),
-    }
-}
-
-fn truth_title_is_declarative(title_lower: &str) -> bool {
-    [
-        " is ",
-        " must ",
-        " requires ",
-        " remains ",
-        " produces ",
-        " blocks ",
-        " allows ",
-    ]
-    .iter()
-    .any(|needle| title_lower.contains(needle))
-}
-
-fn normalize_subject(title: &str) -> String {
-    let trimmed = title.trim().trim_end_matches('.');
-
-    if let Some((left, right)) = trimmed.split_once(" for ") {
-        let left = left.trim();
-        if reorderable_subject(left) {
-            let right = strip_context_suffix(right.trim());
-            return uppercase_first(&format!("{} {}", right, left.to_ascii_lowercase()));
-        }
-    }
-
-    uppercase_first(trimmed)
-}
-
-fn reorderable_subject(left: &str) -> bool {
-    let left = left.to_ascii_lowercase();
-    [
-        "selection",
-        "evaluation",
-        "approval",
-        "review",
-        "screening",
-        "comparison",
-    ]
-    .iter()
-    .any(|suffix| left.ends_with(suffix))
-}
-
-fn strip_context_suffix(value: &str) -> String {
-    for suffix in [" rollout", " workflow", " process", " program"] {
-        if let Some(stripped) = value.strip_suffix(suffix) {
-            return stripped.trim().to_string();
-        }
-    }
-
-    value.trim().to_string()
-}
-
-fn uppercase_first(value: &str) -> String {
-    let mut chars = value.chars();
-    let Some(first) = chars.next() else {
-        return String::new();
-    };
-
-    format!("{}{}", first.to_uppercase(), chars.as_str())
-}
-
-fn description_line_count(spec: &str) -> usize {
-    let lines: Vec<&str> = spec.lines().collect();
-
-    for (idx, line) in lines.iter().enumerate() {
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("Truth:") || trimmed.starts_with("Feature:") {
-            let mut count = 0;
-
-            for next in lines.iter().skip(idx + 1) {
-                let trimmed_next = next.trim();
-                if trimmed_next.is_empty() {
-                    if count > 0 {
-                        break;
-                    }
-                    continue;
-                }
-                if is_heading_boundary(trimmed_next) {
-                    break;
-                }
-                count += 1;
-            }
-
-            return count;
-        }
-    }
-
-    0
-}
-
-fn is_heading_boundary(line: &str) -> bool {
-    matches!(
-        line,
-        "Intent:" | "Authority:" | "Constraint:" | "Evidence:" | "Exception:"
-    ) || line.starts_with('@')
-        || line.starts_with("Background:")
-        || line.starts_with("Scenario:")
-        || line.starts_with("Rule:")
-        || line.starts_with("Example:")
-        || line.starts_with("Examples:")
-}
-
-fn extract_truth_title(spec: &str) -> Option<String> {
-    spec.lines().find_map(|line| {
-        let trimmed = line.trim_start();
-        trimmed
-            .strip_prefix("Truth:")
-            .or_else(|| trimmed.strip_prefix("Feature:"))
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty())
-    })
-}
-
-fn sanitize_suggested_title(suggested_title: &str, fallback: &str) -> String {
-    let trimmed = suggested_title.trim();
-    let stripped = trimmed
-        .strip_prefix("Truth:")
-        .or_else(|| trimmed.strip_prefix("Feature:"))
-        .map(str::trim)
-        .unwrap_or(trimmed);
-
-    if stripped.is_empty() {
-        fallback.to_string()
-    } else {
-        stripped.to_string()
-    }
-}
-
-fn truncated_spec_excerpt(spec: &str) -> String {
-    const MAX_LINES: usize = 20;
-    const MAX_CHARS: usize = 2200;
-
-    let mut excerpt = spec.lines().take(MAX_LINES).collect::<Vec<_>>().join("\n");
-    if excerpt.chars().count() > MAX_CHARS {
-        excerpt = excerpt.chars().take(MAX_CHARS).collect::<String>();
-        excerpt.push_str("\n...");
-    }
-    excerpt
-}
-
-fn summarize_governance(governance: &TruthGovernance) -> GovernanceSummary {
+fn governance_summary(governance: &TruthGovernance) -> GovernanceSummary {
     GovernanceSummary {
         intent: governance.intent.is_some(),
         authority: governance.authority.is_some(),
@@ -621,11 +327,97 @@ fn summarize_governance(governance: &TruthGovernance) -> GovernanceSummary {
     }
 }
 
+fn generate_cedar_preview(gov: &TruthGovernance) -> String {
+    let mut lines = Vec::new();
+    lines.push("// Generated Cedar policy from Truth governance blocks".into());
+    lines.push(String::new());
+
+    lines.push("// Any authorized agent may propose.".into());
+    lines.push(r#"permit(principal, action == Action::"propose", resource)"#.into());
+    lines.push("when {".into());
+    if let Some(authority) = &gov.authority {
+        if let Some(actor) = &authority.actor {
+            lines.push(format!(r#"  principal.domains.contains("{actor}")"#));
+        } else {
+            lines.push("  true".into());
+        }
+    } else {
+        lines.push("  true".into());
+    }
+    lines.push("};".into());
+    lines.push(String::new());
+
+    if let Some(evidence) = &gov.evidence {
+        if !evidence.requires.is_empty() {
+            lines.push("// Validation requires evidence gates to be passed.".into());
+            lines.push(r#"permit(principal, action == Action::"validate", resource)"#.into());
+            lines.push("when {".into());
+            for (i, req) in evidence.requires.iter().enumerate() {
+                let sep = if i < evidence.requires.len() - 1 {
+                    " &&"
+                } else {
+                    ""
+                };
+                lines.push(format!(
+                    r#"  resource.gates_passed.contains("{req}"){sep}"#
+                ));
+            }
+            lines.push("};".into());
+            lines.push(String::new());
+        }
+    }
+
+    if let Some(authority) = &gov.authority {
+        if !authority.requires_approval.is_empty() {
+            lines.push("// Commit requires human approval.".into());
+            lines.push(r#"permit(principal, action == Action::"commit", resource)"#.into());
+            lines.push("when {".into());
+            lines.push("  context.human_approval_present == true &&".into());
+            lines.push("  context.required_gates_met == true".into());
+            lines.push("};".into());
+            lines.push(String::new());
+            lines.push("// Block commit without human approval.".into());
+            lines.push(r#"forbid(principal, action == Action::"commit", resource)"#.into());
+            lines.push("when {".into());
+            lines.push("  context.human_approval_present == false".into());
+            lines.push("};".into());
+            lines.push(String::new());
+        }
+    }
+
+    if let Some(constraint) = &gov.constraint {
+        if !constraint.cost_limit.is_empty() {
+            lines.push("// Enforce spending limits.".into());
+            lines.push(r#"forbid(principal, action == Action::"commit", resource)"#.into());
+            lines.push("when {".into());
+            lines.push("  context.amount > 0 &&".into());
+            lines.push("  context.human_approval_present == false".into());
+            lines.push("};".into());
+            lines.push(String::new());
+        }
+    }
+
+    if let Some(exception) = &gov.exception {
+        if !exception.escalates_to.is_empty() {
+            lines.push(format!(
+                "// Escalation path: {}",
+                exception.escalates_to.join(", ")
+            ));
+            lines.push(
+                "// When commit is denied and principal has escalatable authority,".into(),
+            );
+            lines.push("// the decision escalates rather than rejecting outright.".into());
+        }
+    }
+
+    lines.join("\n")
+}
+
 fn format_validation_error(error: ValidationError) -> String {
     match error {
-        ValidationError::ParseError(message) => format!("Parse error: {message}"),
-        ValidationError::IoError(message) => format!("IO error: {message}"),
-        ValidationError::LlmError(message) => format!("LLM error: {message}"),
+        ValidationError::ParseError(msg) => format!("Parse error: {msg}"),
+        ValidationError::IoError(msg) => format!("IO error: {msg}"),
+        ValidationError::LlmError(msg) => format!("LLM error: {msg}"),
     }
 }
 
@@ -668,7 +460,9 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             validate_gherkin,
-            guide_truth_heading
+            guide_truth_heading,
+            simulate_truth,
+            extract_policy
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -678,9 +472,13 @@ pub fn run() {
 mod tests {
     use super::*;
 
+    fn validate(spec: &str) -> ValidationResponse {
+        tauri::async_runtime::block_on(validate_gherkin(spec.into())).unwrap()
+    }
+
     #[test]
     fn validate_gherkin_accepts_truth_blocks() {
-        let result = validate_gherkin(
+        let result = validate(
             r#"Truth: Vendor selection
 
 Intent:
@@ -690,28 +488,25 @@ Scenario: Vendor evaluation is traceable
   Given candidate vendors "Acme AI, Beta ML"
   When the governance workflow evaluates each vendor
   Then each vendor should produce a compliance screening result
-"#
-            .into(),
-        )
-        .unwrap();
+"#,
+        );
 
         assert!(result.is_valid);
         assert!(result.governance.intent);
         assert_eq!(result.scenario_count, 1);
+        assert_eq!(result.steps[0].status, "ok");
     }
 
     #[test]
     fn validate_gherkin_reports_missing_then_step() {
-        let result = validate_gherkin(
+        let result = validate(
             r#"Feature: Broken spec
 
 Scenario: Missing expectation
   Given a vendor list
   When the system validates the spec
-"#
-            .into(),
-        )
-        .unwrap();
+"#,
+        );
 
         assert!(!result.is_valid);
         assert!(
@@ -720,11 +515,33 @@ Scenario: Missing expectation
                 .iter()
                 .any(|issue| issue.message.contains("lacks Then steps"))
         );
+        assert_eq!(result.steps[1].status, "issue");
+    }
+
+    #[test]
+    fn validate_gherkin_returns_syntax_step_for_parse_errors() {
+        let result = validate(
+            r#"Truth: Broken declarations
+
+Intent:
+  Outcome Pick a preferred vendor.
+
+Scenario: Parse fails before local checks
+  Given a vendor list
+  When the validator reads the declarations
+  Then the syntax step should fail
+"#,
+        );
+
+        assert!(!result.is_valid);
+        assert_eq!(result.steps[0].id, "syntax");
+        assert_eq!(result.steps[0].status, "issue");
+        assert_eq!(result.steps[1].status, "unavailable");
     }
 
     #[test]
     fn local_guidance_rewrites_topic_titles() {
-        let guidance = local_heading_guidance(
+        let g = guidance::local_heading_guidance(
             r#"Truth: Vendor selection for enterprise AI rollout
 
 Authority:
@@ -737,19 +554,19 @@ Scenario: Candidate vendors produce traceable evaluation outcomes
   Then each vendor should produce a compliance screening result
 "#,
             "Vendor selection for enterprise AI rollout",
-            "local".to_string(),
+            "local".into(),
         );
 
-        assert!(guidance.should_rewrite);
+        assert!(g.should_rewrite);
         assert_eq!(
-            guidance.suggested_title,
+            g.suggested_title,
             "Enterprise AI vendor selection is auditable, constrained, and approval-gated"
         );
     }
 
     #[test]
     fn local_guidance_keeps_declarative_titles() {
-        let guidance = local_heading_guidance(
+        let g = guidance::local_heading_guidance(
             r#"Truth: Enterprise AI vendor selection is auditable and approval-gated
 
 Constraint:
@@ -759,13 +576,9 @@ Evidence:
   Requires: security_assessment
 "#,
             "Enterprise AI vendor selection is auditable and approval-gated",
-            "local".to_string(),
+            "local".into(),
         );
 
-        assert!(!guidance.should_rewrite);
-        assert_eq!(
-            guidance.suggested_title,
-            "Enterprise AI vendor selection is auditable and approval-gated"
-        );
+        assert!(!g.should_rewrite);
     }
 }

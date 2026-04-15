@@ -72,7 +72,7 @@ These are the surfaces students should learn first:
 | Converge authoring | `converge-pack` | `Suggestor`, `AgentEffect`, `ProposedFact`, `ContextKey` |
 | Converge runtime | `converge-kernel` | `Engine`, `Context`, `Budget`, criteria, run hooks |
 | LLM and tool adapters | `converge-provider` | `ChatBackend`, chat backend selection, search, MCP/tool clients |
-| Validation and offline tooling | `converge-tool` | validators, truth parsing, `mock_llm::StaticChatBackend` |
+| Validation and offline tooling | `converge-axiom` | validators, truth parsing, `mock_llm::StaticChatBackend` |
 | Organism authoring | `organism-pack` | `IntentPacket`, `Plan`, `PlanStep`, reasoning primitives |
 | Organism runtime | `organism-runtime` | `Registry`, readiness, built-in packs |
 

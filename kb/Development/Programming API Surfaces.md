@@ -14,7 +14,7 @@ Use these crates by role:
 | Converge authoring | `converge-pack` | `Suggestor`, `AgentEffect`, `ProposedFact`, `ContextKey` |
 | Converge runtime | `converge-kernel` | `Engine`, `Context`, `Budget`, criteria, run hooks |
 | Converge model access | `converge-provider` | capability adapters that satisfy `ChatBackend`, search, tools |
-| Converge tooling | `converge-tool` | validators, truth parsing, `mock_llm::StaticChatBackend` |
+| Converge tooling | `converge-axiom` | validators, truth parsing, `mock_llm::StaticChatBackend` |
 | Organism authoring | `organism-pack` | `IntentPacket`, `Plan`, `PlanStep`, reasoning primitives |
 | Organism runtime | `organism-runtime` | `Registry`, readiness, built-in packs |
 

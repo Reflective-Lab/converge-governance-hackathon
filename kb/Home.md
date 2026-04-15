@@ -6,7 +6,7 @@ tags: [moc]
 Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor selection built on [[Converge/Core Concepts|Converge]].
 
 ## Architecture
-- [[Architecture/Overview]] — two-layer model, repo ownership split
+- [[Architecture/Overview]] — five-layer model, repo ownership split
 - [[Architecture/Layers]] — crate responsibilities and stack diagram
 - [[Architecture/Convergence Loop]] — how the engine reaches a decision
 
@@ -44,3 +44,5 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 - [[Converge/HITL Gates]] — human-in-the-loop gated decisions
 - [[Converge/Experience and Recall]] — learning from past runs
 - [[Converge/Governed Artifacts]] — lifecycle management for system outputs
+- [[Converge/Organism Blueprints]] — ~22 production-shaped business cases from Organism, available as hackathon examples
+- [[Converge/Desktop Naming]] — Helm, Axiom, and the stack vocabulary

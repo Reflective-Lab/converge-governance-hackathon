@@ -65,7 +65,7 @@ Students should learn this surface first:
 - Author suggestors with `converge-pack`
 - Embed the runtime with `converge-kernel`
 - Keep LLM calls on `ChatBackend` + `ChatRequest`
-- Use `converge-tool::mock_llm::StaticChatBackend` for offline validation and tests
+- Use `converge-axiom::mock_llm::StaticChatBackend` for offline validation and tests
 - Use `organism-pack` for `IntentPacket`, `Plan`, and reasoning primitives when crossing into Organism
 - Use `organism-runtime::Registry::with_standard_packs()` when you need built-in Organism packs
 
@@ -139,7 +139,7 @@ Keep the application-facing API on the canonical Converge capability surface. In
 
 Future direction: add a `KongProvider` or more general `RouterProvider` under that same capability surface, with Kong especially valuable when it can bridge shared MCP tools.
 
-The desktop scaffold now follows that contract: the Tauri edge selects a live `ChatBackend`, app code builds `ChatRequest`, and offline validation uses `converge-tool::StaticChatBackend`.
+The desktop scaffold now follows that contract: the Tauri edge selects a live `ChatBackend`, app code builds `ChatRequest`, and offline validation uses `converge-axiom::StaticChatBackend`.
 
 Kong-backed `.env` if you are using Kong:
 

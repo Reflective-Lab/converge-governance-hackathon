@@ -28,7 +28,7 @@ This repo uses:
 - `converge-core` 3.0.0 — Engine, Suggestor, Fact, Context, promotion gate, convergence loop
 - `converge-domain` 3.0.0 — pre-built [[Converge/Domain Packs|domain packs]] (trust, money, delivery, knowledge, data_metrics)
 - `converge-provider` 3.0.0 — [[Integrations/Kong Gateway|Kong]] integration for LLM and API access
-- `converge-tool` 3.0.0 — spec validation (used in desktop app)
+- `converge-axiom` 3.0.0 — spec validation (used in desktop app)
 
 > **TODO:** Scan converge crate sources for deeper documentation of internals.
 

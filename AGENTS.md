@@ -49,7 +49,7 @@ If you produce knowledge that doesn't belong in code, it belongs in the kb.
 | System logic | Rust | Ownership, zero-cost abstractions, compile-time safety |
 | Agent runtime | Converge (`converge-pack`, `converge-kernel`, `converge-domain`) | Governed multi-agent convergence with promotion gates |
 | LLM/API access | `converge-provider` capability adapters, with optional Kong routing | Canonical capability surface first, with Kong able to sit underneath later |
-| Spec validation | `converge-tool` | Offline-first truth and Gherkin validation |
+| Spec validation | `converge-axiom` | Offline-first truth and Gherkin validation |
 | Desktop shell | Tauri | Native performance, Rust backend, no Electron |
 | UI | Svelte | Compiled, no virtual DOM, minimal runtime |
 | Package manager | Bun | Fast, native, replaces npm/yarn/pnpm |
@@ -122,7 +122,7 @@ Student-facing guidance in this repo should track the current Converge `v3.0.x` 
 | `converge-core` | Constitutional types and re-exports used by current internals | In use |
 | `converge-domain` | Pre-built suggestor packs: trust, money, delivery, knowledge, data_metrics | In use |
 | `converge-provider` | Chat backends, search adapters, tool clients, backend selection | In use |
-| `converge-tool` | Spec validation, Gherkin parsing, truth-spec parsing, mock chat backends | In use (desktop) |
+| `converge-axiom` | Spec validation, Gherkin parsing, truth-spec parsing, mock chat backends | In use (desktop) |
 | `converge-experience` | Experience tracking and recall across runs | Available |
 | `converge-knowledge` | Knowledge management, signal capture, canonical decisions | Available |
 | `converge-mcp` | MCP server/client for tool-based agent access | Available |
