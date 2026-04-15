@@ -68,6 +68,33 @@ Cycle 5: No new facts → fixed point → converged
 
 **Governance as foundation.** Every fact carries provenance — who proposed it, when, with what confidence. Every decision has an evidence chain an auditor can follow. This isn't bolted on; it's the architecture.
 
+## Cheat Sheet
+
+```
+just hit-the-ground-running   # first time — build, test, lint
+just server                   # start local harness (localhost:8080)
+just desktop                  # launch Tauri desktop app
+just check                    # fast compile check
+just test                     # run all tests
+just lint                     # clippy + format check
+just fmt                      # auto-format
+just clean                    # nuke build artifacts
+```
+
+**With AI agents (Claude, Codex, Gemini):**
+
+```
+/focus                        # session opener — milestone, deliverables, context
+/sync                         # pull latest, PRs, issues, build health
+/next                         # pick next task from milestone
+/fix <issue#>                 # branch → implement → test → PR
+/check                        # lint + test + report
+/pr                           # push and create pull request
+/done                         # end session — progress, changelog, observations
+/audit                        # weekly — security, compliance, drift
+/help                         # show all skills
+```
+
 ## Quick Start
 
 ```bash
@@ -162,6 +189,73 @@ Budget approval, access control, risk scoring — any decision process that need
 | Desktop | **Tauri 2** + **SvelteKit 5** |
 | Package manager | **Bun** |
 | Task runner | **just** |
+
+## Working with AI Agents
+
+This repo is designed for three AI agents — **Claude Code**, **Codex**, and **Gemini** — as first-class collaborators. Each reads the same canonical documentation and uses the same workflow infrastructure.
+
+### The Documentation Layers
+
+| Layer | What | Who reads it |
+|---|---|---|
+| `AGENTS.md` | Canonical project documentation — philosophy, stack, architecture, rules | All agents (entrypoint) |
+| `CLAUDE.md` / `CODEX.md` / `GEMINI.md` | Agent-specific configuration, each points to AGENTS.md | Respective agent |
+| `kb/` | Obsidian vault — architecture, domain, development, integrations, workflow | Agents + humans (lazy-loaded) |
+| `MILESTONES.md` | What ships and when — current milestone, deliverables, deadlines | `/focus`, `/next`, `/done` |
+| `CHANGELOG.md` | What shipped — notable changes by version | `/done` updates it |
+| `Justfile` | Deterministic shell recipes — build, test, lint, serve | Agents + humans |
+| `.claude/skills/` | 14 slash commands — multi-step AI-driven workflows | Claude Code |
+| `scripts/workflow/` | Shell scripts backing `just focus`, `just sync`, `just status` | All agents + terminal |
+
+### Skills vs Justfile vs Scripts
+
+Three layers, different purposes:
+
+| Need | Use | Example |
+|---|---|---|
+| Run a single command | `just` recipe | `just lint`, `just test`, `just server` |
+| Multi-step workflow with reasoning | `/skill` command | `/fix 42` — reads issue, branches, implements, tests, PRs |
+| Repo state inspection | `scripts/workflow/` | `focus.sh` — build health, PRs, issues, recommendations |
+
+Skills call `just` recipes internally. `/check` runs `just lint && just test`. `/fix 42` runs `just check` as a verification step. The layers compose.
+
+### The 14 Skills
+
+| Skill | When | What it does |
+|---|---|---|
+| `/focus` | Session start | Reads milestone, shows days left, open deliverables |
+| `/sync` | Morning | Pulls latest, shows PRs, issues, build health |
+| `/next` | Pick work | Lists unchecked deliverables from current milestone |
+| `/fix <#>` | During work | Branch → implement → test → lint → commit → PR |
+| `/check` | Before commit | Runs lint + test, reports findings |
+| `/ticket <desc>` | Create issue | Explores code, writes requirements, suggests size |
+| `/pr` | Ship work | Pushes branch, creates pull request |
+| `/review <#>` | Review work | Reads diff, checks security/correctness/style |
+| `/dev` | Start coding | Launches server and/or desktop in dev mode |
+| `/wip` | Switch devices | Saves and pushes work-in-progress |
+| `/done` | End session | Updates milestones, changelog, captures observations |
+| `/deploy` | Ship to prod | Runs checks, packages, deploys with confirmation |
+| `/audit` | Monday | Security, compliance, drift, dependency scan |
+| `/help` | Anytime | Shows the cheat sheet |
+
+### Daily Rhythm
+
+```
+Morning:   /focus → /sync → /next       Pick up where you left off
+Work:      /fix <#>, /check, /pr        Implement, verify, ship
+Evening:   /done                         Record progress, observations
+Monday:    /audit                        Weekly health check
+```
+
+### Agent-Specific Notes
+
+**Claude Code** — use slash commands directly. Skills live in `.claude/skills/`.
+
+**Codex** — ask for workflows by name: "focus", "fix issue 42", "review PR 17". Reads `CODEX.md` → `AGENTS.md` → `kb/` as needed.
+
+**Gemini** — uses native tools + shared scripts. Can invoke sub-agents for deep analysis. Reads `GEMINI.md` → `AGENTS.md` → `kb/` as needed.
+
+All three agents follow the same rules: `unsafe` is forbidden, agents emit proposals not facts, `just lint` before done.
 
 ## Project Structure
 
