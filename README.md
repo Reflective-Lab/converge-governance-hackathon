@@ -140,7 +140,7 @@ The Svelte/Tauri shell is scaffolded. Build the operator experience — load `.f
 
 Budget approval, access control, risk scoring — any decision process that needs governance. Define the truth, write the agents, add Cedar policies.
 
-## Student-Facing API Surfaces
+## API Surfaces
 
 | What | Crate | Key Imports |
 |---|---|---|
@@ -196,7 +196,7 @@ GET  /v1/audit                     Query audit trail
 
 The `kb/` directory is an Obsidian vault. Open it in Obsidian or read the markdown files directly. Start with `kb/Home.md`.
 
-**Reading order for students:**
+**Reading order for participants:**
 1. `kb/Architecture/Overview.md` — the five-layer model
 2. `kb/Domain/Vendor Selection.md` — the challenge
 3. `kb/Domain/Agents.md` — what each agent does
