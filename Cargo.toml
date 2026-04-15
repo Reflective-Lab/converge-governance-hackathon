@@ -17,10 +17,13 @@ converge-provider-api = { path = "../converge/crates/provider-api" }
 converge-domain = { path = "../converge/crates/domain" }
 converge-policy = { path = "../converge/crates/policy" }
 converge-provider = { path = "../converge/crates/provider", default-features = false, features = ["anthropic", "gemini", "openai", "mistral", "brave", "tavily"] }
-# Organism (path deps — local development)
-organism-pack = { path = "../organism/crates/pack" }
-organism-runtime = { path = "../organism/crates/runtime" }
-organism-planning = { path = "../organism/crates/planning" }
+# Organism
+organism-pack = "1.0.0"
+organism-runtime = "1.0.0"
+organism-planning = "1.0.0"
+
+# Axiom
+axiom-truth = "0.4.1"
 
 # Server
 axum = "0.8"

@@ -35,6 +35,9 @@ install-desktop:
     set -euo pipefail
     bun --cwd apps/desktop install
 
+desktop:
+    cd apps/desktop && bun run tauri dev; reset
+
 dev-desktop:
     #!/usr/bin/env bash
     set -euo pipefail

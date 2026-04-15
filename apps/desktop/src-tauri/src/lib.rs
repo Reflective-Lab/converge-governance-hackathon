@@ -2,16 +2,16 @@ use std::sync::Arc;
 
 mod config;
 
-use converge_axiom::StaticChatBackend;
-use converge_axiom::gherkin::{
+use axiom_truth::StaticChatBackend;
+use axiom_truth::gherkin::{
     GherkinValidator, InvariantClassTag, IssueCategory, ScenarioKind, Severity, ValidationConfig,
     ValidationError,
 };
-use converge_axiom::guidance::{self, GuidanceConfig};
-use converge_axiom::policy_lens;
-use converge_axiom::simulation::{self, FindingSeverity, SimulationConfig};
-use converge_axiom::truths::{TruthGovernance, parse_truth_document};
-use converge_axiom::validation_view;
+use axiom_truth::guidance::{self, GuidanceConfig};
+use axiom_truth::policy_lens;
+use axiom_truth::simulation::{self, FindingSeverity, SimulationConfig};
+use axiom_truth::truths::{TruthGovernance, parse_truth_document};
+use axiom_truth::validation_view;
 use serde::Serialize;
 
 const OFFLINE_VALIDATION_MODE: &str = "offline-syntax-and-conventions";
@@ -246,7 +246,7 @@ fn offline_validator(config: ValidationConfig) -> GherkinValidator {
 }
 
 fn build_validation_response(
-    validation: converge_axiom::gherkin::SpecValidation,
+    validation: axiom_truth::gherkin::SpecValidation,
     config: &ValidationConfig,
 ) -> ValidationResponse {
     let issues: Vec<ValidationIssueView> = validation
@@ -456,13 +456,31 @@ fn invariant_class_label(class: InvariantClassTag) -> &'static str {
     }
 }
 
+// ─── Due Diligence (self-contained, copied from Monterro) ───
+
+mod dd;
+
+#[tauri::command]
+async fn run_due_diligence(
+    company_name: String,
+    product_name: Option<String>,
+    #[allow(unused)] focus_areas: Vec<String>,
+) -> Result<dd::DdReport, String> {
+    dd::run_dd(&company_name, product_name.as_deref())
+        .await
+        .map_err(|e| format!("{e:#}"))
+}
+
 pub fn run() {
+    let _ = dotenv::dotenv();
+
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             validate_gherkin,
             guide_truth_heading,
             simulate_truth,
-            extract_policy
+            extract_policy,
+            run_due_diligence
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

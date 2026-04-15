@@ -13,13 +13,16 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-converge-core = { path = "../../../../converge/crates/core" }
-converge-provider = { path = "../../../../converge/crates/provider", default-features = false, features = ["anthropic", "gemini", "openai", "openrouter", "mistral"] }
-converge-axiom = { path = "../../../../converge/crates/tool" }
+converge-core = "3.2.1"
+converge-provider = { version = "3.2.1", default-features = false, features = ["anthropic", "gemini", "openai", "openrouter", "mistral"] }
+axiom-truth = "0.4.1"
 dotenv = "0.15"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = [] }
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+reqwest = { version = "0.12", features = ["json"] }
 
 [features]
 default = []

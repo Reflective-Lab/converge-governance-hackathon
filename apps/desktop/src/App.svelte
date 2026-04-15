@@ -1,9 +1,10 @@
-<script>
+<script lang="ts">
   import { onDestroy } from "svelte";
-  import { invokeTauri } from "./lib/tauri.js";
+  import { invokeTauri } from "./lib/tauri";
+  import { randomVerb } from "./lib/spinner";
 
   // ─── Phases ───
-  let phase = $state("slides"); // slides | demo
+  let phase = $state("slides"); // slides | demo | apps | dd
   let currentSlide = $state(0);
 
   const slides = [
@@ -287,6 +288,23 @@ Scenario: Parse should fail early
   let error = $state("");
   let busy = $state(false);
   let rightTab = $state("compiler"); // compiler | policy
+
+  // ─── Compiler progress (DD-style) ───
+  interface CompileStep {
+    step: string;
+    detail: string;
+    active: boolean;
+  }
+
+  const compilePipelineSteps = [
+    { step: "Simulation", detail: "Pre-flight convergence check" },
+    { step: "Compilation", detail: "Full syntax and semantics validation" },
+    { step: "Policy Extraction", detail: "Generating Cedar policy preview" },
+  ];
+
+  let compileSteps = $state<CompileStep[]>([]);
+  let compileSpinnerVerb = $state(randomVerb());
+  let compileSpinnerInterval: ReturnType<typeof setInterval> | null = null;
   let exampleOverlayOpen = $state(false);
   let truthGuidance = $state(null);
   let truthGuidanceError = $state("");
@@ -307,24 +325,45 @@ Scenario: Parse should fail early
     return "Validation failed.";
   }
 
+  function advanceCompileStep(index: number) {
+    compileSteps = [
+      ...compileSteps.map((s) => ({ ...s, active: false })),
+      { step: compilePipelineSteps[index].step, detail: compilePipelineSteps[index].detail, active: true },
+    ];
+  }
+
+  function completeCompileStep() {
+    compileSteps = compileSteps.map((s) => ({ ...s, active: false }));
+  }
+
   async function validate() {
     busy = true;
     error = "";
     simulation = null;
+    compileSteps = [];
+    compileSpinnerVerb = randomVerb();
+    compileSpinnerInterval = setInterval(() => { compileSpinnerVerb = randomVerb(); }, 2000);
+
     try {
       // Step 1: Simulate (pre-flight)
+      advanceCompileStep(0);
       simulation = await invokeTauri("simulate_truth", { spec });
 
       // Step 2: Validate (full compiler)
+      advanceCompileStep(1);
       validation = await invokeTauri("validate_gherkin", { spec });
 
       // Step 3: Extract policy (Cedar preview)
+      advanceCompileStep(2);
       policy = await invokeTauri("extract_policy", { spec });
+
+      completeCompileStep();
     } catch (cause) {
       validation = null;
       error = describeError(cause);
     } finally {
       busy = false;
+      if (compileSpinnerInterval) { clearInterval(compileSpinnerInterval); compileSpinnerInterval = null; }
     }
   }
 
@@ -494,7 +533,124 @@ Scenario: Parse should fail early
   onDestroy(() => {
     guidanceSequence += 1;
     clearGuidanceTimer();
+    if (compileSpinnerInterval) { clearInterval(compileSpinnerInterval); compileSpinnerInterval = null; }
   });
+
+  // ─── Applications phase ───
+
+  interface AppCard {
+    id: string;
+    title: string;
+    description: string;
+    status: "active" | "soon";
+    icon: string;
+    action?: () => void;
+  }
+
+  const appCards: AppCard[] = [
+    {
+      id: "truth-editor",
+      title: "Truth Spec Editor",
+      description: "Write and validate governance specs. Syntax checking, policy extraction, Cedar generation.",
+      status: "active",
+      icon: "📝",
+      action: () => { phase = "demo"; },
+    },
+    {
+      id: "due-diligence",
+      title: "Due Diligence",
+      description: "Convergent research on any company. Web search, fact extraction, contradiction detection, structured analysis.",
+      status: "active",
+      icon: "🔍",
+      action: () => { phase = "dd"; },
+    },
+    {
+      id: "governance-audit",
+      title: "Governance Audit",
+      description: "Scan existing processes for compliance gaps, missing authority, and unstructured decisions.",
+      status: "soon",
+      icon: "🛡️",
+    },
+    {
+      id: "policy-library",
+      title: "Policy Library",
+      description: "Browse and compose reusable governance patterns. Cedar policies, approval gates, constraints.",
+      status: "soon",
+      icon: "📚",
+    },
+  ];
+
+  function goToApps() {
+    phase = "apps";
+  }
+
+  // ─── Due Diligence phase ───
+
+  interface DdStep {
+    step: string;
+    detail: string;
+    active: boolean;
+  }
+
+  let ddCompanyName = $state("");
+  let ddReport = $state<any>(null);
+  let ddLoading = $state(false);
+  let ddError = $state("");
+  let ddSteps = $state<DdStep[]>([]);
+  let ddSpinnerVerb = $state(randomVerb());
+  let ddSpinnerInterval: ReturnType<typeof setInterval> | null = null;
+  let ddTimers: ReturnType<typeof setTimeout>[] = [];
+
+  const ddPipelineSteps = [
+    { step: "Initializing", detail: "Setting up research pipeline", delay: 0 },
+    { step: "Broad Search", detail: "Querying Brave + Tavily for coverage", delay: 2000 },
+    { step: "Filtering", detail: "Removing irrelevant and duplicate results", delay: 8000 },
+    { step: "Fact Extraction", detail: "LLM extracting tagged facts from sources", delay: 12000 },
+    { step: "Deep Dives", detail: "Following loose ends with targeted research", delay: 25000 },
+    { step: "Synthesis", detail: "Producing market, competitive, and tech analysis", delay: 45000 },
+  ];
+
+  async function runDd() {
+    if (!ddCompanyName.trim()) return;
+    ddLoading = true;
+    ddError = "";
+    ddSteps = [];
+    ddReport = null;
+    ddSpinnerVerb = randomVerb();
+    ddSpinnerInterval = setInterval(() => { ddSpinnerVerb = randomVerb(); }, 2000);
+
+    for (const [i, ps] of ddPipelineSteps.entries()) {
+      const timer = setTimeout(() => {
+        if (!ddLoading) return;
+        ddSteps = [
+          ...ddSteps.map((s) => ({ ...s, active: false })),
+          { step: ps.step, detail: ps.detail, active: true },
+        ];
+      }, ps.delay);
+      ddTimers.push(timer);
+    }
+
+    try {
+      ddReport = await invokeTauri("run_due_diligence", {
+        companyName: ddCompanyName.trim(),
+        productName: null,
+        focusAreas: [],
+      });
+    } catch (e) {
+      ddError = String(e);
+    } finally {
+      ddLoading = false;
+      ddTimers.forEach(clearTimeout);
+      ddTimers = [];
+      if (ddSpinnerInterval) { clearInterval(ddSpinnerInterval); ddSpinnerInterval = null; }
+    }
+  }
+
+  function ddNewSearch() {
+    ddReport = null;
+    ddSteps = [];
+    ddError = "";
+  }
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -587,6 +743,9 @@ Scenario: Parse should fail early
           >
             {currentSlide === slides.length - 1 ? "Start Demo" : "Next"} &rarr;
           </button>
+          <button class="btn-ghost text-sm" onclick={goToApps}>
+            Apps
+          </button>
         </div>
       </div>
     </div>
@@ -595,7 +754,7 @@ Scenario: Parse should fail early
 <!-- ═══════════════════════════════════════════════
      DEMO PHASE
      ═══════════════════════════════════════════════ -->
-{:else}
+{:else if phase === "demo"}
   <div class="min-h-screen bg-void">
     <!-- Top bar -->
     <header class="flex items-center justify-between border-b border-border px-8 py-4">
@@ -605,7 +764,10 @@ Scenario: Parse should fail early
         </button>
         <span class="font-mono text-xs tracking-widest text-muted uppercase">Spec Studio</span>
       </div>
-      <button class="btn-ghost" type="button" onclick={openExampleOverlay}>Browse Examples</button>
+      <div class="flex items-center gap-2">
+        <button class="btn-ghost" type="button" onclick={goToApps}>Apps</button>
+        <button class="btn-ghost" type="button" onclick={openExampleOverlay}>Browse Examples</button>
+      </div>
     </header>
 
     {#if exampleOverlayOpen}
@@ -796,7 +958,39 @@ Scenario: Parse should fail early
 
         {#if rightTab === "compiler"}
           <!-- ─── COMPILER TAB ─── -->
-          {#if error}
+          {#if busy}
+            <!-- DD-style progress -->
+            <div class="flex flex-col gap-4">
+              <div class="space-y-3">
+                {#each compileSteps as step}
+                  <div class="flex items-start gap-3 fade-in">
+                    <div class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+                      class:bg-lime-glow={step.active} class:text-lime={step.active}
+                      style={!step.active ? "background: rgba(52,211,153,0.15); color: var(--color-ok)" : ""}>
+                      {#if step.active}
+                        <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-lime"></span>
+                      {:else}
+                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      {/if}
+                    </div>
+                    <div>
+                      <div class="text-sm font-medium" class:text-bright={step.active} class:text-subtle={!step.active}>{step.step}</div>
+                      <div class="text-xs text-muted">{step.detail}</div>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+
+              <div class="h-1 overflow-hidden rounded-full bg-border">
+                <div class="h-full rounded-full bg-lime transition-all duration-1000"
+                  style="width: {Math.max(5, (compileSteps.filter(s => !s.active).length / compilePipelineSteps.length) * 100)}%"></div>
+              </div>
+
+              <p class="text-center text-sm text-muted">{compileSpinnerVerb}...</p>
+            </div>
+          {:else if error}
             <div class="callout callout-error">
               <strong>Error</strong>
               <p>{error.length > 200 ? error.slice(0, 200) + '...' : error}</p>
@@ -985,6 +1179,237 @@ Scenario: Parse should fail early
           {/if}
         {/if}
       </aside>
+    </div>
+  </div>
+
+<!-- ═══════════════════════════════════════════════
+     APPS PHASE
+     ═══════════════════════════════════════════════ -->
+{:else if phase === "apps"}
+  <div class="min-h-screen bg-void">
+    <header class="flex items-center justify-between border-b border-border px-8 py-4">
+      <div class="flex items-center gap-4">
+        <button class="btn-ghost text-sm" onclick={goToSlides}>&larr; Slides</button>
+        <span class="font-mono text-xs tracking-widest text-muted uppercase">Converge Platform</span>
+      </div>
+      <button class="btn-ghost text-sm" onclick={goToDemo}>Spec Studio</button>
+    </header>
+
+    <div class="relative">
+      <div class="absolute inset-0 h-64">
+        <img src="/images/slides/earth.jpg" alt="" class="h-full w-full object-cover opacity-20" />
+        <div class="absolute inset-0 bg-gradient-to-b from-void/80 via-void/90 to-void"></div>
+      </div>
+
+      <div class="relative z-10 mx-auto max-w-4xl px-8 py-10">
+        <p class="slide-eyebrow mb-2">Converge Platform</p>
+        <h1 class="slide-headline mb-1 text-4xl!">Applications</h1>
+        <p class="slide-body mb-8 text-sm!">Tools for governed decisions, research, and compliance.</p>
+
+        <div class="grid grid-cols-2 gap-3">
+          {#each appCards as app}
+            {#if app.status === "active"}
+              <button
+                class="cursor-pointer rounded-xl border border-lime/30 bg-raised p-4 text-left transition-all hover:border-lime/50 hover:bg-surface"
+                onclick={() => app.action?.()}
+              >
+                <div class="mb-2 flex items-center justify-between">
+                  <span class="text-lg">{app.icon}</span>
+                  <span class="pill pill-ok">Active</span>
+                </div>
+                <h3 class="mb-1 font-display text-sm font-semibold text-bright">{app.title}</h3>
+                <p class="text-xs leading-relaxed text-subtle">{app.description}</p>
+              </button>
+            {:else}
+              <div class="rounded-xl border border-border bg-raised p-4 opacity-50">
+                <div class="mb-2 flex items-center justify-between">
+                  <span class="text-lg">{app.icon}</span>
+                  <span class="pill pill-info">Soon</span>
+                </div>
+                <h3 class="mb-1 font-display text-sm font-semibold text-bright">{app.title}</h3>
+                <p class="text-xs leading-relaxed text-subtle">{app.description}</p>
+              </div>
+            {/if}
+          {/each}
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- ═══════════════════════════════════════════════
+     DUE DILIGENCE PHASE
+     ═══════════════════════════════════════════════ -->
+{:else if phase === "dd"}
+  <div class="min-h-screen bg-void">
+    <header class="flex items-center justify-between border-b border-border px-8 py-4">
+      <div class="flex items-center gap-4">
+        <button class="btn-ghost text-sm" onclick={goToApps}>&larr; Apps</button>
+        <span class="font-mono text-xs tracking-widest text-muted uppercase">Due Diligence</span>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-3xl px-8 py-8">
+      {#if ddReport}
+        <!-- Report -->
+        <div class="mb-8 flex items-center justify-between">
+          <div>
+            <p class="slide-eyebrow mb-1">Due Diligence Report</p>
+            <h1 class="slide-headline text-3xl!">{ddReport.company_name}</h1>
+          </div>
+          <button class="btn-ghost" onclick={ddNewSearch}>New Search</button>
+        </div>
+
+        {#if ddReport.pass1?.summary}
+          <div class="callout callout-lime mb-6">
+            <p class="whitespace-pre-wrap text-sm text-text">{ddReport.pass1.summary}</p>
+          </div>
+        {/if}
+
+        {#if ddReport.pass1?.key_facts?.length}
+          <section class="mb-6">
+            <span class="card-label mb-3 block">Key Facts ({ddReport.pass1.key_facts.length})</span>
+            <div class="grid grid-cols-2 gap-2">
+              {#each ddReport.pass1.key_facts as fact}
+                <div class="rounded-xl border border-border bg-raised p-3">
+                  <div class="mb-1 flex items-center gap-2">
+                    <span class="pill {fact.confidence >= 0.9 ? 'pill-ok' : fact.confidence >= 0.7 ? 'pill-warn' : 'pill-err'}">{fact.category}</span>
+                    <span class="text-xs text-muted">{Math.round(fact.confidence * 100)}%</span>
+                  </div>
+                  <p class="text-xs text-text">{fact.claim}</p>
+                </div>
+              {/each}
+            </div>
+          </section>
+        {/if}
+
+        {#if ddReport.final_report}
+          <div class="mb-6 grid grid-cols-3 gap-3">
+            {#if ddReport.final_report.market_analysis}
+              <div class="rounded-xl border border-border bg-raised p-4">
+                <span class="card-label mb-2 block">Market</span>
+                <p class="whitespace-pre-wrap text-xs text-subtle">{ddReport.final_report.market_analysis}</p>
+              </div>
+            {/if}
+            {#if ddReport.final_report.competitive_landscape}
+              <div class="rounded-xl border border-border bg-raised p-4">
+                <span class="card-label mb-2 block">Competition</span>
+                <p class="whitespace-pre-wrap text-xs text-subtle">{ddReport.final_report.competitive_landscape}</p>
+              </div>
+            {/if}
+            {#if ddReport.final_report.technology_assessment}
+              <div class="rounded-xl border border-border bg-raised p-4">
+                <span class="card-label mb-2 block">Technology</span>
+                <p class="whitespace-pre-wrap text-xs text-subtle">{ddReport.final_report.technology_assessment}</p>
+              </div>
+            {/if}
+          </div>
+
+          <div class="mb-6 grid grid-cols-2 gap-3">
+            {#if ddReport.final_report.risk_factors?.length}
+              <div class="rounded-xl border border-border bg-raised p-4">
+                <span class="card-label mb-2 block" style="color: var(--color-err)">Risks</span>
+                <ul class="space-y-1">
+                  {#each ddReport.final_report.risk_factors as risk}
+                    <li class="flex gap-2 text-xs text-text"><span class="text-err">&#x2022;</span>{risk}</li>
+                  {/each}
+                </ul>
+              </div>
+            {/if}
+            {#if ddReport.final_report.growth_opportunities?.length}
+              <div class="rounded-xl border border-border bg-raised p-4">
+                <span class="card-label mb-2 block" style="color: var(--color-ok)">Opportunities</span>
+                <ul class="space-y-1">
+                  {#each ddReport.final_report.growth_opportunities as opp}
+                    <li class="flex gap-2 text-xs text-text"><span class="text-ok">&#x2022;</span>{opp}</li>
+                  {/each}
+                </ul>
+              </div>
+            {/if}
+          </div>
+
+          {#if ddReport.final_report.recommendation}
+            <div class="callout callout-lime mb-6">
+              <span class="card-label mb-2 block">Recommendation</span>
+              <p class="text-sm text-text">{ddReport.final_report.recommendation}</p>
+            </div>
+          {/if}
+        {/if}
+
+      {:else if ddLoading}
+        <!-- Progress -->
+        <div class="py-8">
+          <p class="slide-eyebrow mb-3">Researching</p>
+          <h2 class="slide-headline mb-8 text-3xl!">{ddCompanyName}</h2>
+
+          <div class="space-y-3 mb-6">
+            {#each ddSteps as step}
+              <div class="flex items-start gap-3 fade-in">
+                <div class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+                  class:bg-lime-glow={step.active} class:text-lime={step.active}
+                  style={!step.active ? "background: rgba(52,211,153,0.15); color: var(--color-ok)" : ""}>
+                  {#if step.active}
+                    <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-lime"></span>
+                  {:else}
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  {/if}
+                </div>
+                <div>
+                  <div class="text-sm font-medium" class:text-bright={step.active} class:text-subtle={!step.active}>{step.step}</div>
+                  <div class="text-xs text-muted">{step.detail}</div>
+                </div>
+              </div>
+            {/each}
+          </div>
+
+          <div class="h-1 overflow-hidden rounded-full bg-border">
+            <div class="h-full rounded-full bg-lime transition-all duration-1000"
+              style="width: {Math.max(5, (ddSteps.filter(s => !s.active).length / ddPipelineSteps.length) * 100)}%"></div>
+          </div>
+
+          <p class="mt-4 text-center text-sm text-muted">{ddSpinnerVerb}...</p>
+
+          {#if ddError}
+            <div class="callout callout-error mt-6">
+              <p class="text-sm text-err">{ddError}</p>
+            </div>
+          {/if}
+        </div>
+
+      {:else}
+        <!-- Input form -->
+        <div class="py-8">
+          <p class="slide-eyebrow mb-3">Research</p>
+          <h2 class="slide-headline mb-2 text-3xl!">Due Diligence</h2>
+          <p class="slide-body mb-8">
+            Run convergent research on a company. Searches the web, extracts and consolidates
+            facts, detects contradictions, and produces a structured analysis with recommendations.
+          </p>
+
+          <form class="space-y-4" onsubmit={(e) => { e.preventDefault(); runDd(); }}>
+            <div>
+              <label class="card-label mb-2 block" for="dd-company">Company Name</label>
+              <input
+                id="dd-company"
+                type="text"
+                bind:value={ddCompanyName}
+                placeholder="e.g. Stratsys"
+                class="w-full rounded-xl border border-border bg-deep px-4 py-3 text-text placeholder:text-muted focus:border-lime/50 focus:outline-none"
+                disabled={ddLoading}
+              />
+            </div>
+            <button type="submit" class="btn-lime w-full py-3" disabled={ddLoading || !ddCompanyName.trim()}>
+              Run Due Diligence
+            </button>
+            {#if ddError}
+              <div class="callout callout-error">
+                <p class="text-sm text-err">{ddError}</p>
+              </div>
+            {/if}
+          </form>
+        </div>
+      {/if}
     </div>
   </div>
 {/if}

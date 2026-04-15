@@ -307,10 +307,27 @@ checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 
 [[package]]
 name = "converge-core"
-version = "3.1.0"
+version = "3.2.1"
 dependencies = [
  "async-trait",
- "converge-pack",
+ "converge-pack 3.2.1",
+ "hex",
+ "serde",
+ "serde_json",
+ "strum",
+ "thiserror 2.0.18",
+ "tracing",
+ "typed-builder",
+]
+
+[[package]]
+name = "converge-core"
+version = "3.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c731ad01d250bace4d2c231d8c6fb3b51e0f015738e28b8b830149d65e236c43"
+dependencies = [
+ "async-trait",
+ "converge-pack 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex",
  "serde",
  "serde_json",
@@ -322,10 +339,10 @@ dependencies = [
 
 [[package]]
 name = "converge-domain"
-version = "3.1.0"
+version = "3.2.1"
 dependencies = [
  "async-trait",
- "converge-core",
+ "converge-core 3.2.1",
  "converge-policy",
  "converge-provider",
  "futures",
@@ -336,15 +353,25 @@ dependencies = [
 
 [[package]]
 name = "converge-kernel"
-version = "3.1.0"
+version = "3.2.1"
 dependencies = [
- "converge-core",
- "converge-pack",
+ "converge-core 3.2.1",
+ "converge-pack 3.2.1",
+]
+
+[[package]]
+name = "converge-kernel"
+version = "3.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95fa77e325afb74f9fa69b0bde29c51a1ef453be6af9b50da2de22196169407c"
+dependencies = [
+ "converge-core 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-pack 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "converge-mcp"
-version = "3.1.0"
+version = "3.2.1"
 dependencies = [
  "async-trait",
  "serde",
@@ -356,7 +383,19 @@ dependencies = [
 
 [[package]]
 name = "converge-pack"
-version = "3.1.0"
+version = "3.2.1"
+dependencies = [
+ "async-trait",
+ "serde",
+ "strum",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "converge-pack"
+version = "3.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6777736a697745a1d1fadab2e56db71593dfb4f5a91cd0960748faf6d3963ad"
 dependencies = [
  "async-trait",
  "serde",
@@ -366,13 +405,13 @@ dependencies = [
 
 [[package]]
 name = "converge-policy"
-version = "3.1.0"
+version = "3.2.1"
 dependencies = [
  "axum",
  "base64",
  "cedar-policy",
  "ciborium",
- "converge-core",
+ "converge-core 3.2.1",
  "ed25519-dalek",
  "serde",
  "serde_json",
@@ -384,12 +423,12 @@ dependencies = [
 
 [[package]]
 name = "converge-provider"
-version = "3.1.0"
+version = "3.2.1"
 dependencies = [
  "base64",
- "converge-core",
+ "converge-core 3.2.1",
  "converge-mcp",
- "converge-pack",
+ "converge-pack 3.2.1",
  "converge-provider-api",
  "regex-lite",
  "reqwest",
@@ -400,13 +439,14 @@ dependencies = [
  "sha2",
  "thiserror 2.0.18",
  "tokio",
+ "toml",
  "tracing",
  "urlencoding",
 ]
 
 [[package]]
 name = "converge-provider-api"
-version = "3.1.0"
+version = "3.2.1"
 dependencies = [
  "serde",
  "thiserror 2.0.18",
@@ -877,10 +917,10 @@ dependencies = [
  "async-trait",
  "axum",
  "chrono",
- "converge-core",
+ "converge-core 3.2.1",
  "converge-domain",
- "converge-kernel",
- "converge-pack",
+ "converge-kernel 3.2.1",
+ "converge-pack 3.2.1",
  "converge-policy",
  "converge-provider",
  "dotenv",
@@ -902,7 +942,7 @@ dependencies = [
 name = "governance-truths"
 version = "0.1.0"
 dependencies = [
- "converge-core",
+ "converge-core 3.2.1",
  "serde",
  "serde_json",
 ]
@@ -1560,7 +1600,9 @@ dependencies = [
 
 [[package]]
 name = "organism-adversarial"
-version = "0.1.0"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47ad27d5b983c31850e183fdd83ed6750688a819ba4e66b2afff59733c613a42"
 dependencies = [
  "organism-planning",
  "serde",
@@ -1571,7 +1613,9 @@ dependencies = [
 
 [[package]]
 name = "organism-domain"
-version = "0.1.0"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc29571b68b12fc07bd05db51611bd89337037824fed0bd59295fa44ba1cc8f4"
 dependencies = [
  "serde",
  "serde_json",
@@ -1579,7 +1623,9 @@ dependencies = [
 
 [[package]]
 name = "organism-intent"
-version = "0.1.0"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b557643ddfdf0d1db3d93fbd7ce9359d5699d616aef7284825325e98053053a3"
 dependencies = [
  "chrono",
  "serde",
@@ -1590,11 +1636,13 @@ dependencies = [
 
 [[package]]
 name = "organism-learning"
-version = "0.1.0"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da81ac2cc32b6c9f104ba5a0e9e2ebcb578f0286a8fda94e26e4278ab2b60684"
 dependencies = [
  "chrono",
- "converge-kernel",
- "converge-pack",
+ "converge-kernel 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-pack 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -1603,9 +1651,11 @@ dependencies = [
 
 [[package]]
 name = "organism-pack"
-version = "0.1.0"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b30e9e621d9a776301b8b0879e872a4732813b677ca6f09ba1cbc3defe674d5"
 dependencies = [
- "converge-pack",
+ "converge-pack 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "organism-adversarial",
  "organism-intent",
  "organism-learning",
@@ -1615,11 +1665,15 @@ dependencies = [
 
 [[package]]
 name = "organism-planning"
-version = "0.1.0"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f22162fca9b6fa58a381526180a1c7c000bf83c46bc834b9e5b2f9a0f00afde0"
 dependencies = [
  "anyhow",
  "async-trait",
- "converge-pack",
+ "chrono",
+ "converge-kernel 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-pack 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "organism-intent",
  "serde",
  "serde_json",
@@ -1629,7 +1683,9 @@ dependencies = [
 
 [[package]]
 name = "organism-runtime"
-version = "0.1.0"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ad2717db4bd2d98a5bf834df851fc5e0275a14ce1134c9cf759495e3e0960b3"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1648,7 +1704,9 @@ dependencies = [
 
 [[package]]
 name = "organism-simulation"
-version = "0.1.0"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebf17d2f2334a013cac9abcb633cb131458f447941a48169932baefd446f6c73"
 dependencies = [
  "organism-planning",
  "serde",
@@ -2188,6 +2246,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_spanned"
+version = "0.6.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf41e0cfaf7226dca15e8197172c295a782857fcb97fad1808a166870dee75a3"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_urlencoded"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2650,6 +2717,47 @@ dependencies = [
  "pin-project-lite",
  "tokio",
 ]
+
+[[package]]
+name = "toml"
+version = "0.8.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.6.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22cddaf88f4fbc13c51aebbf5f8eceb5c7c5a9da2ac40a13519eb5b0a0e8f11c"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.22.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41fe8c660ae4257887cf66394862d21dbca4a6ddd26f04a3560410406a2f819a"
+dependencies = [
+ "indexmap 2.13.0",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_write",
+ "winnow",
+]
+
+[[package]]
+name = "toml_write"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "tower"
@@ -3251,6 +3359,15 @@ name = "windows_x86_64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
+
+[[package]]
+name = "winnow"
+version = "0.7.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "wit-bindgen"
