@@ -3,84 +3,116 @@ tags: [integrations, kong]
 ---
 # Kong AI Gateway
 
-An optional remote integration layer for now. When used, outbound calls from the Rust core can go through Kong.
+Kong AI Gateway provides the **external governance layer** for all AI system access. When used with Converge, you get **two-layer AI governance**:
 
-For student-facing Rust examples, keep Kong below the same capability surface used elsewhere in Converge. Do not teach a separate primary programming API for Kong-routed calls if the rest of the repo teaches `ChatBackend`. The near-term value of Kong is shared routing, observability, and especially MCP tool bridging.
+- **Converge (internal):** Agents propose facts. Cedar policies decide who can propose what. The engine promotes only what passes. Every decision has full provenance.
+- **Kong (external):** Every LLM call is routed through Kong AI Gateway. Kong meters token usage, redacts PII, rate-limits per team, and provides a single credential surface.
+
+Together they answer the two questions an auditor asks:
+1. "How did you reach this decision?" → Converge: full convergence trail, criteria evaluation, Cedar policy gates
+2. "What external resources did you consult, at what cost, and did you leak any sensitive data?" → Kong: API audit log, token costs, PII redaction receipts
 
 ## What Kong Handles
 
-- **Rate limiting** per team
-- **PII detection** on prompts (redacts sensitive data)
-- **Token usage logging**
-- **Cost tracking** per request
-- **Latency monitoring**
-- **Centralized governance** for all external model and service access
-- [[Integrations/MCP Tools|MCP tool access]]
-- Proxied business APIs
+- **Rate limiting** — Per-team token budget enforcement
+- **PII detection** — Redacts sensitive data before it hits the model
+- **Token usage logging** — Every request logged with tokens consumed
+- **Cost tracking** — Per-request and cumulative cost visibility
+- **Latency monitoring** — Proxy and upstream latency per request
+- **Centralized governance** — Single credential surface for all providers
+- **Provider routing** — Dynamically route to OpenAI, Anthropic, Gemini, Mistral, etc. through one gateway
+- **MCP tool access** — Kong can front shared MCP servers
 
-## Setup
+## Konnect Setup
 
-If you use Kong, your team will receive a Kong AI Gateway URL, an API key, and access to the Kong dashboard to see your API usage.
+This hackathon uses **Kong Konnect** (cloud SaaS). You'll receive:
 
-Set in `.env`:
+- **KONG_AI_GATEWAY_URL** — Your Konnect runtime URL (e.g., `https://<org>.kongcloud.io`)
+- **KONG_API_KEY** — Your Konnect personal access token
+
+### Environment Configuration
 
 ```dotenv
-KONG_AI_GATEWAY_URL=https://<provided-at-hackathon>
-KONG_API_KEY=<your-team-key>
-
-# Optional route settings
+# Kong AI Gateway (primary LLM routing for this hackathon)
+KONG_AI_GATEWAY_URL=https://<your-konnect-url>
+KONG_API_KEY=<your-konnect-token>
 KONG_LLM_ROUTE=default
-KONG_LLM_UPSTREAM_PROVIDER=openai
-KONG_LLM_UPSTREAM_MODEL=gpt-4
-KONG_LLM_REASONING=true
+
+# Converge backend selection: use Kong by default
+CONVERGE_LLM_FORCE_PROVIDER=kong
+# Optional: override the upstream model Kong routes to
+# CONVERGE_LLM_MODEL=anthropic/claude-sonnet-4-20250514
 ```
 
-## Student-Facing Contract
+## Implementation
 
-Application code should stay on the canonical Converge capability boundary:
+The `KongChatBackend` in `converge-provider` implements `DynChatBackend`. It:
+
+1. Accepts `ChatRequest` (canonical Converge format)
+2. Sends OpenAI-format body to `{KONG_AI_GATEWAY_URL}/llm/v1/chat`
+3. Authenticates via `apikey` header (Konnect Key Auth)
+4. Kong translates to whatever upstream provider is configured
+5. Returns standard `ChatResponse` with `TokenUsage` from the response body
 
 ```rust
-use converge_core::traits::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
+// Selection is automatic when KONG_API_KEY + KONG_AI_GATEWAY_URL are set
+use converge_provider::select_chat_backend;
+let selected = select_chat_backend(&config)?;
+// selected.backend is now KongChatBackend
 ```
 
-The intended shape is:
+## Kong Plugins Enabled
 
-1. The application edge constructs or injects an `Arc<dyn DynChatBackend>`
-2. Suggestors and app services build `ChatRequest`
-3. The backend implementation handles routing, credentials, and remote transport
+This hackathon enables these Kong Enterprise plugins:
 
-That keeps the programming surface stable even if the transport path changes.
+- **AI Proxy** — Routes requests to upstream providers (OpenAI, Anthropic, etc.)
+- **Key Auth** — `apikey` header authentication
+- **AI Rate Limiting** — Per-team token budgets (optional, enable in Konnect dashboard)
+- **AI PII Sanitizer** — Redacts PII before prompts reach models (optional)
+
+## Desktop App Pattern
+
+1. Tauri config loads `.env`
+2. `CONVERGE_LLM_FORCE_PROVIDER=kong` is set by default
+3. Backend selection uses Kong when `KONG_API_KEY` is available
+4. All LLM calls route through Kong automatically
+5. Token usage flows into `ChatResponse.usage` for ExperienceStore capture
+6. Falls back to offline `StaticChatBackend` when Kong is unreachable
 
 ## What Not To Teach As The Default
 
-Do not introduce these as the primary student-facing Rust API in new docs or examples:
+These are Kong-specific internal types — do not expose as primary student-facing APIs:
 
 - `KongGateway`
 - `KongRoute`
 - `LlmProvider`
 - `LlmRequest`
 
-Those names describe one adapter strategy, not the canonical capability contract we want students to internalize.
+Keep application code on `ChatBackend` / `ChatRequest`. Kong is the transport, not the contract.
 
-## Desktop App Pattern
+## Demo Story
 
-1. Tauri config loads `.env`
-2. Checks for Kong credentials if Kong routing is enabled
-3. Builds or injects the chat backend at the application edge
-4. Passes `ChatRequest` / `ChatResponse` across the app boundary
-5. Falls back to local heuristics or offline tooling when live remote access is unavailable
+See [[Integrations/Kong Demo Story]] for the end-to-end demonstration walkthrough.
 
-## Intended Runtime Shape
+## Provider Availability
 
-1. Svelte and Tauri run as the local shell
-2. The shell calls the Rust app layer locally
-3. Rust suggestors run inside the Converge runtime
-4. LLM-backed suggestors may call models through Kong or direct provider adapters for now
-5. Service-backed suggestors should prefer MCP or service adapters, with Kong especially useful when it fronts shared MCP tools
-6. Missing enterprise systems are mocked locally behind the same capability contracts
+When the `kong` feature is enabled in `converge-provider`:
 
-Converge governs decision-making inside the app. Kong is one optional remote routing and tool layer outside the app.
+| Provider | Secret Key | Auto-Discovery |
+|---|---|---|
+| `kong` | `KONG_API_KEY` + `KONG_AI_GATEWAY_URL` env var | Yes — if both are set, Kong participates in auto-selection |
 
-Current status: this repo now uses the canonical `ChatBackend` path, with backend selection at the Tauri edge and offline fallback through `StaticChatBackend`. Future direction: add a `KongProvider` or more general `RouterProvider` under that same capability surface.
+To force Kong: `CONVERGE_LLM_FORCE_PROVIDER=kong`
 
-See also: [[Integrations/MCP Tools]], [[Integrations/External Services]], [[Domain/Agents]]
+To bypass Kong: Set `CONVERGE_LLM_FORCE_PROVIDER=anthropic` (or another provider)
+
+## Files Changed
+
+- `converge/crates/provider/src/llm/kong.rs` — KongChatBackend implementation
+- `converge/crates/provider/src/llm/mod.rs` — Module declaration
+- `converge/crates/provider/src/lib.rs` — Re-export
+- `converge/crates/provider/src/llm/selection.rs` — Backend selection wiring
+- `hackathon/Cargo.toml` — `kong` feature enabled
+- `hackathon/apps/desktop/src-tauri/Cargo.toml` — Path dep + `kong` feature
+
+See also: [[Integrations/MCP Tools]], [[Integrations/External Services]], [[Domain/Agents]], [[Integrations/Kong Demo Story]]

@@ -63,3 +63,45 @@
 - [ ] Truth addition process documented with working example
 - [ ] "Build your first truth" tutorial in kb/Development/
 - [ ] Common pitfalls and troubleshooting guide
+
+---
+
+## Next: Kong AI Gateway Integration
+
+**Epic:** E7 — Two-layer AI governance with Kong as external governance layer
+
+**Goal:** Position Kong as the external governance layer for all AI system access. Participants see the two-layer story: Converge governs decisions, Kong governs external access.
+
+### K1: Kong Wiring (COMPLETE)
+
+- [x] `KongBackend` implementing `DynChatBackend` in `converge-provider`
+- [x] `select_chat_backend()` recognizes `"kong"` as a provider
+- [x] `.env` wiring: `KONG_AI_GATEWAY_URL` and `KONG_API_KEY` consumed
+- [x] Desktop app and server route through Kong when configured
+- [x] Falls back to direct providers or offline when Kong unreachable
+
+### K2: Kong Governance Plugins
+
+- [ ] AI Rate Limiting — per-team token budgets (configured in Konnect)
+- [ ] AI PII Sanitizer — redact sensitive data before prompts reach models
+- [ ] AI Prompt Guard — block prompts containing prohibited patterns
+- [ ] AI Audit Log — every request logged with tokens, cost, latency
+
+### K3: Governance Data Pipeline
+
+- [ ] Kong audit/metrics accessible from Rust (API or log ingestion)
+- [ ] Cost-per-evaluation flows into `DecisionRecord` metadata
+- [ ] Token usage per agent visible in truth execution results
+- [ ] Desktop dashboard panel: Kong governance data alongside Converge
+- [ ] "What it cost" summary in truth execution view
+
+### K4: Demo Story
+
+- [ ] All agents run with real LLM calls through Kong
+- [ ] Kong dashboard showing rate limits, PII redaction, cost tracking
+- [ ] Desktop app showing two-layer governance (Converge + Kong)
+- [ ] "Change a policy, see a different outcome" demo
+- [ ] "Kong blocks an agent" demo (honest stopping)
+- [ ] Presentation-ready walkthrough script
+
+**Dependencies:** K1 → K2 → K3 → K4 (sequential)

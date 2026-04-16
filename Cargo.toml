@@ -7,16 +7,14 @@ edition = "2024"
 rust-version = "1.94"
 
 [workspace.dependencies]
-# Converge — path deps until converge-domain, converge-policy, converge-provider
-# are published at 3.x. All converge crates must come from the same source
-# to avoid trait incompatibility from duplicate converge-core versions.
-converge-core = { path = "../converge/crates/core" }
-converge-pack = { path = "../converge/crates/pack" }
-converge-kernel = { path = "../converge/crates/kernel" }
-converge-provider-api = { path = "../converge/crates/provider-api" }
-converge-domain = { path = "../converge/crates/domain" }
-converge-policy = { path = "../converge/crates/policy" }
-converge-provider = { path = "../converge/crates/provider", default-features = false, features = ["anthropic", "gemini", "openai", "mistral", "brave", "tavily"] }
+# Converge — all crates from crates.io at the same version
+converge-core = "3.2.1"
+converge-pack = "3.2.1"
+converge-kernel = "3.2.1"
+converge-provider-api = "3.2.1"
+converge-domain = "3.2.1"
+converge-policy = "3.2.1"
+converge-provider = { version = "3.2.1", default-features = false, features = ["anthropic", "gemini", "openai", "mistral", "brave", "tavily", "kong"] }
 # Organism
 organism-pack = "1.0.0"
 organism-runtime = "1.0.0"

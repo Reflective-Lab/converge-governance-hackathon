@@ -95,17 +95,39 @@ just clean                    # nuke build artifacts
 /help                         # show all skills
 ```
 
+## Prerequisites
+
+Install these before cloning:
+
+| Tool | Version | Install |
+|---|---|---|
+| **Rust** | 1.94+ | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| **Bun** | latest | `curl -fsSL https://bun.sh/install \| bash` |
+| **just** | latest | `cargo install just` (or `brew install just` on macOS) |
+
+**Platform dependencies for Tauri 2:**
+
+- **macOS** — Xcode Command Line Tools: `xcode-select --install`
+- **Linux** — `sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev`
+- **Windows** — [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (usually pre-installed on Windows 10/11)
+
 ## Quick Start
 
 ```bash
-# Use GitHub's "Use this template" button to create your team's repo
+# 1. Clone your team's repo
 git clone <your-team-repo>
 cd converge-governance-hackathon
 
-just hit-the-ground-running  # build, test, lint — under 2 minutes
+# 2. Build, test, and verify everything works
+just hit-the-ground-running
+
+# 3. Launch the desktop app
+just desktop
 ```
 
-### Run the Server
+That's it. Step 2 compiles the Rust workspace and runs tests. Step 3 installs frontend deps and launches the Tauri dev window.
+
+### Run the Server (alternative)
 
 ```bash
 just server  # localhost:8080
@@ -118,11 +140,10 @@ curl -X POST http://localhost:8080/v1/truths/evaluate-vendor/execute \
   -d '{"inputs": {"vendors": "Acme AI, Beta ML, Gamma LLM"}}'
 ```
 
-### Run the Desktop
+### Run the Desktop (standalone)
 
 ```bash
-just install-desktop  # install frontend deps (bun)
-just desktop          # launch Tauri dev mode
+just desktop          # installs deps + launches Tauri dev mode
 ```
 
 ## What Teams Build

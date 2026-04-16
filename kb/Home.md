@@ -25,6 +25,8 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 
 ## Integrations
 - [[Integrations/Kong Gateway]] — LLM, MCP, and API access through Kong
+- [[Integrations/Why Kong]] — How Kong maps to every challenge requirement
+- [[Integrations/Kong Demo Story]] — End-to-end two-layer governance walkthrough
 - [[Integrations/MCP Tools]] — Model Context Protocol for business services
 - [[Integrations/External Services]] — mocking pattern for unavailable backends
 

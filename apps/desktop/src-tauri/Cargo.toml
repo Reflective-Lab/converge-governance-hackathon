@@ -14,7 +14,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 converge-core = "3.2.1"
-converge-provider = { version = "3.2.1", default-features = false, features = ["anthropic", "gemini", "openai", "openrouter", "mistral"] }
+converge-provider = { version = "3.2.1", default-features = false, features = ["anthropic", "gemini", "openai", "openrouter", "mistral", "kong"] }
 axiom-truth = "0.4.1"
 dotenv = "0.15"
 serde = { version = "1", features = ["derive"] }
