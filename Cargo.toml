@@ -7,18 +7,18 @@ edition = "2024"
 rust-version = "1.94"
 
 [workspace.dependencies]
-# Converge — all crates from crates.io at the same version
-converge-core = "3.2.1"
-converge-pack = "3.2.1"
-converge-kernel = "3.2.1"
-converge-provider-api = "3.2.1"
-converge-domain = "3.2.1"
-converge-policy = "3.2.1"
-converge-provider = { version = "3.2.1", default-features = false, features = ["anthropic", "gemini", "openai", "mistral", "brave", "tavily", "kong"] }
-# Organism
-organism-pack = "1.0.0"
-organism-runtime = "1.0.0"
-organism-planning = "1.0.0"
+# Converge — from GitHub for faster iteration
+converge-core = { git = "https://github.com/Reflective-Lab/converge.git" }
+converge-pack = { git = "https://github.com/Reflective-Lab/converge.git" }
+converge-kernel = { git = "https://github.com/Reflective-Lab/converge.git" }
+converge-provider-api = { git = "https://github.com/Reflective-Lab/converge.git" }
+converge-domain = { git = "https://github.com/Reflective-Lab/converge.git" }
+converge-policy = { git = "https://github.com/Reflective-Lab/converge.git" }
+converge-provider = { git = "https://github.com/Reflective-Lab/converge.git", default-features = false, features = ["anthropic", "gemini", "openai", "mistral", "brave", "tavily", "kong"] }
+# Organism — from GitHub for faster iteration
+organism-pack = { git = "https://github.com/Reflective-Lab/organism.git" }
+organism-runtime = { git = "https://github.com/Reflective-Lab/organism.git" }
+organism-planning = { git = "https://github.com/Reflective-Lab/organism.git" }
 
 # Axiom
 axiom-truth = "0.4.1"

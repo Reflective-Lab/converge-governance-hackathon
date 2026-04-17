@@ -10,6 +10,7 @@ Read and follow `AGENTS.md` — it is the canonical project documentation.
 
 ## Claude-Specific Notes
 
+- **Available skills:** `/experiment` — hypothesis-driven development with evidence logging.
 - Prefer Edit over Write for existing files. Prefer Grep/Glob over Bash for search.
 - Knowledge belongs in `kb/`.
 - Run `just lint` before considering work done.
