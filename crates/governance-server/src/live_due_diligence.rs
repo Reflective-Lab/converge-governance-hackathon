@@ -1,16 +1,22 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::Instant;
 
 use anyhow::{Context as AnyhowContext, anyhow, bail};
-use converge_core::model_selection::SelectionCriteria;
-use converge_core::traits::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
 use converge_provider::{
     BraveSearchProvider, ChatBackendSelectionConfig, SearchDepth, TavilySearchProvider,
-    WebSearchBackend, WebSearchRequest, select_chat_backend,
+    WebSearchBackend, WebSearchRequest, select_healthy_chat_backend,
 };
+use converge_provider_api::{
+    ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat, SelectionCriteria,
+};
+use governance_telemetry::{
+    InMemoryLlmCallCollector, LlmCallSink, LlmCallTelemetry, LlmUsageSummary,
+};
+use serde_json::Value;
 use organism_pack::{IntentPacket, Plan, PlanContribution, PlanStep, Reasoner, ReasoningSystem};
 use organism_planning::huddle::Huddle;
 use serde::{Deserialize, Serialize};
@@ -127,6 +133,7 @@ pub struct MultiPassReport {
     pub focus_areas: Vec<String>,
     pub llm_provider: String,
     pub llm_model: String,
+    pub llm_calls: Vec<LlmCallTelemetry>,
     pub huddle_plans: Vec<HuddlePlanView>,
     pub pass1_hits: Vec<SearchHit>,
     pub pass1: Pass1Consolidation,
@@ -174,6 +181,7 @@ struct HuddleReasoner {
     request: DueDiligenceRequest,
     guidance: &'static str,
     llm: SelectedLlm,
+    llm_call_collector: InMemoryLlmCallCollector,
 }
 
 #[async_trait::async_trait]
@@ -228,6 +236,8 @@ Rules:
             "You are a precise due-diligence planning reasoner. Respond with JSON only.",
             &prompt,
             700,
+            &format!("huddle::{}", self.name),
+            &self.llm_call_log,
         )
         .await
         .with_context(|| format!("huddle reasoner {} failed", self.name))?;
@@ -245,7 +255,7 @@ Rules:
         Ok(plan)
     }
 
-    fn contribute(&self, _context: &serde_json::Value) -> PlanContribution {
+    fn contribute(&self, _context: &Value) -> PlanContribution {
         PlanContribution {
             system: self.system_type,
             suggestions: vec![self.guidance.to_string()],
@@ -284,13 +294,15 @@ pub async fn run_live_due_diligence(config: CliConfig) -> anyhow::Result<MultiPa
     let llm = select_llm(
         config.provider_override.as_deref(),
         config.model_override.as_deref(),
-    )?;
+    )
+    .await?;
+    let llm_call_log: Arc<Mutex<Vec<LlmCallTelemetry>>> = Arc::new(Mutex::new(Vec::new()));
 
-    let huddle_plans = plan_with_huddle(&request, &llm).await?;
+    let huddle_plans = plan_with_huddle(&request, &llm, Arc::clone(&llm_call_log)).await?;
     let correlation_id = uuid::Uuid::new_v4().to_string();
 
     let pass1_hits = run_pass1_searches(&request, &huddle_plans).await?;
-    let pass1 = consolidate_pass1(&llm, &request, &pass1_hits).await?;
+    let pass1 = consolidate_pass1(&llm, &request, &pass1_hits, &llm_call_log).await?;
 
     let loose_ends_to_chase = pass1
         .loose_ends
@@ -308,7 +320,8 @@ pub async fn run_live_due_diligence(config: CliConfig) -> anyhow::Result<MultiPa
     let mut deep_dives = Vec::new();
     for question in loose_ends_to_chase {
         let hits = run_deep_dive_searches(&request, &question).await?;
-        let synthesis = synthesize_deep_dive(&llm, &request, &question, &hits).await?;
+        let synthesis =
+            synthesize_deep_dive(&llm, &request, &question, &hits, &llm_call_log).await?;
         deep_dives.push(DeepDiveResult {
             question,
             hits,
@@ -316,7 +329,8 @@ pub async fn run_live_due_diligence(config: CliConfig) -> anyhow::Result<MultiPa
         });
     }
 
-    let final_report = final_consolidation(&llm, &request, &pass1, &deep_dives).await?;
+    let final_report = final_consolidation(&llm, &request, &pass1, &deep_dives, &llm_call_log).await?;
+    let llm_calls = llm_call_log.lock().map(|guard| guard.clone()).unwrap_or_default();
 
     Ok(MultiPassReport {
         correlation_id,
@@ -325,6 +339,7 @@ pub async fn run_live_due_diligence(config: CliConfig) -> anyhow::Result<MultiPa
         focus_areas: request.focus_areas,
         llm_provider: llm.provider,
         llm_model: llm.model,
+        llm_calls,
         huddle_plans,
         pass1_hits,
         pass1,
@@ -370,6 +385,7 @@ async fn run_deep_dive_searches(
 async fn plan_with_huddle(
     request: &DueDiligenceRequest,
     llm: &SelectedLlm,
+    llm_call_log: Arc<Mutex<Vec<LlmCallTelemetry>>>,
 ) -> anyhow::Result<Vec<HuddlePlanView>> {
     let subject = subject_label(request);
     let intent = IntentPacket::new(
@@ -384,7 +400,7 @@ async fn plan_with_huddle(
     }))
     .with_authority(vec!["research".to_string()]);
 
-    let reasoners = build_huddle_reasoners(request, llm);
+    let reasoners = build_huddle_reasoners(request, llm, llm_call_log);
     let mut huddle = Huddle::new();
     for reasoner in &reasoners {
         huddle = huddle.add(Box::new(reasoner.clone()));
@@ -436,7 +452,11 @@ async fn plan_with_huddle(
     Ok(views)
 }
 
-fn build_huddle_reasoners(request: &DueDiligenceRequest, llm: &SelectedLlm) -> Vec<HuddleReasoner> {
+fn build_huddle_reasoners(
+    request: &DueDiligenceRequest,
+    llm: &SelectedLlm,
+    llm_call_log: Arc<Mutex<Vec<LlmCallTelemetry>>>,
+) -> Vec<HuddleReasoner> {
     vec![
         HuddleReasoner {
             name: "domain-model".into(),
@@ -444,6 +464,7 @@ fn build_huddle_reasoners(request: &DueDiligenceRequest, llm: &SelectedLlm) -> V
             request: request.clone(),
             guidance: "Focus on products, customer segments, positioning, and what the company appears to sell.",
             llm: llm.clone(),
+            llm_call_log: Arc::clone(&llm_call_log),
         },
         HuddleReasoner {
             name: "causal-analysis".into(),
@@ -451,6 +472,7 @@ fn build_huddle_reasoners(request: &DueDiligenceRequest, llm: &SelectedLlm) -> V
             request: request.clone(),
             guidance: "Focus on competitors, market trends, recent strategic moves, and causal market drivers.",
             llm: llm.clone(),
+            llm_call_log: Arc::clone(&llm_call_log),
         },
         HuddleReasoner {
             name: "constraint-solver".into(),
@@ -458,6 +480,7 @@ fn build_huddle_reasoners(request: &DueDiligenceRequest, llm: &SelectedLlm) -> V
             request: request.clone(),
             guidance: "Focus on technical architecture, compliance, security posture, and deployment constraints.",
             llm: llm.clone(),
+            llm_call_log: Arc::clone(&llm_call_log),
         },
         HuddleReasoner {
             name: "cost-estimation".into(),
@@ -465,6 +488,7 @@ fn build_huddle_reasoners(request: &DueDiligenceRequest, llm: &SelectedLlm) -> V
             request: request.clone(),
             guidance: "Focus on ownership, investors, pricing, revenue, efficiency, and commercial health.",
             llm: llm.clone(),
+            llm_call_log: Arc::clone(&llm_call_log),
         },
     ]
 }
@@ -549,6 +573,7 @@ async fn consolidate_pass1(
     llm: &SelectedLlm,
     request: &DueDiligenceRequest,
     hits: &[SearchHit],
+    llm_call_log: &Arc<Mutex<Vec<LlmCallTelemetry>>>,
 ) -> anyhow::Result<Pass1Consolidation> {
     let subject = subject_label(request);
     let prompt = format!(
@@ -602,6 +627,8 @@ Rules:
         "You are a rigorous due diligence analyst. Respond with JSON only.",
         &prompt,
         3200,
+        "pass1-consolidation",
+        llm_call_log,
     )
     .await
 }
@@ -611,6 +638,7 @@ async fn synthesize_deep_dive(
     request: &DueDiligenceRequest,
     question: &str,
     hits: &[SearchHit],
+    llm_call_log: &Arc<Mutex<Vec<LlmCallTelemetry>>>,
 ) -> anyhow::Result<String> {
     let prompt = format!(
         r#"You are a software due diligence analyst investigating {}.
@@ -632,6 +660,8 @@ If the question cannot be fully answered, state explicitly what remains unknown.
         "You are a concise due diligence analyst. No preamble.",
         &prompt,
         1200,
+        &format!("deep-dive:{question}"),
+        llm_call_log,
     )
     .await
 }
@@ -641,6 +671,7 @@ async fn final_consolidation(
     request: &DueDiligenceRequest,
     pass1: &Pass1Consolidation,
     deep_dives: &[DeepDiveResult],
+    llm_call_log: &Arc<Mutex<Vec<LlmCallTelemetry>>>,
 ) -> anyhow::Result<FinalReport> {
     let facts_text = pass1
         .key_facts
@@ -705,11 +736,13 @@ Keep it specific. Do not output markdown fences."#,
         "You are a careful due diligence analyst. Respond with JSON only.",
         &prompt,
         1800,
+        "final-consolidation",
+        llm_call_log,
     )
     .await
 }
 
-fn select_llm(
+async fn select_llm(
     provider_override: Option<&str>,
     model_override: Option<&str>,
 ) -> anyhow::Result<SelectedLlm> {
@@ -718,7 +751,8 @@ fn select_llm(
     if let Some(provider) = provider_override {
         config = config.with_provider_override(provider.to_string());
     }
-    let selected = select_chat_backend(&config)
+    let selected = select_healthy_chat_backend(&config)
+        .await
         .map_err(|error| anyhow!("failed to select chat backend: {error}"))?;
     Ok(SelectedLlm {
         provider: selected.provider().to_string(),
@@ -733,7 +767,10 @@ async fn call_llm_text(
     system: &str,
     prompt: &str,
     max_tokens: u32,
+    context: &str,
+    llm_call_log: &Arc<Mutex<Vec<LlmCallTelemetry>>>,
 ) -> anyhow::Result<String> {
+    let started_at = Instant::now();
     let response = llm
         .backend
         .chat(ChatRequest {
@@ -754,6 +791,19 @@ async fn call_llm_text(
         .await
         .map_err(|error| anyhow!("chat request failed: {error}"))?;
 
+    push_llm_call_telemetry(
+        llm,
+        context,
+        started_at.elapsed(),
+        response.usage.as_ref().map(|usage| LlmUsageSummary {
+            prompt_tokens: Some(u64::from(usage.prompt_tokens)),
+            completion_tokens: Some(u64::from(usage.completion_tokens)),
+            total_tokens: Some(u64::from(usage.total_tokens)),
+        }),
+        response.finish_reason.as_ref().map(|reason| format!("{reason:?}")),
+        llm_call_log,
+    );
+
     Ok(response.content.trim().to_string())
 }
 
@@ -762,7 +812,10 @@ async fn call_llm_json<T: for<'de> Deserialize<'de>>(
     system: &str,
     prompt: &str,
     max_tokens: u32,
+    context: &str,
+    llm_call_log: &Arc<Mutex<Vec<LlmCallTelemetry>>>,
 ) -> anyhow::Result<T> {
+    let started_at = Instant::now();
     let response = llm
         .backend
         .chat(ChatRequest {
@@ -783,20 +836,42 @@ async fn call_llm_json<T: for<'de> Deserialize<'de>>(
         .await
         .map_err(|error| anyhow!("json chat request failed: {error}"))?;
 
+    push_llm_call_telemetry(
+        llm,
+        context,
+        started_at.elapsed(),
+        response.usage.as_ref().map(|usage| LlmUsageSummary {
+            prompt_tokens: Some(u64::from(usage.prompt_tokens)),
+            completion_tokens: Some(u64::from(usage.completion_tokens)),
+            total_tokens: Some(u64::from(usage.total_tokens)),
+        }),
+        response.finish_reason.as_ref().map(|reason| format!("{reason:?}")),
+        llm_call_log,
+    );
+
     let raw = strip_markdown_fences(&response.content);
-    parse_json_response(llm, &raw, max_tokens).await
+    parse_json_response(llm, &raw, max_tokens, context, llm_call_log).await
 }
 
 async fn parse_json_response<T: for<'de> Deserialize<'de>>(
     llm: &SelectedLlm,
     raw: &str,
     max_tokens: u32,
+    context: &str,
+    llm_call_log: &Arc<Mutex<Vec<LlmCallTelemetry>>>,
 ) -> anyhow::Result<T> {
     let repaired = repair_truncated_json(&strip_trailing_commas(raw));
     match serde_json::from_str::<T>(&repaired) {
         Ok(parsed) => Ok(parsed),
         Err(parse_error) => {
-            let normalized = repair_json_with_llm(llm, raw, max_tokens).await?;
+            let normalized = repair_json_with_llm(
+                llm,
+                raw,
+                max_tokens,
+                &format!("{context} (repair-json)"),
+                llm_call_log,
+            )
+            .await?;
             let normalized = repair_truncated_json(&strip_trailing_commas(&normalized));
             serde_json::from_str(&normalized).map_err(|repair_error| {
                 anyhow!(
@@ -812,6 +887,8 @@ async fn repair_json_with_llm(
     llm: &SelectedLlm,
     raw: &str,
     max_tokens: u32,
+    context: &str,
+    llm_call_log: &Arc<Mutex<Vec<LlmCallTelemetry>>>,
 ) -> anyhow::Result<String> {
     let prompt = format!(
         r#"Repair the following malformed JSON so that it becomes valid JSON.
@@ -831,8 +908,33 @@ Malformed JSON:
         "You repair malformed JSON. Return JSON only.",
         &prompt,
         max_tokens.min(2000),
+        context,
+        llm_call_log,
     )
     .await
+}
+
+fn push_llm_call_telemetry(
+    llm: &SelectedLlm,
+    context: &str,
+    elapsed: std::time::Duration,
+    usage: Option<LlmUsageSummary>,
+    finish_reason: Option<String>,
+    llm_call_log: &Arc<Mutex<Vec<LlmCallTelemetry>>>,
+) {
+    let metadata = HashMap::new();
+
+    if let Ok(mut calls) = llm_call_log.lock() {
+        calls.push(LlmCallTelemetry {
+            context: context.to_string(),
+            provider: llm.provider.clone(),
+            model: llm.model.clone(),
+            elapsed_ms: elapsed.as_millis() as u64,
+            finish_reason,
+            usage,
+            metadata,
+        });
+    }
 }
 
 fn format_hits_for_prompt(hits: &[SearchHit]) -> String {
@@ -1167,6 +1269,39 @@ fn print_report(report: &MultiPassReport) {
 
     println!("\n--- Final Recommendation ---");
     println!("{}", report.final_report.recommendation);
+
+    if !report.llm_calls.is_empty() {
+        println!("\n--- LLM Telemetry ---");
+        println!("Calls captured: {}", report.llm_calls.len());
+        for (index, call) in report.llm_calls.iter().enumerate() {
+            let tokens = call
+                .usage
+                .as_ref()
+                .map(|usage| {
+                    format!(
+                        "p:{} c:{} t:{}",
+                        usage.prompt_tokens.unwrap_or(0),
+                        usage.completion_tokens.unwrap_or(0),
+                        usage.total_tokens.unwrap_or(0),
+                    )
+                })
+                .unwrap_or_else(|| "no usage".to_string());
+            println!(
+                "[{}] {} [{}] {}ms {}",
+                index + 1,
+                call.provider,
+                call.context,
+                call.elapsed_ms,
+                tokens,
+            );
+            if let Some(finish_reason) = &call.finish_reason {
+                println!("     finish_reason: {finish_reason}");
+            }
+            if !call.metadata.is_empty() {
+                println!("     metadata_keys: {}", call.metadata.len());
+            }
+        }
+    }
 }
 
 #[cfg(test)]

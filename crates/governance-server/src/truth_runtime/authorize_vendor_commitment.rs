@@ -6,11 +6,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use chrono::Utc;
 use converge_kernel::{
     Context, ContextKey, Criterion, CriterionEvaluator, CriterionResult, Engine, TypesRunHooks,
 };
-use async_trait::async_trait;
 use converge_pack::{AgentEffect, Context as ContextView, ProposedFact, Suggestor};
 use converge_policy::{
     ContextIn, DecideRequest, PolicyEngine, PolicyOutcome, PrincipalIn, ResourceIn,
@@ -409,6 +409,7 @@ pub async fn execute(
             })
             .collect(),
         projection,
+        llm_calls: None,
     })
 }
 

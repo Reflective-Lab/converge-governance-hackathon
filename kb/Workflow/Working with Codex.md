@@ -79,6 +79,6 @@ When Codex learns something that should outlive the session:
 - architecture and process knowledge go in `kb/`
 - new workflow expectations should be documented where the next student will actually read them
 
-Older repos may still refer to `checkpoint` and `quality`. In this repo, keep `/done` and `/check` as the public workflow names in docs and daily use.
+Older repos may still refer to `checkpoint` and `quality`. In this repo, keep `/done` and `/check` as the public workflow names in docs and daily use. When updating KB pages, new workflow expectations should be documented where the next participant will actually read them.
 
 See also: [[Workflow/Daily Journey]], [[Workflow/Working with Claude]], [[Workflow/Skills Reference]]

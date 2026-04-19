@@ -87,7 +87,8 @@ impl GovernanceApp {
         source: TruthSourceFile,
         persist: bool,
     ) -> Result<truth_runtime::TruthExecutionResult, String> {
-        truth_runtime::source_import::execute_vendor_selection_source(&self.store, source, persist).await
+        truth_runtime::source_import::execute_vendor_selection_source(&self.store, source, persist)
+            .await
     }
 
     pub fn list_vendors(&self) -> Vec<Vendor> {

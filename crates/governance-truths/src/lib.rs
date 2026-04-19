@@ -1,7 +1,8 @@
-use converge_core::{
-    Context, ContextKey, Criterion, CriterionEvaluator, CriterionResult, TypesBudgets,
-    TypesIntentId, TypesIntentKind, TypesObjective, TypesRootIntent,
+use converge_kernel::{Context, ContextKey, CriterionEvaluator, CriterionResult};
+use converge_model::{
+    Criterion, TypesBudgets, TypesIntentId, TypesIntentKind, TypesObjective, TypesRootIntent,
 };
+use converge_provider_api::{AgentRequirements, ComplianceLevel, CostClass, DataSovereignty};
 
 // ---------------------------------------------------------------------------
 // Truth definitions
@@ -106,6 +107,128 @@ pub fn build_intent(truth: &TruthDef) -> TypesRootIntent {
         )
         .budgets(TypesBudgets::with_cycles(10))
         .build()
+}
+
+// ---------------------------------------------------------------------------
+// Agent model requirements
+// ---------------------------------------------------------------------------
+
+/// Define capability requirements for each agent in the evaluate-vendor truth.
+/// Agents are matched to models based on cost, latency, quality, and reasoning capabilities.
+
+#[derive(Clone, Debug)]
+pub struct AgentModelConfig {
+    pub agent_id: &'static str,
+    pub agent_name: &'static str,
+    pub description: &'static str,
+    pub requirements: AgentRequirements,
+}
+
+pub const AGENT_MODELS: &[AgentModelConfig] = &[
+    AgentModelConfig {
+        agent_id: "compliance-screener",
+        agent_name: "Compliance Screener",
+        description: "Fast, rule-based compliance screening (no LLM reasoning needed)",
+        requirements: AgentRequirements {
+            max_cost_class: CostClass::Low,
+            max_latency_ms: 3000,
+            min_quality: 0.7,
+            requires_reasoning: false,
+            requires_web_search: false,
+            requires_tool_use: false,
+            requires_vision: false,
+            requires_code: false,
+            requires_multilingual: false,
+            requires_structured_output: true,
+            min_context_tokens: Some(2000),
+            data_sovereignty: DataSovereignty::Any,
+            compliance: ComplianceLevel::None,
+        },
+    },
+    AgentModelConfig {
+        agent_id: "cost-analysis",
+        agent_name: "Cost Analysis",
+        description: "Quick cost and budget analysis (fast models preferred)",
+        requirements: AgentRequirements {
+            max_cost_class: CostClass::Low,
+            max_latency_ms: 5000,
+            min_quality: 0.75,
+            requires_reasoning: false,
+            requires_web_search: false,
+            requires_tool_use: false,
+            requires_vision: false,
+            requires_code: false,
+            requires_multilingual: false,
+            requires_structured_output: true,
+            min_context_tokens: Some(4000),
+            data_sovereignty: DataSovereignty::Any,
+            compliance: ComplianceLevel::None,
+        },
+    },
+    AgentModelConfig {
+        agent_id: "capability-matcher",
+        agent_name: "Capability Matcher",
+        description: "Evaluate vendor capabilities against requirements",
+        requirements: AgentRequirements {
+            max_cost_class: CostClass::Medium,
+            max_latency_ms: 8000,
+            min_quality: 0.8,
+            requires_reasoning: false,
+            requires_web_search: false,
+            requires_tool_use: false,
+            requires_vision: false,
+            requires_code: false,
+            requires_multilingual: false,
+            requires_structured_output: true,
+            min_context_tokens: Some(6000),
+            data_sovereignty: DataSovereignty::Any,
+            compliance: ComplianceLevel::None,
+        },
+    },
+    AgentModelConfig {
+        agent_id: "risk-scorer",
+        agent_name: "Risk Scorer",
+        description: "Multi-dimensional risk assessment (computational, no LLM needed)",
+        requirements: AgentRequirements {
+            max_cost_class: CostClass::Low,
+            max_latency_ms: 3000,
+            min_quality: 0.75,
+            requires_reasoning: false,
+            requires_web_search: false,
+            requires_tool_use: false,
+            requires_vision: false,
+            requires_code: false,
+            requires_multilingual: false,
+            requires_structured_output: true,
+            min_context_tokens: Some(2000),
+            data_sovereignty: DataSovereignty::Any,
+            compliance: ComplianceLevel::None,
+        },
+    },
+    AgentModelConfig {
+        agent_id: "decision-synthesis",
+        agent_name: "Decision Synthesis",
+        description: "Synthesize all evidence into a final recommendation (needs capable model)",
+        requirements: AgentRequirements {
+            max_cost_class: CostClass::Medium,
+            max_latency_ms: 10000,
+            min_quality: 0.85,
+            requires_reasoning: true,
+            requires_web_search: false,
+            requires_tool_use: false,
+            requires_vision: false,
+            requires_code: false,
+            requires_multilingual: false,
+            requires_structured_output: true,
+            min_context_tokens: Some(8000),
+            data_sovereignty: DataSovereignty::Any,
+            compliance: ComplianceLevel::None,
+        },
+    },
+];
+
+pub fn find_agent_config(agent_id: &str) -> Option<&'static AgentModelConfig> {
+    AGENT_MODELS.iter().find(|a| a.agent_id == agent_id)
 }
 
 // ---------------------------------------------------------------------------

@@ -48,7 +48,7 @@ If you produce knowledge that doesn't belong in code, it belongs in the kb.
 |---|---|---|
 | System logic | Rust | Ownership, zero-cost abstractions, compile-time safety |
 | Agent runtime | Converge (`converge-pack`, `converge-kernel`, `converge-domain`) | Governed multi-agent convergence with promotion gates |
-| LLM/API access | `converge-provider` capability adapters, with optional Kong routing | Canonical capability surface first, with Kong able to sit underneath later |
+| LLM/API access | `converge-provider-api` + `converge-provider`, with optional Kong routing | Canonical capability contract first, concrete adapters second |
 | Spec validation | `converge-axiom` | Offline-first truth and Gherkin validation |
 | Desktop shell | Tauri | Native performance, Rust backend, no Electron |
 | UI | Svelte | Compiled, no virtual DOM, minimal runtime |
@@ -113,13 +113,14 @@ These are not suggestions.
 
 Use it. This project exists to demonstrate governed multi-agent convergence.
 
-Student-facing guidance in this repo should track the current Converge `v3.0.x` surfaces.
+Participant-facing guidance in this repo should track the current curated Converge surfaces, even if some internals still use lower-level crates.
 
 | Crate | What it gives you | Status |
 |---|---|---|
-| `converge-pack` | Authoring contract: `Suggestor`, `AgentEffect`, `ProposedFact`, `ContextKey` | Preferred for new student-facing examples |
-| `converge-kernel` | In-process runtime API: `Engine`, `Context`, `Budget`, criteria, run hooks | Preferred for new student-facing examples |
-| `converge-core` | Constitutional types and re-exports used by current internals | In use |
+| `converge-pack` | Authoring contract: `Suggestor`, `AgentEffect`, `ProposedFact`, `ContextKey` | Preferred for new participant-facing examples |
+| `converge-kernel` | In-process runtime API: `Engine`, `Context`, `Budget`, criteria, run hooks | Preferred for new participant-facing examples |
+| `converge-provider-api` | Chat contracts and capability-routing vocabulary | Preferred for capability-facing code |
+| `converge-core` | Constitutional types and re-exports used by current internals | Internal / transitional |
 | `converge-domain` | Pre-built suggestor packs: trust, money, delivery, knowledge, data_metrics | In use |
 | `converge-provider` | Chat backends, search adapters, tool clients, backend selection | In use |
 | `converge-axiom` | Spec validation, Gherkin parsing, truth-spec parsing, mock chat backends | In use (desktop) |
@@ -151,7 +152,7 @@ See `kb/Converge/Crate Catalog.md` for the full catalog with usage guidance.
 
 Kong is optional for now. Direct provider and search adapters are acceptable while the capability contract is being hardened.
 
-Present the programming boundary as `ChatBackend` / `ChatRequest` plus `WebSearchBackend` and MCP clients. Keep any Kong-specific routing behind that adapter layer. Do not add new student-facing examples around `KongGateway` / `LlmRequest` as the primary import surface.
+Present the programming boundary as `ChatBackend` / `ChatRequest` plus `WebSearchBackend` and MCP clients. Keep any Kong-specific routing behind that adapter layer. Do not add new participant-facing examples around `KongGateway` / `LlmRequest` as the primary import surface.
 
 Future direction: add a `KongProvider` or more general `RouterProvider` under the same capability contracts, with Kong especially valuable for shared MCP tool access.
 

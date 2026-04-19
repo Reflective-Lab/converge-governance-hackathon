@@ -27,7 +27,7 @@ let result = mcp.call_tool("lookup_vendor", serde_json::json!({
 }))?;
 ```
 
-Resolve Kong-routed MCP URLs at the application edge when Kong is in use, or pass direct MCP URLs in local setups. Keep the student-facing API on `McpClient` and `McpTransport`, not on a gateway-specific object.
+Resolve Kong-routed MCP URLs at the application edge when Kong is in use, or pass direct MCP URLs in local setups. Keep the participant-facing API on `McpClient` and `McpTransport`, not on a gateway-specific object.
 
 ## MCP vs REST
 

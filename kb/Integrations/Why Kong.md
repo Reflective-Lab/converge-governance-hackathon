@@ -3,6 +3,48 @@ tags: [kong, converge, challenge]
 ---
 # Why Kong — Challenge Framing
 
+## The Participant Pitch (30-Min Meeting)
+
+> **"You're building AI that justifies every decision. Kong is how you govern what goes out over the wire."**
+
+### The Two-Layer Story
+
+```
+┌──────────────────────────────┐
+│  Your Decision (Converge)    │  ← Internal: who decides what
+│  • Agents propose facts      │
+│  • Policies gate decisions   │
+│  • Converges or stops honest │
+└──────────────┬───────────────┘
+               │ Every LLM call must be guarded
+               ↓
+┌──────────────────────────────┐
+│  External Access (Kong)      │  ← Boundary: what leaves the system
+│  • Rate limits per team      │
+│  • PII sanitizer             │
+│  • Prompt guard              │
+│  • Audit & cost tracking     │
+└──────────────────────────────┘
+```
+
+**Converge** governs *what agents decide*. **Kong** governs *what agents access*. Together, zero gaps.
+
+### The Live Demo
+
+1. **Run vendor eval** — Converge engine cycles through compliance, cost, risk, synthesis agents
+2. **Show Kong dashboard** — every LLM call logged: tokens, cost, latency, which agent, timestamp
+3. **Trigger PII redaction** — propose a vendor with sensitive data in the name, watch Kong sanitize it before it hits Claude
+4. **Hit rate limit** — show what happens when a team exhausts their token budget
+5. **View cost-per-decision** — "This governance decision cost $0.47 in Claude tokens"
+
+### Why Both Layers Matter
+
+| Layer | What It Sees | What It Can't See |
+|-------|---|---|
+| **Converge** | Agent proposals, policy enforcement, convergence criteria | What leaves the system, who's calling the LLM, token costs |
+| **Kong** | LLM requests, PII patterns, budgets, audit logs | Whether the agent's reasoning was sound, if the decision makes sense |
+| **Together** | Complete governance: sound decisions + safe access | (Nothing — every gate is covered) |
+
 ## The Challenge
 
 > Build an enterprise-grade AI governance infrastructure that fulfills the AI compliance requirements and business needs. Your infrastructure must be secure, scalable and compliant, enforce usage policies, monitor LLM consumption and include automated guardrails that protect sensitive enterprise data without slowing down innovation.

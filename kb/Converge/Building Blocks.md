@@ -3,7 +3,7 @@ tags: [converge, reference]
 ---
 # Building Blocks
 
-Types and traits from `converge-core` that you use, not implement.
+Types and traits from the curated Converge surfaces that you use, not implement.
 
 | Type | What it does |
 |------|-------------|
@@ -30,5 +30,11 @@ trait Suggestor: Send + Sync {
     fn execute(&self, ctx: &dyn ContextView) -> AgentEffect;
 }
 ```
+
+Golden path:
+
+- authoring types such as `Suggestor`, `AgentEffect`, `ProposedFact`, and `ContextKey` come from `converge-pack`
+- execution types such as `Engine`, `Context`, `Budget`, and run hooks come from `converge-kernel`
+- capability contracts such as `ChatBackend` and `ChatRequest` come from `converge-provider-api`
 
 See also: [[Domain/Key Types]], [[Development/Writing Suggestors]]

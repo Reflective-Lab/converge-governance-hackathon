@@ -9,8 +9,8 @@ All Converge crates at v3.0.0.
 
 | Crate | What it does | Used in this project |
 |---|---|---|
-| `converge-pack` | Suggestor, context, invariant authoring contract | Indirect (via converge-core) |
-| `converge-provider-api` | Backend identity and capability routing | Indirect (via converge-provider) |
+| `converge-pack` | Suggestor, context, invariant authoring contract | Available and preferred for participant-facing authoring |
+| `converge-provider-api` | Chat contracts, backend identity, and capability routing | Available and preferred for participant-facing capability code |
 | `converge-model` | Curated semantic types (Fact, Proposal, PromotionRecord) | Available |
 | `converge-kernel` | In-process embedding API (Engine, RunResult, Budget) | Available |
 | `converge-protocol` | Generated `converge.v1` wire types (protobuf/gRPC) | Available |
@@ -20,7 +20,7 @@ All Converge crates at v3.0.0.
 
 | Crate | What it does | Used in this project |
 |---|---|---|
-| `converge-core` | Engine, Suggestor, Fact, Context, promotion gates, convergence loop | Yes — workspace dependency |
+| `converge-core` | Constitutional internals and legacy re-exports used by current implementation code | Yes — workspace dependency |
 
 ## Domain and Intelligence
 
@@ -76,9 +76,10 @@ converge-experience = "3.0.0"
 
 ## When to Use What
 
-- **Building suggestors?** You already have `converge-core`. That's enough.
+- **Building suggestors?** Start with `converge-pack`.
 - **Want pre-built audit/trust suggestors?** Use `converge-domain` (already available).
-- **Need LLM or API access?** Use `converge-provider` with Kong (already in desktop crate).
+- **Need chat or selection contracts?** Use `converge-provider-api`.
+- **Need ready-made LLM or API adapters?** Use `converge-provider` with Kong or direct providers under the same contract.
 - **Want suggestors to learn from past runs?** Add `converge-experience`.
 - **Building MCP tool servers?** Add `converge-mcp`.
 - **Need multi-criteria optimization?** Add `converge-optimization`.

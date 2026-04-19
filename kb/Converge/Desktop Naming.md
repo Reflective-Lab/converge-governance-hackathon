@@ -37,17 +37,17 @@ For naming purposes, the product-facing story is still simple:
 
 - Instantly understandable — control, steering
 - Works well in demos and presentations
-- The surface students interact with first
+- The surface participants interact with first
 - "You're at the helm" — agency and responsibility
 
 ## Current Decision
 
-**Helm** is the public-facing desktop name (slide deck, hackathon, student-facing).
+**Helm** is the public-facing desktop name (slide deck, hackathon, participant-facing).
 **Axiom** is the truth validation engine underneath.
 **Organism** is the named intelligence layer beneath Axiom, but it stays architectural rather than product-branded in the desktop.
 **Converge** remains the governance substrate and should be named directly when explaining authority or promotion.
 
-The full stack does not need to be exposed on day one. Students sit in Helm. Axiom surfaces when we go deeper into authoring and validation. Organism and Converge surface when we explain how governed reasoning actually works.
+The full stack does not need to be exposed on day one. Participants sit in Helm. Axiom surfaces when we go deeper into authoring and validation. Organism and Converge surface when we explain how governed reasoning actually works.
 
 ## Open Questions
 

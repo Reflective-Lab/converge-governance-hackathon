@@ -13,11 +13,12 @@ path = "src/main.rs"
 [dependencies]
 governance-kernel = { path = "../governance-kernel" }
 governance-truths = { path = "../governance-truths" }
-converge-core = { workspace = true }
+governance-telemetry = { path = "../governance-telemetry" }
 converge-domain = { workspace = true }
 converge-policy = { workspace = true }
 converge-pack = { workspace = true }
 converge-kernel = { workspace = true }
+converge-provider-api = { workspace = true }
 converge-provider = { workspace = true }
 organism-pack = { workspace = true }
 organism-runtime = { workspace = true }

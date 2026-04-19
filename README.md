@@ -146,7 +146,7 @@ curl -X POST http://localhost:8080/v1/truths/evaluate-vendor/execute \
 just desktop          # installs deps + launches Tauri dev mode
 ```
 
-## What Teams Build
+## What Participants Build
 
 ### 1. Replace Placeholder Agents
 
@@ -221,10 +221,10 @@ This repo is designed for three AI agents — **Claude Code**, **Codex**, and **
 |---|---|---|
 | `AGENTS.md` | Canonical project documentation — philosophy, stack, architecture, rules | All agents (entrypoint) |
 | `CLAUDE.md` / `CODEX.md` / `GEMINI.md` | Agent-specific configuration, each points to AGENTS.md | Respective agent |
-| `kb/` | Obsidian vault — architecture, domain, development, integrations, workflow | Agents + humans (lazy-loaded) |
+| `kb/` | Obsidian vault — architecture, domain, development, integrations, workflow | Agents + participants/teams (lazy-loaded) |
 | `MILESTONES.md` | What ships and when — current milestone, deliverables, deadlines | `/focus`, `/next`, `/done` |
 | `CHANGELOG.md` | What shipped — notable changes by version | `/done` updates it |
-| `Justfile` | Deterministic shell recipes — build, test, lint, serve | Agents + humans |
+| `Justfile` | Deterministic shell recipes — build, test, lint, serve | Agents + participants/teams |
 | `.claude/skills/` | 14 slash commands — multi-step AI-driven workflows | Claude Code |
 | `scripts/workflow/` | Shell scripts backing `just focus`, `just sync`, `just status` | All agents + terminal |
 
@@ -311,7 +311,7 @@ GET  /v1/audit                     Query audit trail
 
 The `kb/` directory is an Obsidian vault. Open it in Obsidian or read the markdown files directly. Start with `kb/Home.md`.
 
-**Reading order for participants:**
+**Reading order for participants/teams:**
 1. `kb/Architecture/Overview.md` — the five-layer model
 2. `kb/Domain/Vendor Selection.md` — the challenge
 3. `kb/Domain/Agents.md` — what each agent does

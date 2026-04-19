@@ -17,7 +17,7 @@ The first end-to-end desktop flow is vendor-selection spec validation:
 
 Remote calls should originate from the Rust core, not the UI. They may go through Kong or direct provider and service adapters for now.
 
-For student-facing code, the desktop app should stay on the canonical Converge capability surface, not a separate gateway-specific contract:
+For participant-facing code, the desktop app should stay on the canonical Converge capability surface, not a separate gateway-specific contract:
 
 1. Load `.env` in the Tauri layer.
 2. Build or inject the chat backend at the app edge.
@@ -37,10 +37,7 @@ Direct provider keys are also acceptable during the current transition, as long 
 Optional desktop LLM settings:
 
 ```dotenv
-KONG_LLM_ROUTE=default
-KONG_LLM_UPSTREAM_PROVIDER=openai
-KONG_LLM_UPSTREAM_MODEL=gpt-4
-KONG_LLM_REASONING=true
+KONG_LLM_ROUTE=llm/v1/chat
 ```
 
 The desktop toolchain uses Bun:

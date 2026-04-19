@@ -2,9 +2,10 @@
   import { onDestroy } from "svelte";
   import { invokeTauri } from "./lib/tauri";
   import { randomVerb } from "./lib/spinner";
+  import ProviderSelector from "./lib/ProviderSelector.svelte";
 
   // ─── Phases ───
-  let phase = $state("slides"); // slides | demo | apps | dd
+  let phase = $state("slides"); // slides | providers | demo | apps | dd
   let currentSlide = $state(0);
 
   const slides = [
@@ -90,13 +91,13 @@
       eyebrow: "Your Mission",
       headline: "Write a governance\ntruth that holds.",
       body: "Today you will write a vendor-selection Truth spec, validate it live against policy, and see how structured governance enables trustworthy AI decisions.",
-      image: "/images/slides/students.jpg",
+      image: "/images/slides/participants.jpg",
     },
   ];
 
   function nextSlide() {
     if (currentSlide < slides.length - 1) currentSlide++;
-    else phase = "demo";
+    else phase = "providers";
   }
 
   function prevSlide() {
@@ -592,8 +593,51 @@ Scenario: Parse should fail early
     active: boolean;
   }
 
+  interface DdUsage {
+    prompt_tokens: number | null;
+    completion_tokens: number | null;
+    total_tokens: number | null;
+  }
+
+  interface DdLlmCall {
+    context: string;
+    provider: string;
+    model: string;
+    elapsed_ms: number;
+    finish_reason: string | null;
+    usage: DdUsage | null;
+    metadata: Record<string, string>;
+  }
+
+  interface DdFact {
+    claim: string;
+    category: string;
+    confidence: number;
+  }
+
+  interface DdPass1 {
+    summary: string;
+    key_facts: DdFact[];
+  }
+
+  interface DdReport {
+    company_name: string;
+    product_name: string | null;
+    pass1: DdPass1;
+    final_report: {
+      market_analysis: string;
+      competitive_landscape: string;
+      technology_assessment: string;
+      risk_factors: string[];
+      growth_opportunities: string[];
+      recommendation: string;
+    };
+    pass1_hits: { title: string; url: string }[];
+    llm_calls?: DdLlmCall[];
+  }
+
   let ddCompanyName = $state("");
-  let ddReport = $state<any>(null);
+  let ddReport = $state<DdReport | null>(null);
   let ddLoading = $state(false);
   let ddError = $state("");
   let ddSteps = $state<DdStep[]>([]);
@@ -748,6 +792,27 @@ Scenario: Parse should fail early
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+<!-- ═══════════════════════════════════════════════
+     PROVIDER SELECTION PHASE
+     ═══════════════════════════════════════════════ -->
+{:else if phase === "providers"}
+  <div class="min-h-screen bg-void">
+    <!-- Top bar -->
+    <header class="flex items-center justify-between border-b border-border px-8 py-4">
+      <div class="flex items-center gap-4">
+        <button class="btn-ghost text-sm" onclick={goToSlides}>
+          &larr; Slides
+        </button>
+        <span class="font-mono text-xs tracking-widest text-muted uppercase">Provider Setup</span>
+      </div>
+    </header>
+
+    <!-- Provider selector -->
+    <div class="p-8">
+      <ProviderSelector on:provider-selection-complete={(e) => { phase = "demo"; }} />
     </div>
   </div>
 
@@ -1277,6 +1342,53 @@ Scenario: Parse should fail early
                   </div>
                   <p class="text-xs text-text">{fact.claim}</p>
                 </div>
+              {/each}
+            </div>
+          </section>
+        {/if}
+
+        {#if ddReport.llm_calls?.length}
+          <section class="mb-6">
+            <span class="card-label mb-3 block">LLM Telemetry ({ddReport.llm_calls.length})</span>
+            <div class="space-y-3">
+              {#each ddReport.llm_calls as call}
+                <article class="rounded-xl border border-border bg-raised p-3">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span class="text-sm font-semibold text-bright">{call.context}</span>
+                    <span class="pill pill-info">{call.elapsed_ms} ms</span>
+                  </div>
+
+                  <p class="mt-2 text-xs text-subtle">{call.provider} / {call.model}</p>
+
+                  {#if call.finish_reason}
+                    <p class="text-xs text-subtle">Finish: {call.finish_reason}</p>
+                  {/if}
+
+                  {#if call.usage}
+                    <div class="mt-2 grid grid-cols-3 gap-2 text-xs text-subtle">
+                      <div class="rounded-lg border border-border bg-deep px-2 py-1">
+                        <span class="text-muted">Prompt</span>
+                        <div class="text-text">{call.usage.prompt_tokens ?? "-"}</div>
+                      </div>
+                      <div class="rounded-lg border border-border bg-deep px-2 py-1">
+                        <span class="text-muted">Completion</span>
+                        <div class="text-text">{call.usage.completion_tokens ?? "-"}</div>
+                      </div>
+                      <div class="rounded-lg border border-border bg-deep px-2 py-1">
+                        <span class="text-muted">Total</span>
+                        <div class="text-text">{call.usage.total_tokens ?? "-"}</div>
+                      </div>
+                    </div>
+                  {/if}
+
+                  {#if Object.keys(call.metadata).length > 0}
+                    <ul class="mt-2 space-y-1 text-xs text-subtle">
+                      {#each Object.entries(call.metadata) as [key, value]}
+                        <li class="flex items-center gap-2"><span class="text-muted">{key}:</span> <span class="text-text">{value}</span></li>
+                      {/each}
+                    </ul>
+                  {/if}
+                </article>
               {/each}
             </div>
           </section>

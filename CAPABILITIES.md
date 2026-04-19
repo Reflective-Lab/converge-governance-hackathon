@@ -28,7 +28,7 @@ Includes fixtures, test cases, and a policy validator you can modify.
 
 ## Truth Catalog
 
-Pre-built truths students can explore and extend:
+Pre-built truths participants can explore and extend:
 
 - **Vendor Selection** — Multi-criteria evaluation with swarm consensus
 - **Dynamic Due Diligence** — Organism-seeded research loop with provenance, contradictions, and synthesis
@@ -63,9 +63,9 @@ HTTP API for governance operations:
 | Desktop | Tauri 2 + SvelteKit 5 |
 | Task runner | just |
 
-## Canonical Student-Facing API Surface
+## Canonical Participant-Facing API Surface
 
-These are the surfaces students should learn first:
+These are the surfaces participants should learn first:
 
 | Role | Crate | Primary types |
 |---|---|---|
@@ -76,9 +76,9 @@ These are the surfaces students should learn first:
 | Organism authoring | `organism-pack` | `IntentPacket`, `Plan`, `PlanStep`, reasoning primitives |
 | Organism runtime | `organism-runtime` | `Registry`, readiness, built-in packs |
 
-Current note: the desktop scaffold is now on this contract. Keep new student examples on the same surfaces instead of introducing provider-specific APIs.
+Current note: the desktop scaffold is now on this contract. Keep new participant examples on the same surfaces instead of introducing provider-specific APIs.
 
-## What students can build
+## What participants can build
 
 - Custom truths with domain-specific governance rules
 - Cedar policies for new authority patterns

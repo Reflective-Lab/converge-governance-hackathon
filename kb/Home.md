@@ -18,7 +18,8 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 
 ## Development
 - [[Development/Getting Started]] — toolchain, build commands, quick reference
-- [[Development/Programming API Surfaces]] — the canonical student-facing import and layering rules
+- [[Development/Provider Configuration]] — Agent model matching, provider setup, customization
+- [[Development/Programming API Surfaces]] — the canonical participant-facing import and layering rules
 - [[Development/Writing Suggestors]] — suggestor trait, patterns, rules
 - [[Development/Writing Truths]] — step-by-step guide to adding a new truth
 - [[Development/Streaming]] — real-time convergence callbacks
@@ -37,10 +38,16 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 - [[Workflow/Daily Journey]] — start-to-finish cheat sheet for your day
 - [[Workflow/Skills Reference]] — all `/slash` commands and what they do
 
+## Maintenance
+
+- [[LOG]] — mutation log for all kb/ updates
+- [[Experiments/INDEX]] — hypothesis-driven development with evidence logging
+- [[Experiments/LOG]] — mutation log of all experiments
+
 ## Converge Platform
 - [[Converge/Crate Catalog]] — all 10 published crates, what they do, when to use them
 - [[Converge/Core Concepts]] — correctness-first multi-agent runtime
-- [[Converge/Building Blocks]] — types and traits from converge-core
+- [[Converge/Building Blocks]] — types and traits from the curated Converge surfaces
 - [[Converge/Context Keys]] — partitioning evidence in the shared context
 - [[Converge/Domain Packs]] — pre-built suggestor packs from converge-domain
 - [[Converge/HITL Gates]] — human-in-the-loop gated decisions
@@ -48,3 +55,8 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 - [[Converge/Governed Artifacts]] — lifecycle management for system outputs
 - [[Converge/Organism Blueprints]] — ~22 production-shaped business cases from Organism, available as hackathon examples
 - [[Converge/Desktop Naming]] — Helm, Axiom, and the stack vocabulary
+
+## Visualization
+- [[Converge/Threlte Visualization]] — Why Threlte for 3D agent convergence visualization
+- [[Converge/Visualization Alternatives]] — Trade-offs: Three.js, React Three Fiber, Bevy, Canvas 2D, etc.
+- [[Converge/Bevy Deep Dive]] — ECS architecture, when Bevy wins, scenarios and code examples

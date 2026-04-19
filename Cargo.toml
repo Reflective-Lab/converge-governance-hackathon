@@ -7,21 +7,22 @@ edition = "2024"
 rust-version = "1.94"
 
 [workspace.dependencies]
-# Converge — from GitHub for faster iteration
-converge-core = { git = "https://github.com/Reflective-Lab/converge.git" }
-converge-pack = { git = "https://github.com/Reflective-Lab/converge.git" }
-converge-kernel = { git = "https://github.com/Reflective-Lab/converge.git" }
-converge-provider-api = { git = "https://github.com/Reflective-Lab/converge.git" }
-converge-domain = { git = "https://github.com/Reflective-Lab/converge.git" }
-converge-policy = { git = "https://github.com/Reflective-Lab/converge.git" }
-converge-provider = { git = "https://github.com/Reflective-Lab/converge.git", default-features = false, features = ["anthropic", "gemini", "openai", "mistral", "brave", "tavily", "kong"] }
-# Organism — from GitHub for faster iteration
-organism-pack = { git = "https://github.com/Reflective-Lab/organism.git" }
-organism-runtime = { git = "https://github.com/Reflective-Lab/organism.git" }
-organism-planning = { git = "https://github.com/Reflective-Lab/organism.git" }
+# Converge v3.4.0 (local path until tagged)
+converge-core = { path = "../converge/crates/core" }
+converge-pack = { path = "../converge/crates/pack" }
+converge-kernel = { path = "../converge/crates/kernel" }
+converge-model = { path = "../converge/crates/model" }
+converge-provider-api = { path = "../converge/crates/provider-api" }
+converge-domain = { path = "../converge/crates/domain" }
+converge-policy = { path = "../converge/crates/policy" }
+converge-provider = { path = "../converge/crates/provider", default-features = false, features = ["anthropic", "gemini", "openai", "mistral", "brave", "tavily", "kong"] }
+# Organism (latest main, pinned to converge v3.3.1)
+organism-pack = { git = "https://github.com/Reflective-Lab/organism", branch = "main" }
+organism-runtime = { git = "https://github.com/Reflective-Lab/organism", branch = "main" }
+organism-planning = { git = "https://github.com/Reflective-Lab/organism", branch = "main" }
 
-# Axiom
-axiom-truth = "0.4.1"
+# Axiom v0.5.0 (local path until published)
+axiom-truth = { path = "../axiom" }
 
 # Server
 axum = "0.8"
@@ -43,4 +44,3 @@ dotenv = "0.15"
 # Observability
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-

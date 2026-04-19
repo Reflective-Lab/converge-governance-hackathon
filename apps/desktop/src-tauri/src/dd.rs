@@ -1,8 +1,11 @@
 //! Self-contained due diligence — searches the web, extracts facts, synthesizes.
 //! Copied from Monterro's DD pipeline, simplified for the hackathon demo.
 
-use converge_core::traits::{ChatMessage, ChatRequest, ChatRole, ResponseFormat};
-use converge_provider::{ChatBackendSelectionConfig, select_chat_backend};
+use std::collections::HashMap;
+use std::time::Instant;
+
+use converge_provider_api::{ChatMessage, ChatRequest, ChatRole, ResponseFormat};
+use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -12,6 +15,25 @@ pub struct DdReport {
     pub pass1: Pass1,
     pub final_report: FinalReport,
     pub pass1_hits: Vec<SearchHit>,
+    pub llm_calls: Vec<LlmCallTelemetry>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LlmUsageSummary {
+    pub prompt_tokens: Option<u64>,
+    pub completion_tokens: Option<u64>,
+    pub total_tokens: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LlmCallTelemetry {
+    pub context: String,
+    pub provider: String,
+    pub model: String,
+    pub elapsed_ms: u64,
+    pub finish_reason: Option<String>,
+    pub usage: Option<LlmUsageSummary>,
+    pub metadata: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -49,6 +71,8 @@ pub async fn run_dd(company: &str, product: Option<&str>) -> anyhow::Result<DdRe
         None => company.to_string(),
     };
 
+    let mut llm_calls = Vec::new();
+
     // 1. Search via Brave
     let hits = search_brave(&subject).await.unwrap_or_default();
 
@@ -85,7 +109,8 @@ Produce a JSON response with this exact structure:
 }}"#
     );
 
-    let raw = call_llm(&prompt).await?;
+    let (raw, llm_call) = call_llm(&prompt, "desktop-dd:analysis").await?;
+    llm_calls.push(llm_call);
     let v: serde_json::Value = serde_json::from_str(&strip_fences(&raw))
         .unwrap_or_else(|_| serde_json::json!({}));
 
@@ -130,6 +155,7 @@ Produce a JSON response with this exact structure:
             recommendation: v["recommendation"].as_str().unwrap_or("").to_string(),
         },
         pass1_hits: hits.into_iter().take(15).collect(),
+        llm_calls,
     })
 }
 
@@ -165,13 +191,15 @@ async fn search_brave(query: &str) -> anyhow::Result<Vec<SearchHit>> {
     Ok(hits)
 }
 
-async fn call_llm(prompt: &str) -> anyhow::Result<String> {
+async fn call_llm(prompt: &str, context: &str) -> anyhow::Result<(String, LlmCallTelemetry)> {
+    let started_at = Instant::now();
     let mut config = ChatBackendSelectionConfig::from_env().unwrap_or_default();
     if config.provider_override.is_none() && std::env::var_os("OPENROUTER_API_KEY").is_some() {
         config = config.with_provider_override("openrouter");
     }
 
-    let selected = select_chat_backend(&config)
+    let selected = select_healthy_chat_backend(&config)
+        .await
         .map_err(|e| anyhow::anyhow!("No LLM backend available: {e}"))?;
 
     let response = selected
@@ -194,7 +222,21 @@ async fn call_llm(prompt: &str) -> anyhow::Result<String> {
         .await
         .map_err(|e| anyhow::anyhow!("LLM error: {e}"))?;
 
-    Ok(response.content)
+    let telemetry = LlmCallTelemetry {
+        context: context.to_string(),
+        provider: selected.provider().to_string(),
+        model: selected.model().to_string(),
+        elapsed_ms: started_at.elapsed().as_millis() as u64,
+        finish_reason: response.finish_reason.as_ref().map(|reason| format!("{reason:?}")),
+        usage: response.usage.as_ref().map(|usage| LlmUsageSummary {
+            prompt_tokens: Some(u64::from(usage.prompt_tokens)),
+            completion_tokens: Some(u64::from(usage.completion_tokens)),
+            total_tokens: Some(u64::from(usage.total_tokens)),
+        }),
+        metadata: HashMap::new(),
+    };
+
+    Ok((response.content, telemetry))
 }
 
 fn strip_fences(s: &str) -> String {

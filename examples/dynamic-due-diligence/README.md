@@ -28,7 +28,7 @@ curl -s http://127.0.0.1:8080/v1/truths/dynamic-due-diligence/execute \
 
 ## Why It Exists
 
-`evaluate-vendor` is still the baseline truth students should learn first.
+`evaluate-vendor` is still the baseline truth participants should learn first.
 
 `dynamic-due-diligence` is the next step up:
 

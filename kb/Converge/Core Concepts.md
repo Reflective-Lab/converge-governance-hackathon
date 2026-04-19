@@ -22,12 +22,15 @@ Suggestor proposes a fact
 - **Convergence is observable.** The criterion evaluator tells you exactly which success conditions were met or unmet.
 - **Stopping is honest.** If the system can't converge, it tells you why (budget exhausted, criteria blocked, human intervention required).
 
-## Dependencies
+## Preferred Surfaces
 
-This repo uses:
-- `converge-core` 3.0.0 — Engine, Suggestor, Fact, Context, promotion gate, convergence loop
+Participant-facing code in this repo family should think in terms of these surfaces:
+- `converge-pack` — Suggestor authoring contract
+- `converge-kernel` — Engine, Context, budgets, convergence loop
+- `converge-model` — governed semantic types and truth metadata
+- `converge-provider-api` — chat contracts and capability routing vocabulary
 - `converge-domain` 3.0.0 — pre-built [[Converge/Domain Packs|domain packs]] (trust, money, delivery, knowledge, data_metrics)
-- `converge-provider` 3.0.0 — [[Integrations/Kong Gateway|Kong]] integration for LLM and API access
+- `converge-provider` 3.0.0 — [[Integrations/Kong Gateway|Kong]] integration and ready-made LLM/API adapters
 - `converge-axiom` 3.0.0 — spec validation (used in desktop app)
 
 > **TODO:** Scan converge crate sources for deeper documentation of internals.

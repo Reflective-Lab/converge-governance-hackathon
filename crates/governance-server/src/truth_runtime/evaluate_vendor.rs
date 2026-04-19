@@ -5,9 +5,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use converge_kernel::{Context, Engine, TypesRunHooks};
-use async_trait::async_trait;
 use converge_pack::{AgentEffect, Context as ContextView, ContextKey, ProposedFact, Suggestor};
 use governance_kernel::{Actor, DecisionRecord, InMemoryStore};
 use governance_truths::{EvaluateVendorEvaluator, build_intent, find_truth};
@@ -511,6 +511,7 @@ pub async fn execute(
             })
             .collect(),
         projection,
+        llm_calls: None,
     })
 }
 

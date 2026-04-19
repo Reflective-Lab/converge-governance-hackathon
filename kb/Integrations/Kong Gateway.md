@@ -36,7 +36,7 @@ This hackathon uses **Kong Konnect** (cloud SaaS). You'll receive:
 # Kong AI Gateway (primary LLM routing for this hackathon)
 KONG_AI_GATEWAY_URL=https://<your-konnect-url>
 KONG_API_KEY=<your-konnect-token>
-KONG_LLM_ROUTE=default
+KONG_LLM_ROUTE=llm/v1/chat
 
 # Converge backend selection: use Kong by default
 CONVERGE_LLM_FORCE_PROVIDER=kong
@@ -49,7 +49,9 @@ CONVERGE_LLM_FORCE_PROVIDER=kong
 The `KongChatBackend` in `converge-provider` implements `DynChatBackend`. It:
 
 1. Accepts `ChatRequest` (canonical Converge format)
-2. Sends OpenAI-format body to `{KONG_AI_GATEWAY_URL}/llm/v1/chat`
+2. Sends OpenAI-format body to `{KONG_AI_GATEWAY_URL}/{KONG_LLM_ROUTE}`
+   - Default route: `llm/v1/chat`
+   - Configure this in `KONG_LLM_ROUTE` when your Konnect route is named/path-based differently
 3. Authenticates via `apikey` header (Konnect Key Auth)
 4. Kong translates to whatever upstream provider is configured
 5. Returns standard `ChatResponse` with `TokenUsage` from the response body
@@ -81,7 +83,7 @@ This hackathon enables these Kong Enterprise plugins:
 
 ## What Not To Teach As The Default
 
-These are Kong-specific internal types — do not expose as primary student-facing APIs:
+These are Kong-specific internal types — do not expose as primary participant-facing APIs:
 
 - `KongGateway`
 - `KongRoute`
@@ -115,4 +117,4 @@ To bypass Kong: Set `CONVERGE_LLM_FORCE_PROVIDER=anthropic` (or another provider
 - `hackathon/Cargo.toml` — `kong` feature enabled
 - `hackathon/apps/desktop/src-tauri/Cargo.toml` — Path dep + `kong` feature
 
-See also: [[Integrations/MCP Tools]], [[Integrations/External Services]], [[Domain/Agents]], [[Integrations/Kong Demo Story]]
+See also: [[Integrations/Kong Chat Response]], [[Integrations/Kong Admin API]], [[Integrations/Kong Demo Story]], [[Integrations/MCP Tools]], [[Integrations/External Services]], [[Domain/Agents]]

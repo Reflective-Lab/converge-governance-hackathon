@@ -3,9 +3,9 @@ tags: [domain, reference]
 ---
 # Key Types
 
-Types from `converge-core` and the governance crates.
+Types from the curated Converge surfaces and the governance crates.
 
-## Converge Core Types
+## Converge Types
 
 | Type | Purpose |
 |---|---|

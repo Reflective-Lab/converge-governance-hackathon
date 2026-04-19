@@ -6,8 +6,10 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
 use governance_kernel::InMemoryStore;
 use governance_server::truth_runtime;
+use governance_truths::AGENT_MODELS;
 use serde::{Deserialize, Serialize};
 
 type AppState = Arc<InMemoryStore>;
@@ -26,6 +28,10 @@ async fn main() {
         .route("/v1/decisions", get(list_decisions))
         .route("/v1/vendors", get(list_vendors))
         .route("/v1/audit", get(list_audit))
+        .route(
+            "/v1/agents/available-models",
+            get(list_available_agent_models),
+        )
         .with_state(state);
 
     let addr = std::env::var("GOVERNANCE_ADDR").unwrap_or_else(|_| "127.0.0.1:8080".into());
@@ -104,6 +110,35 @@ async fn list_audit(State(store): State<AppState>) -> impl IntoResponse {
     Json(entries)
 }
 
+async fn list_available_agent_models() -> Result<Json<Vec<AgentModelOptions>>, (StatusCode, String)>
+{
+    let mut result = Vec::new();
+
+    for agent_config in AGENT_MODELS {
+        let config = ChatBackendSelectionConfig::default();
+        let selected = match select_healthy_chat_backend(&config).await {
+            Ok(s) => Some(ModelOption {
+                provider: s.provider().to_string(),
+                model: s.model().to_string(),
+                recommended: true,
+            }),
+            Err(e) => {
+                tracing::warn!(agent = %agent_config.agent_id, error = %e, "no healthy provider");
+                None
+            }
+        };
+
+        result.push(AgentModelOptions {
+            agent_id: agent_config.agent_id.to_string(),
+            agent_name: agent_config.agent_name.to_string(),
+            description: agent_config.description.to_string(),
+            selected,
+        });
+    }
+
+    Ok(Json(result))
+}
+
 #[derive(Deserialize)]
 struct ExecuteTruthRequest {
     inputs: HashMap<String, String>,
@@ -116,4 +151,19 @@ struct TruthListItem {
     display_name: String,
     summary: String,
     packs: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct ModelOption {
+    provider: String,
+    model: String,
+    recommended: bool,
+}
+
+#[derive(Serialize)]
+struct AgentModelOptions {
+    agent_id: String,
+    agent_name: String,
+    description: String,
+    selected: Option<ModelOption>,
 }

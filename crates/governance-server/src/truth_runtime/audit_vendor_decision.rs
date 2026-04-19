@@ -121,6 +121,7 @@ pub async fn execute(
             })
             .collect(),
         projection: None,
+        llm_calls: None,
     })
 }
 

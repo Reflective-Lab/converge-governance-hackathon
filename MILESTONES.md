@@ -10,7 +10,7 @@
 ## Current: Ready for Students
 **Deadline:** TBD | **Epic:** E6 (Hackathon is ready for students)
 
-**Goal:** A student with Rust experience can clone, build, and explore Converge governance in under 10 minutes. They can write a truth, add a Cedar policy, and see it execute — without hitting walls.
+**Goal:** A participant with Rust experience can clone, build, and explore Converge governance in under 10 minutes. They can write a truth, add a Cedar policy, and see it execute — without hitting walls.
 
 ### Getting started (zero to running)
 
@@ -18,7 +18,7 @@
 - [ ] `just seed` populates meaningful starting scenario (vendor evaluation, budget approval)
 - [ ] `just dev` starts both server and desktop app in one command
 - [ ] Getting Started guide tested from clean machine — under 10 minutes to first governance run
-- [ ] CAPABILITIES.md makes it obvious what students can build with
+- [ ] CAPABILITIES.md makes it obvious what participants can build with
 
 ### API surface alignment (student-facing)
 
@@ -27,7 +27,7 @@
 - [x] Canonical LLM examples use `ChatBackend` + `ChatRequest` instead of `KongGateway` / `LlmRequest`
 - [x] Canonical Organism examples use `organism-pack` + `organism-runtime` for `IntentPacket`, `Plan`, and standard-pack registry wiring
 - [x] `apps/desktop/src-tauri` is migrated off legacy `converge-provider` / `converge-axiom` APIs such as `KongGateway` and `StaticLlmProvider`
-- [x] One `Programming API Surfaces` guide is linked from README, Getting Started, and `kb/Home.md`
+- [x] One `Programming API Surfaces` guide is linked from README, Getting Started, and `kb/Home.md` for participants
 
 ### Example truths (3+ modifiable)
 
@@ -40,7 +40,7 @@
 ### Cedar policies (hands-on)
 
 - [ ] Policy fixtures with comments explaining each clause
-- [ ] At least 3 policies students can modify and see immediate effects
+- [ ] At least 3 policies participants can modify and see immediate effects
 - [ ] Test harness: change policy → re-run truth → see different outcome
 - [ ] Cedar policy validator with clear error messages
 
@@ -53,9 +53,9 @@
 
 ### Seed data
 
-- [ ] Realistic vendor evaluation scenario (3+ vendors, 5+ criteria)
+- [ ] Realistic vendor evaluation scenario for participants (3+ vendors, 5+ criteria)
 - [ ] Budget approval scenario with amounts near threshold boundaries
-- [ ] Pre-loaded facts and proposals students can inspect
+- [ ] Pre-loaded facts and proposals participants can inspect
 
 ### Documentation
 

@@ -8,9 +8,9 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
+use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use converge_kernel::{Context, Engine, TypesRunHooks};
-use async_trait::async_trait;
 use converge_pack::{AgentEffect, Context as ContextView, ContextKey, ProposedFact, Suggestor};
 use governance_kernel::{Actor, DecisionRecord, InMemoryStore};
 use governance_truths::{DynamicDueDiligenceEvaluator, build_intent, find_truth};
@@ -75,8 +75,7 @@ enum StrategyMode {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 enum ResearchProvider {
-    Brave,
-    Tavily,
+    Anthropic,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -831,6 +830,7 @@ pub async fn execute(
             })
             .collect(),
         projection,
+        llm_calls: None,
     })
 }
 
@@ -1215,7 +1215,7 @@ fn mock_corpus(company: &str) -> Vec<ResearchDocument> {
             id: format!("{slugged}-overview"),
             title: format!("{company} overview and customer footprint"),
             url: format!("https://mock.local/{slugged}/overview"),
-            provider: ResearchProvider::Brave,
+            provider: ResearchProvider::Anthropic,
             mode: StrategyMode::Breadth,
             stage: ResearchStage::Initial,
             tags: vec!["product".into(), "customers".into(), "market".into()],
@@ -1256,7 +1256,7 @@ fn mock_corpus(company: &str) -> Vec<ResearchDocument> {
             id: format!("{slugged}-competition"),
             title: format!("{company} competitive landscape"),
             url: format!("https://mock.local/{slugged}/competition"),
-            provider: ResearchProvider::Brave,
+            provider: ResearchProvider::Anthropic,
             mode: StrategyMode::Breadth,
             stage: ResearchStage::Initial,
             tags: vec!["competition".into(), "regions".into(), "market".into()],
@@ -1288,7 +1288,7 @@ fn mock_corpus(company: &str) -> Vec<ResearchDocument> {
             id: format!("{slugged}-technology"),
             title: format!("{company} architecture and integrations"),
             url: format!("https://mock.local/{slugged}/technology"),
-            provider: ResearchProvider::Tavily,
+            provider: ResearchProvider::Anthropic,
             mode: StrategyMode::Depth,
             stage: ResearchStage::Initial,
             tags: vec![
@@ -1324,7 +1324,7 @@ fn mock_corpus(company: &str) -> Vec<ResearchDocument> {
             id: format!("{slugged}-financials-primary"),
             title: format!("{company} ownership and operating snapshot"),
             url: format!("https://mock.local/{slugged}/financials-primary"),
-            provider: ResearchProvider::Tavily,
+            provider: ResearchProvider::Anthropic,
             mode: StrategyMode::Depth,
             stage: ResearchStage::Initial,
             tags: vec!["ownership".into(), "financials".into(), "investors".into()],
@@ -1356,7 +1356,7 @@ fn mock_corpus(company: &str) -> Vec<ResearchDocument> {
             id: format!("{slugged}-financials-secondary"),
             title: format!("{company} follow-up financial commentary"),
             url: format!("https://mock.local/{slugged}/financials-secondary"),
-            provider: ResearchProvider::Tavily,
+            provider: ResearchProvider::Anthropic,
             mode: StrategyMode::Depth,
             stage: ResearchStage::FollowUp,
             tags: vec!["financials".into(), "growth".into(), "risk".into()],
@@ -1388,7 +1388,7 @@ fn mock_corpus(company: &str) -> Vec<ResearchDocument> {
             id: format!("{slugged}-compliance"),
             title: format!("{company} compliance posture and deployment controls"),
             url: format!("https://mock.local/{slugged}/compliance"),
-            provider: ResearchProvider::Tavily,
+            provider: ResearchProvider::Anthropic,
             mode: StrategyMode::Depth,
             stage: ResearchStage::FollowUp,
             tags: vec!["compliance".into(), "technology".into(), "security".into()],

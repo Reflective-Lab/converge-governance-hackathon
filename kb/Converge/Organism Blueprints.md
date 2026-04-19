@@ -6,7 +6,7 @@ source: mixed
 
 Organism maintains a library of ~22 production-shaped business cases modeled as converging truths. These are not toy examples — they represent the full quote-to-cash lifecycle of a SaaS business, from lead scoring through payment enforcement.
 
-Any of these can be brought into the hackathon as additional example truths students can study, modify, or use as templates for their own governance flows.
+Any of these can be brought into the hackathon as additional example truths participants can study, modify, or use as templates for their own governance flows.
 
 ## Blueprint Categories
 
@@ -103,9 +103,9 @@ Each blueprint is a self-contained truth definition with inputs, outputs, eviden
 5. Add domain types to `governance-kernel` if needed
 6. Wire in `truth_runtime/mod.rs`
 
-The vendor selection truth in this repo is one node in this larger graph. Students who want to go further can model multi-truth chains — for example, connecting vendor evaluation → subscription activation → workspace provisioning to show how governance decisions flow through a business.
+The vendor selection truth in this repo is one node in this larger graph. Participants who want to go further can model multi-truth chains — for example, connecting vendor evaluation → subscription activation → workspace provisioning to show how governance decisions flow through a business.
 
-### Good Candidates for Student Projects
+### Good Candidates for Participant Projects
 
 - **Expense report submission** — tangible, relatable, clear evidence requirements (receipts), approval workflow with thresholds
 - **Subscription activation** — shows module truth enforcement (must have valid plan), connects naturally to the vendor selection outcome
