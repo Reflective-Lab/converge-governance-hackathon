@@ -6,7 +6,7 @@
 2. Clone your team repo and create feature branches
 3. Run `just hit-the-ground-running` to verify everything builds
 4. Make your changes
-5. Run `just lint` before committing
+5. Run `just test && just lint` before committing
 6. Submit a pull request to your team's `main` branch
 
 ## Development
@@ -14,6 +14,22 @@
 - Rust edition 2024, minimum rust-version 1.94
 - `unsafe` code is forbidden
 - Clippy warnings are enforced
+
+## Testing
+
+Every change should include tests. The test suite has four categories:
+
+| Category | What | Where |
+|---|---|---|
+| **Unit tests** | Domain model, serialization, catalog | `#[cfg(test)] mod tests` in source files |
+| **Negative tests** | Invalid inputs, missing fields, error paths | Same modules, prefixed with negative |
+| **Property tests** | Invariants hold for arbitrary inputs (proptest) | `#[cfg(test)] mod property_tests` |
+| **Integration / soak** | HTTP endpoints, repeated execution, stability | `crates/*/tests/` and inline soak tests |
+
+```bash
+just test              # run all tests
+just test-coverage     # with coverage report (needs cargo-llvm-cov)
+```
 
 ## Pull Requests
 

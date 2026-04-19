@@ -523,6 +523,8 @@ fn slug(name: &str) -> String {
 mod tests {
     use super::*;
 
+    // --- Happy path ---
+
     #[tokio::test]
     async fn evaluate_vendor_end_to_end() {
         let store = InMemoryStore::new();
@@ -542,8 +544,88 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn single_vendor_converges() {
+        let store = InMemoryStore::new();
+        let inputs = HashMap::from([("vendors".into(), "Solo Vendor".into())]);
+        let result = execute(&store, &inputs, true).await.unwrap();
+        assert!(result.converged);
+    }
+
+    #[tokio::test]
+    async fn many_vendors_converges() {
+        let store = InMemoryStore::new();
+        let vendors = (0..10)
+            .map(|i| format!("Vendor-{i}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let inputs = HashMap::from([("vendors".into(), vendors)]);
+        let result = execute(&store, &inputs, true).await.unwrap();
+        assert!(result.converged);
+    }
+
+    #[tokio::test]
+    async fn criteria_outcomes_populated() {
+        let store = InMemoryStore::new();
+        let inputs = HashMap::from([("vendors".into(), "Acme".into())]);
+        let result = execute(&store, &inputs, false).await.unwrap();
+        assert!(
+            !result.criteria_outcomes.is_empty(),
+            "criteria outcomes should be populated"
+        );
+    }
+
+    // --- Negative tests ---
+
+    #[tokio::test]
     async fn missing_vendors_returns_error() {
         let store = InMemoryStore::new();
         assert!(execute(&store, &HashMap::new(), false).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn empty_vendors_string_returns_error() {
+        let store = InMemoryStore::new();
+        let inputs = HashMap::from([("vendors".into(), "".into())]);
+        assert!(execute(&store, &inputs, false).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn whitespace_only_vendors_returns_error() {
+        let store = InMemoryStore::new();
+        let inputs = HashMap::from([("vendors".into(), "  ,  ,  ".into())]);
+        assert!(execute(&store, &inputs, false).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn extra_commas_filtered() {
+        let store = InMemoryStore::new();
+        let inputs = HashMap::from([("vendors".into(), ",Acme,,Beta,".into())]);
+        let result = execute(&store, &inputs, false).await.unwrap();
+        assert!(result.converged);
+    }
+
+    // --- Soak tests ---
+
+    #[tokio::test]
+    async fn soak_repeated_execution_same_store() {
+        let store = InMemoryStore::new();
+        for i in 0..20 {
+            let inputs = HashMap::from([("vendors".into(), format!("Vendor-{i}"))]);
+            let result = execute(&store, &inputs, true).await.unwrap();
+            assert!(result.converged, "run {i} should converge");
+        }
+        let decisions = store.read(|k| k.decisions.len()).unwrap();
+        assert_eq!(decisions, 20);
+    }
+
+    #[tokio::test]
+    async fn soak_repeated_execution_fresh_store() {
+        for i in 0..20 {
+            let store = InMemoryStore::new();
+            let inputs = HashMap::from([("vendors".into(), format!("V-{i}"))]);
+            let result = execute(&store, &inputs, true).await.unwrap();
+            assert!(result.converged, "run {i} should converge");
+            assert_eq!(store.read(|k| k.decisions.len()).unwrap(), 1);
+        }
     }
 }

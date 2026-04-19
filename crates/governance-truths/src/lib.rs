@@ -343,9 +343,109 @@ mod tests {
     }
 
     #[test]
+    fn truth_catalog_has_all_four_truths() {
+        for key in [
+            "evaluate-vendor",
+            "dynamic-due-diligence",
+            "audit-vendor-decision",
+            "authorize-vendor-commitment",
+        ] {
+            assert!(find_truth(key).is_some(), "missing truth: {key}");
+        }
+    }
+
+    #[test]
     fn intent_builds_with_packs() {
         let truth = find_truth("evaluate-vendor").unwrap();
         let intent = build_intent(truth);
         assert!(intent.active_packs.contains(&"compliance-pack".to_string()));
+    }
+
+    #[test]
+    fn find_nonexistent_truth_returns_none() {
+        assert!(find_truth("nonexistent-truth").is_none());
+        assert!(find_truth("").is_none());
+        assert!(find_truth("EVALUATE-VENDOR").is_none()); // case-sensitive
+    }
+
+    #[test]
+    fn find_nonexistent_agent_config_returns_none() {
+        assert!(find_agent_config("nonexistent-agent").is_none());
+        assert!(find_agent_config("").is_none());
+    }
+
+    #[test]
+    fn all_truths_have_nonempty_criteria() {
+        for truth in TRUTHS {
+            assert!(
+                !truth.criteria.is_empty(),
+                "truth {} has no criteria",
+                truth.key
+            );
+        }
+    }
+
+    #[test]
+    fn all_truths_have_nonempty_packs() {
+        for truth in TRUTHS {
+            assert!(
+                !truth.packs.is_empty(),
+                "truth {} has no packs",
+                truth.key
+            );
+        }
+    }
+
+    #[test]
+    fn all_truth_keys_are_unique() {
+        let mut seen = std::collections::HashSet::new();
+        for truth in TRUTHS {
+            assert!(seen.insert(truth.key), "duplicate truth key: {}", truth.key);
+        }
+    }
+
+    #[test]
+    fn all_agent_ids_are_unique() {
+        let mut seen = std::collections::HashSet::new();
+        for agent in AGENT_MODELS {
+            assert!(
+                seen.insert(agent.agent_id),
+                "duplicate agent id: {}",
+                agent.agent_id
+            );
+        }
+    }
+
+    #[test]
+    fn every_truth_builds_a_valid_intent() {
+        for truth in TRUTHS {
+            let intent = build_intent(truth);
+            assert!(!intent.active_packs.is_empty());
+            assert!(!intent.success_criteria.is_empty());
+        }
+    }
+}
+
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn find_truth_never_panics(key in "\\PC{0,100}") {
+            let _ = find_truth(&key);
+        }
+
+        #[test]
+        fn find_agent_config_never_panics(id in "\\PC{0,100}") {
+            let _ = find_agent_config(&id);
+        }
+
+        #[test]
+        fn build_intent_always_has_budget(idx in 0usize..TRUTHS.len()) {
+            let intent = build_intent(&TRUTHS[idx]);
+            prop_assert!(intent.budgets.max_cycles > 0);
+        }
     }
 }

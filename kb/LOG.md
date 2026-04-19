@@ -7,6 +7,10 @@ type: reference
 
 ## 2026-04-19
 
+**Added Organism Patterns page:**
+- Created `kb/Converge/Organism Patterns.md` — six-stage pipeline, four collaboration topologies, five skepticism kinds, five simulation dimensions, 15 domain packs, intent resolution levels
+- Added link to `kb/Home.md` under Converge Platform section
+
 **Handoff split documented for participant template vs system integration:**
 - Added `kb/Development/Template Handoff.md` documenting:
   - keep vs move boundaries for repository layers,

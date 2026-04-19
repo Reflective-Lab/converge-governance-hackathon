@@ -24,6 +24,11 @@ clean:
 test:
     cargo test --workspace
 
+# Run tests with coverage report (requires cargo-llvm-cov: cargo install cargo-llvm-cov)
+test-coverage:
+    cargo llvm-cov --workspace --html
+    @echo "Coverage report: target/llvm-cov/html/index.html"
+
 build:
     cargo build --workspace
 

@@ -54,7 +54,8 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 - [[Converge/HITL Gates]] — human-in-the-loop gated decisions
 - [[Converge/Experience and Recall]] — learning from past runs
 - [[Converge/Governed Artifacts]] — lifecycle management for system outputs
-- [[Converge/Organism Blueprints]] — ~22 production-shaped business cases from Organism, available as hackathon examples
+- [[Converge/Organism Patterns]] — the six-stage pipeline: intent, planning, adversarial, simulation, learning, domain packs
+- [[Converge/Organism Blueprints]] — ~22 production-shaped business cases from Organism
 - [[Converge/Desktop Naming]] — Helm, Axiom, and the stack vocabulary
 
 ## Visualization

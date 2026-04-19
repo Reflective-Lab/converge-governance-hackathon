@@ -458,6 +458,8 @@ mod tests {
         }
     }
 
+    // --- Unit tests ---
+
     #[test]
     fn write_with_events_forwarded_to_domain_stream() {
         let stream = Arc::new(CapturingDomainEventStream::default());
@@ -522,5 +524,244 @@ mod tests {
 
         let count = store.read(|k| k.vendors.len()).unwrap();
         assert_eq!(count, 1, "rollback should leave only the first vendor");
+    }
+
+    // --- Negative tests ---
+
+    #[test]
+    fn compliance_for_nonexistent_vendor_returns_empty() {
+        let store = InMemoryStore::new();
+        let checks = store
+            .read(|k| k.compliance_for_vendor(Uuid::new_v4()).len())
+            .unwrap();
+        assert_eq!(checks, 0);
+    }
+
+    #[test]
+    fn risk_scores_for_nonexistent_vendor_returns_empty() {
+        let store = InMemoryStore::new();
+        let scores = store
+            .read(|k| k.risk_scores_for_vendor(Uuid::new_v4()).len())
+            .unwrap();
+        assert_eq!(scores, 0);
+    }
+
+    #[test]
+    fn recent_decisions_on_empty_store() {
+        let store = InMemoryStore::new();
+        let decisions = store.read(|k| k.recent_decisions(10).len()).unwrap();
+        assert_eq!(decisions, 0);
+    }
+
+    #[test]
+    fn recent_audit_on_empty_store() {
+        let store = InMemoryStore::new();
+        let entries = store.read(|k| k.recent_audit(10).len()).unwrap();
+        assert_eq!(entries, 0);
+    }
+
+    #[test]
+    fn drain_events_clears_pending() {
+        let mut kernel = GovernanceKernel::default();
+        kernel.register_vendor("A".into(), "desc".into(), &Actor::system());
+        assert!(!kernel.drain_events().is_empty());
+        assert!(kernel.drain_events().is_empty(), "second drain should be empty");
+    }
+
+    // --- Soak tests ---
+
+    #[test]
+    fn soak_repeated_vendor_registration() {
+        let store = InMemoryStore::new();
+        for i in 0..100 {
+            store
+                .write_with_events(|k| {
+                    k.register_vendor(format!("Vendor-{i}"), format!("desc-{i}"), &Actor::system());
+                    Ok(())
+                })
+                .unwrap();
+        }
+        let count = store.read(|k| k.vendors.len()).unwrap();
+        assert_eq!(count, 100);
+        let audit_count = store.read(|k| k.audit_trail.len()).unwrap();
+        assert_eq!(audit_count, 100);
+    }
+
+    #[test]
+    fn soak_interleaved_reads_and_writes() {
+        let store = InMemoryStore::new();
+        for i in 0..50 {
+            store
+                .write_with_events(|k| {
+                    k.register_vendor(format!("V-{i}"), "desc".into(), &Actor::system());
+                    Ok(())
+                })
+                .unwrap();
+
+            let count = store.read(|k| k.vendors.len()).unwrap();
+            assert_eq!(count, i + 1);
+
+            let audit = store.read(|k| k.recent_audit(1000).len()).unwrap();
+            assert_eq!(audit, i + 1);
+        }
+    }
+
+    #[test]
+    fn soak_rollback_leaves_no_trace() {
+        let store = InMemoryStore::new();
+        for _ in 0..50 {
+            let _: Result<StoreWriteResult<()>, StoreError> = store.write_with_events(|k| {
+                k.register_vendor("Ghost".into(), "will fail".into(), &Actor::system());
+                Err(KernelError::Validation("intentional".into()))
+            });
+        }
+        let count = store.read(|k| k.vendors.len()).unwrap();
+        assert_eq!(count, 0, "50 rollbacks should leave zero vendors");
+        let audit = store.read(|k| k.audit_trail.len()).unwrap();
+        assert_eq!(audit, 0, "50 rollbacks should leave zero audit entries");
+    }
+}
+
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    fn arb_actor() -> impl Strategy<Value = Actor> {
+        prop_oneof![
+            Just(Actor::system()),
+            "[a-z]{3,10}".prop_map(|name| Actor::agent(&name)),
+        ]
+    }
+
+    fn arb_severity() -> impl Strategy<Value = Severity> {
+        prop_oneof![
+            Just(Severity::Critical),
+            Just(Severity::High),
+            Just(Severity::Medium),
+            Just(Severity::Low),
+            Just(Severity::Info),
+        ]
+    }
+
+    fn arb_compliance_status() -> impl Strategy<Value = ComplianceStatus> {
+        prop_oneof![
+            Just(ComplianceStatus::Pass),
+            Just(ComplianceStatus::Fail),
+            Just(ComplianceStatus::NeedsReview),
+            Just(ComplianceStatus::NotApplicable),
+        ]
+    }
+
+    proptest! {
+        #[test]
+        fn vendor_registration_always_creates_audit_entry(
+            name in "[A-Za-z ]{1,50}",
+            desc in "[A-Za-z ]{0,100}",
+            actor in arb_actor(),
+        ) {
+            let store = InMemoryStore::new();
+            store
+                .write_with_events(|k| {
+                    k.register_vendor(name.clone(), desc, &actor);
+                    Ok(())
+                })
+                .unwrap();
+
+            let vendor_count = store.read(|k| k.vendors.len()).unwrap();
+            let audit_count = store.read(|k| k.audit_trail.len()).unwrap();
+            prop_assert_eq!(vendor_count, 1);
+            prop_assert_eq!(audit_count, 1);
+        }
+
+        #[test]
+        fn confidence_bps_within_range(bps in 0u16..=10_000u16) {
+            let decision = DecisionRecord {
+                id: Uuid::new_v4(),
+                truth_key: "test".into(),
+                recommendation: "ok".into(),
+                confidence_bps: bps,
+                rationale: "test".into(),
+                vendor_id: None,
+                needs_human_review: false,
+                decided_by: Actor::system(),
+                decided_at: Utc::now(),
+            };
+            let json = serde_json::to_string(&decision).unwrap();
+            let parsed: DecisionRecord = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(parsed.confidence_bps, bps);
+        }
+
+        #[test]
+        fn risk_score_bps_roundtrips(score_bps in 0u16..=10_000u16, dim in "[a-z]{3,20}") {
+            let score = RiskScore {
+                id: Uuid::new_v4(),
+                vendor_id: Uuid::new_v4(),
+                dimension: dim.clone(),
+                score_bps,
+                rationale: "test".into(),
+                scored_by: Actor::system(),
+                scored_at: Utc::now(),
+            };
+            let json = serde_json::to_string(&score).unwrap();
+            let parsed: RiskScore = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(parsed.score_bps, score_bps);
+            prop_assert_eq!(parsed.dimension, dim);
+        }
+
+        #[test]
+        fn compliance_status_roundtrips(status in arb_compliance_status()) {
+            let json = serde_json::to_string(&status).unwrap();
+            let parsed: ComplianceStatus = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(parsed, status);
+        }
+
+        #[test]
+        fn severity_roundtrips(sev in arb_severity()) {
+            let json = serde_json::to_string(&sev).unwrap();
+            let parsed: Severity = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(parsed, sev);
+        }
+
+        #[test]
+        fn failed_writes_never_change_state(
+            n in 1usize..20,
+        ) {
+            let store = InMemoryStore::new();
+            for _ in 0..n {
+                let _: Result<StoreWriteResult<()>, StoreError> = store.write_with_events(|k| {
+                    k.register_vendor("Ghost".into(), "fail".into(), &Actor::system());
+                    Err(KernelError::Validation("forced".into()))
+                });
+            }
+            let count = store.read(|k| k.vendors.len()).unwrap();
+            prop_assert_eq!(count, 0);
+        }
+
+        #[test]
+        fn multiple_vendors_all_queryable(count in 1usize..30) {
+            let store = InMemoryStore::new();
+            for i in 0..count {
+                store
+                    .write_with_events(|k| {
+                        k.register_vendor(format!("V{i}"), "d".into(), &Actor::system());
+                        Ok(())
+                    })
+                    .unwrap();
+            }
+            let actual = store.read(|k| k.vendors.len()).unwrap();
+            prop_assert_eq!(actual, count);
+        }
+
+        #[test]
+        fn actor_kind_serialization(kind in prop_oneof![
+            Just(ActorKind::Human),
+            Just(ActorKind::Agent),
+            Just(ActorKind::System),
+        ]) {
+            let json = serde_json::to_string(&kind).unwrap();
+            let parsed: ActorKind = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(parsed, kind);
+        }
     }
 }

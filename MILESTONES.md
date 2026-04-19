@@ -7,8 +7,8 @@
 
 ---
 
-## Current: Ready for Students
-**Deadline:** TBD | **Epic:** E6 (Hackathon is ready for students)
+## Current: Ready for Participants
+**Deadline:** TBD | **Epic:** E6 (Hackathon ready for participants)
 
 **Goal:** A participant with Rust experience can clone, build, and explore Converge governance in under 10 minutes. They can write a truth, add a Cedar policy, and see it execute — without hitting walls.
 
