@@ -19,6 +19,7 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 ## Development
 - [[Development/Getting Started]] — toolchain, build commands, quick reference
 - [[Development/Provider Configuration]] — Agent model matching, provider setup, customization
+- [[Development/Template Handoff]] — boundary between participant template and system-level integration
 - [[Development/Programming API Surfaces]] — the canonical participant-facing import and layering rules
 - [[Development/Writing Suggestors]] — suggestor trait, patterns, rules
 - [[Development/Writing Truths]] — step-by-step guide to adding a new truth

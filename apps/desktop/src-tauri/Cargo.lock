@@ -1444,12 +1444,20 @@ dependencies = [
  "converge-provider",
  "converge-provider-api",
  "dotenv",
+ "governance-telemetry",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tokio",
+]
+
+[[package]]
+name = "governance-telemetry"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

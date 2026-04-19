@@ -61,7 +61,7 @@ Converge governs what agents **decide**. Kong governs what agents **access**. To
 | **Scalable** | Engine runs in-process, zero network overhead for governance logic. Budgets prevent runaway agents. | Kong scales horizontally. Load balancing across LLM providers. Semantic routing to cheapest model that fits. |
 | **Compliant** | Full audit trail: every fact has provenance (who proposed, what evidence, what confidence). Cedar policies enforced at promotion gates. | PII Sanitizer strips sensitive data before it reaches models. Prompt Guard blocks prohibited content. Data residency routing. |
 | **Enforce usage policies** | Cedar policies gate agent authority levels (advisory, participatory, supervisory, sovereign). Promotion requires passing criteria. | AI Rate Limiting per team. Token budgets. Prompt Guard allow/deny lists. |
-| **Monitor LLM consumption** | ExperienceStore captures per-agent cost, tokens, model — metadata agents learn from across runs. | Kong Audit Log: every request logged with tokens, cost, latency, model, status. Konnect dashboard for real-time visibility. |
+| **Monitor LLM consumption** | Runtime telemetry exposes per-run `llm_calls` with model/provider/usage for operators and later experience adapters. | Kong Audit Log: every request logged with tokens, cost, latency, model, status. Konnect dashboard for real-time visibility. |
 | **Automated guardrails** | Agents emit proposals, never direct facts. Criteria evaluate convergence. HITL gates fire automatically on low confidence. | PII redaction (20 categories, 9 languages). Semantic Prompt Guard. Content safety. Rate limiting. All automatic, no code changes. |
 | **Protect sensitive data** | Facts have typed provenance. No agent can mutate context directly. Cedar policies control access. | PII Sanitizer runs before prompts reach models. Credentials centralized — never in application code. |
 
@@ -80,7 +80,7 @@ Participant writes a suggestor
   → LLM responds
   → Kong: Log tokens, cost, latency
   → Converge: Does this proposal pass criteria? Promote or reject?
-  → ExperienceStore: Remember what this cost for next time
+  → Runtime telemetry: capture `llm_calls` and feed them into future experience adapters
 ```
 
 ### Without Slowing Down Innovation

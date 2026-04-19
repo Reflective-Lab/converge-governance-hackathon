@@ -5,6 +5,16 @@ type: reference
 
 # Knowledge Base Mutation Log
 
+## 2026-04-19
+
+**Handoff split documented for participant template vs system integration:**
+- Added `kb/Development/Template Handoff.md` documenting:
+  - keep vs move boundaries for repository layers,
+  - system-level work to re-home in a runway/integration repo,
+  - release strategy for stable `converge` / `organism` / `axiom` consumption,
+  - handoff responsibilities for template, release, and docs owners.
+- Linked the new page from `kb/Home.md` under Development.
+
 ## 2026-04-18
 
 **Added Kong API reference pages:**
@@ -41,4 +51,3 @@ type: reference
 **Replaced all student → participant references** — Bulk update across 16 files (AGENTS.md, README.md, MILESTONES.md, CAPABILITIES.md, kb/ pages, examples, and apps) to use "participants" or "participant-facing" instead of "students" or "student-facing". This aligns the project terminology with official hackathon language.
 
 **Enhanced `Integrations/Why Kong.md`** — Added "Participant Pitch" section with the two-layer governance diagram, live demo walkthrough, and comparison table. This is the participant-facing framing used in the 30-minute hackathon kickoff meeting.
-

@@ -8,13 +8,21 @@ pub mod source_import;
 use std::collections::HashMap;
 
 use governance_kernel::InMemoryStore;
-use governance_telemetry::{LlmCallTelemetry, LlmUsageSummary};
+use governance_telemetry::LlmCallTelemetry;
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
 // Shared types for truth execution results
 // ---------------------------------------------------------------------------
 
+/// Execution result returned by a truth run.
+///
+/// `TruthExecutionResult` is the public boundary contract for execution output.
+/// It is intentionally conservative:
+/// - `projection` and `criteria_outcomes` describe core governance output.
+/// - `llm_calls` is an optional, runtime-only telemetry projection.
+/// - runtime observability may be disabled per environment, so consumers should
+///   treat `llm_calls` as best-effort data.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TruthExecutionResult {
     pub converged: bool,
@@ -22,6 +30,15 @@ pub struct TruthExecutionResult {
     pub stop_reason: String,
     pub criteria_outcomes: Vec<CriterionOutcomeView>,
     pub projection: Option<TruthProjection>,
+    /// Best-effort projection of LLM call telemetry produced during execution.
+    ///
+    /// This field is optional by design and may be omitted (`None`) for
+    /// compatibility with older API clients or when telemetry sinks are not
+    /// wired in this environment.
+    ///
+    /// Consumers should never treat these entries as source-of-truth facts.
+    /// They are non-authoritative operational diagnostics that must not affect
+    /// governance decisions, audit semantics, or persisted outcomes.
     #[serde(default)]
     pub llm_calls: Option<Vec<LlmCallTelemetry>>,
 }

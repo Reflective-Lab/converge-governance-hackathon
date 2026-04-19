@@ -3,6 +3,9 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 
+/// Aggregate token usage for one completed model call.
+///
+/// All fields are optional to remain tolerant to provider variance.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LlmUsageSummary {
     pub prompt_tokens: Option<u64>,
@@ -10,6 +13,12 @@ pub struct LlmUsageSummary {
     pub total_tokens: Option<u64>,
 }
 
+/// Structured telemetry for an observed LLM invocation.
+///
+/// This record is intentionally narrow and never includes raw prompts or
+/// responses. It supports cross-cutting observability (`cost`, `latency`,
+/// `provider health`) without leaking provider internals into audit or
+/// governance-facing payloads.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LlmCallTelemetry {
     pub context: String,

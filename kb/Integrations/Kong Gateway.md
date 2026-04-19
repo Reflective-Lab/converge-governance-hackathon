@@ -78,7 +78,7 @@ This hackathon enables these Kong Enterprise plugins:
 2. `CONVERGE_LLM_FORCE_PROVIDER=kong` is set by default
 3. Backend selection uses Kong when `KONG_API_KEY` is available
 4. All LLM calls route through Kong automatically
-5. Token usage flows into `ChatResponse.usage` for ExperienceStore capture
+5. Token usage flows into `ChatResponse.usage` for runtime telemetry capture (`llm_calls`)
 6. Falls back to offline `StaticChatBackend` when Kong is unreachable
 
 ## What Not To Teach As The Default
@@ -91,6 +91,20 @@ These are Kong-specific internal types — do not expose as primary participant-
 - `LlmRequest`
 
 Keep application code on `ChatBackend` / `ChatRequest`. Kong is the transport, not the contract.
+
+## Kong-free Operation in This Hackathon
+
+Kong is optional for most flows and should stay an integration detail.
+
+- If `KONG_AI_GATEWAY_URL` and `KONG_API_KEY` are present, provider selection can route through Kong.
+- If Kong credentials are absent, `select_chat_backend` can still run directly against provider backends.
+- Desktop defaults still allow direct backends through `CONVERGE_LLM_FORCE_PROVIDER` and provider model overrides.
+- Removing Kong from this path does **not** change:
+  - audit semantics (`/v1/audit`, decision history),
+  - governance projection (`TruthExecutionResult.llm_calls` still flows when enabled),
+  - any core trust, policy, or audit assumptions.
+
+The practical boundary is: **Converge defines facts and trust; Kong defines transport and external enforcement policy.**
 
 ## Demo Story
 

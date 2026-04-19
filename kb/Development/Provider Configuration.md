@@ -128,6 +128,18 @@ Kong route details are configurable via `KONG_LLM_ROUTE`:
 
 Routes through Kong for governance, cost tracking, PII redaction, rate limiting.
 
+### Kong-Free Mode
+
+You can run every participant-facing flow without Kong:
+
+1. Remove or ignore `KONG_AI_GATEWAY_URL` and `KONG_API_KEY`.
+2. Set one direct provider in `.env` (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.).
+3. Optionally set `CONVERGE_LLM_FORCE_PROVIDER=<provider>` to pin the provider explicitly.
+
+This keeps the same governance contract and `TruthExecutionResult` API because selection still happens through `ChatBackend`/`ChatRequest` contracts.
+
+Kong credentials are still available when needed, and the app can switch to them without changing core architecture code.
+
 ---
 
 ## Customizing Agent Requirements
