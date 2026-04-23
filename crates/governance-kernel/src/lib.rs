@@ -565,7 +565,10 @@ mod tests {
         let mut kernel = GovernanceKernel::default();
         kernel.register_vendor("A".into(), "desc".into(), &Actor::system());
         assert!(!kernel.drain_events().is_empty());
-        assert!(kernel.drain_events().is_empty(), "second drain should be empty");
+        assert!(
+            kernel.drain_events().is_empty(),
+            "second drain should be empty"
+        );
     }
 
     // --- Soak tests ---

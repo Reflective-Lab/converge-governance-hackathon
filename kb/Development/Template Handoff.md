@@ -21,7 +21,7 @@ participant template** while system-level experiments stay in a dedicated integr
 - Core challenge flow and participant tasks:
   - truth definitions and `governance-truths` examples
   - Cedar policy experiments
-  - suggestor/runtime scaffolding on canonical API surfaces (`converge-pack`, `converge-kernel`, `converge-provider`, `converge-axiom`, `organism-runtime`)
+  - suggestor/runtime scaffolding on canonical API surfaces (`converge-pack`, `converge-kernel`, `converge-provider`, `axiom-truth`, `organism-runtime`)
   - desktop starter and onboarding docs
   - lightweight local API to run truths
 - Any API that is part of the participant exercise should remain documented as

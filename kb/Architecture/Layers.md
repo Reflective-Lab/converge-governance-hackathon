@@ -10,8 +10,8 @@ tags: [architecture]
 │ Operator workflow, file picker, validation UI              │
 ├─────────────────────────────────────────────────────────────┤
 │ Axiom                                                      │
-│ governance-app + governance-truths + governance-kernel     │
-│ Truth definitions, projections, validation, view models    │
+│ axiom-truth + governance-truths boundary                  │
+│ Truth contracts, validation, simulation, policy lens       │
 ├─────────────────────────────────────────────────────────────┤
 │ Organism                                                   │
 │ Intent → Huddle → Debate → Suggestors                      │
@@ -32,17 +32,19 @@ tags: [architecture]
 | Crate | Role |
 |---|---|
 | `apps/desktop` | **Helm** — the operator-facing control surface |
-| `governance-app` | **Axiom** — shared app layer for view models, truth execution, and queries |
-| `governance-truths` | **Axiom** — truth catalog + Converge bindings: `TruthDefinition`, `build_intent()`, evaluator wiring |
-| `governance-kernel` | **Axiom** — domain model + in-memory store: Vendor, PolicyRule, ComplianceCheck, RiskScore, DecisionRecord, AuditEntry |
-| `governance-server` | A local harness for exercising Axiom + Converge during development |
+| `governance-app` | **Hackathon app** — shared app layer for view models, truth execution, and queries |
+| `governance-truths` | **Axiom-facing app boundary** — truth catalog, acceptance criteria, and Converge intent/evaluator wiring |
+| `governance-kernel` | **Hackathon app** — local product model and writeback store: Vendor, PolicyRule, ComplianceCheck, RiskScore, DecisionRecord, AuditEntry |
+| `governance-server` | A local harness for exercising Axiom contracts + Organism planning + Converge execution during development |
 | `converge-*` crates | **Converge** — engine, context, promotion, policy, criteria, audit |
 | provider and search adapters | **Providers** — external LLM, search, and tool connectivity |
 
 ## App Boundary
 
-The Svelte frontend sits in Helm and calls local Rust commands in Axiom through Tauri — not HTTP/REST/gRPC. The existing server is a *dev harness*, not the product surface.
+The Svelte frontend sits in Helm and calls local Rust commands through Tauri — not HTTP/REST/gRPC. The existing server is a *dev harness*, not the product surface.
 
-`Engine.run()` starts from Axiom, activates Organism reasoning, and commits only through Converge. Organism never bypasses the promotion gate, and providers never leak into Helm directly.
+Axiom is the truth-and-policy specification layer: it defines and validates what the decision must satisfy. Organism owns the strategy for forming the team to satisfy that contract. Converge owns the governed execution and promotion boundary. The hackathon app owns imported artifacts, demo data, and local writeback after Converge has promoted evidence.
 
-See also: [[Architecture/Overview]], [[Domain/Key Types]]
+`Engine.run()` belongs to Converge execution, not Axiom. Organism never bypasses the promotion gate, Axiom never promotes facts, and providers never leak into Helm directly.
+
+See also: [[Architecture/Overview]], [[Architecture/Axiom Truth Contract]], [[Domain/Key Types]]

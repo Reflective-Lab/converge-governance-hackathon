@@ -3,9 +3,11 @@
 
 use std::time::Instant;
 
-use governance_telemetry::{InMemoryLlmCallCollector, LlmCallSink, LlmCallTelemetry, LlmUsageSummary};
-use converge_provider_api::{ChatMessage, ChatRequest, ChatRole, ResponseFormat};
 use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
+use converge_provider_api::{ChatMessage, ChatRequest, ChatRole, ResponseFormat};
+use governance_telemetry::{
+    InMemoryLlmCallCollector, LlmCallSink, LlmCallTelemetry, LlmUsageSummary,
+};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -92,8 +94,8 @@ Produce a JSON response with this exact structure:
     );
 
     let raw = call_llm(&prompt, "desktop-dd:analysis", &llm_call_collector).await?;
-    let v: serde_json::Value = serde_json::from_str(&strip_fences(&raw))
-        .unwrap_or_else(|_| serde_json::json!({}));
+    let v: serde_json::Value =
+        serde_json::from_str(&strip_fences(&raw)).unwrap_or_else(|_| serde_json::json!({}));
 
     let key_facts: Vec<TaggedFact> = v["key_facts"]
         .as_array()
@@ -112,12 +114,20 @@ Produce a JSON response with this exact structure:
 
     let risk_factors: Vec<String> = v["risk_factors"]
         .as_array()
-        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
         .unwrap_or_default();
 
     let growth_opportunities: Vec<String> = v["growth_opportunities"]
         .as_array()
-        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
         .unwrap_or_default();
 
     Ok(DdReport {
@@ -129,8 +139,14 @@ Produce a JSON response with this exact structure:
         },
         final_report: FinalReport {
             market_analysis: v["market_analysis"].as_str().unwrap_or("").to_string(),
-            competitive_landscape: v["competitive_landscape"].as_str().unwrap_or("").to_string(),
-            technology_assessment: v["technology_assessment"].as_str().unwrap_or("").to_string(),
+            competitive_landscape: v["competitive_landscape"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
+            technology_assessment: v["technology_assessment"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
             risk_factors,
             growth_opportunities,
             recommendation: v["recommendation"].as_str().unwrap_or("").to_string(),
@@ -141,15 +157,18 @@ Produce a JSON response with this exact structure:
 }
 
 async fn search_brave(query: &str) -> anyhow::Result<Vec<SearchHit>> {
-    let api_key = std::env::var("BRAVE_API_KEY")
-        .map_err(|_| anyhow::anyhow!("BRAVE_API_KEY not set"))?;
+    let api_key =
+        std::env::var("BRAVE_API_KEY").map_err(|_| anyhow::anyhow!("BRAVE_API_KEY not set"))?;
 
     let client = reqwest::Client::new();
     let resp = client
         .get("https://api.search.brave.com/res/v1/web/search")
         .header("X-Subscription-Token", &api_key)
         .header("Accept", "application/json")
-        .query(&[("q", &format!("{query} company product overview")), ("count", &"15".to_string())])
+        .query(&[
+            ("q", &format!("{query} company product overview")),
+            ("count", &"15".to_string()),
+        ])
         .send()
         .await?
         .json::<serde_json::Value>()
@@ -212,7 +231,10 @@ async fn call_llm(
         provider: selected.provider().to_string(),
         model: selected.model().to_string(),
         elapsed_ms: started_at.elapsed().as_millis() as u64,
-        finish_reason: response.finish_reason.as_ref().map(|reason| format!("{reason:?}")),
+        finish_reason: response
+            .finish_reason
+            .as_ref()
+            .map(|reason| format!("{reason:?}")),
         usage: response.usage.as_ref().map(|usage| LlmUsageSummary {
             prompt_tokens: Some(u64::from(usage.prompt_tokens)),
             completion_tokens: Some(u64::from(usage.completion_tokens)),

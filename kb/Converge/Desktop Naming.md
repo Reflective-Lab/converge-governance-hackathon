@@ -15,16 +15,17 @@ It is **a governed execution environment** — the place where intent becomes go
 | Layer | Name | Role |
 |-------|------|------|
 | Control surface | **Helm** | What operators see — inspect, validate, act |
-| Truth layer | **Axiom** | What is defined — truth, projections, validation |
+| Truth layer | **Axiom** | What must be true — contracts, validation, policy lens |
 | Intelligence | Organism | How the system reasons — huddle, debate, gap-chasing |
 | Governance | Converge | Whether proposals can become facts |
 | Capability | Providers | External models, search, and tools |
 
 For naming purposes, the product-facing story is still simple:
 1. Operators sit in **Helm**
-2. They define and validate truth in **Axiom**
-3. Axiom runs the governed intelligence loop underneath
-4. Organism reasons, Converge governs, providers supply capabilities
+2. They define and validate truth contracts in **Axiom**
+3. Organism forms the team to satisfy the contract
+4. Converge runs the governed loop, promotes facts, and records evidence
+5. The app owns product writeback and artifacts
 
 ## Why Axiom
 
@@ -43,8 +44,8 @@ For naming purposes, the product-facing story is still simple:
 ## Current Decision
 
 **Helm** is the public-facing desktop name (slide deck, hackathon, participant-facing).
-**Axiom** is the truth validation engine underneath.
-**Organism** is the named intelligence layer beneath Axiom, but it stays architectural rather than product-branded in the desktop.
+**Axiom** is the executable truth-and-policy specification layer underneath.
+**Organism** is the named intelligence layer after Axiom, but it stays architectural rather than product-branded in the desktop.
 **Converge** remains the governance substrate and should be named directly when explaining authority or promotion.
 
 The full stack does not need to be exposed on day one. Participants sit in Helm. Axiom surfaces when we go deeper into authoring and validation. Organism and Converge surface when we explain how governed reasoning actually works.

@@ -11,7 +11,8 @@ use converge_domain::packs::trust::{
     SessionValidatorAgent,
 };
 use converge_kernel::{
-    Context, ContextKey, Criterion, CriterionEvaluator, CriterionResult, Engine, TypesRunHooks,
+    Context, ContextKey, ContextState, Criterion, CriterionEvaluator, CriterionResult, Engine,
+    TypesRunHooks,
 };
 use governance_kernel::InMemoryStore;
 use governance_truths::{build_intent, find_truth};
@@ -25,7 +26,7 @@ use super::TruthExecutionResult;
 struct AuditVendorDecisionEvaluator;
 
 impl CriterionEvaluator for AuditVendorDecisionEvaluator {
-    fn evaluate(&self, criterion: &Criterion, context: &Context) -> CriterionResult {
+    fn evaluate(&self, criterion: &Criterion, context: &dyn Context) -> CriterionResult {
         match criterion.id.as_str() {
             "audit-entries-written" => {
                 if context
@@ -73,7 +74,7 @@ pub async fn execute(
     let decision_id = super::common::required_input(inputs, "decision_id")?;
 
     // Seed the context with a session token to trigger the trust pack chain.
-    let mut initial_context = Context::new();
+    let mut initial_context = ContextState::new();
     initial_context
         .add_input_with_provenance(
             ContextKey::Seeds,

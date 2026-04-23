@@ -5,6 +5,13 @@ type: reference
 
 # Knowledge Base Mutation Log
 
+## 2026-04-23
+
+**Added Axiom truth contract boundary:**
+- Created `kb/Architecture/Axiom Truth Contract.md` defining Axiom as the normative executable specification layer for governed decisions.
+- Updated architecture pages so Axiom defines what must be true, Organism forms the team to satisfy it, Converge governs execution and promotion, and hackathon apps own UI/artifacts/writeback.
+- Clarified that Axiom is not an agent runtime, formation compiler, promotion path, prior learner, or authoritative business state store.
+
 ## 2026-04-19
 
 **Added Organism Patterns page:**

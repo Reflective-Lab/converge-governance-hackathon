@@ -15,11 +15,37 @@ Use these crates by role:
 | Converge runtime | `converge-kernel` | `Engine`, `Context`, `Budget`, criteria, run hooks |
 | Converge capability contracts | `converge-provider-api` | `ChatBackend`, `DynChatBackend`, `ChatRequest`, `ChatResponse`, `SelectionCriteria` |
 | Converge ready-made adapters | `converge-provider` | capability adapters that satisfy those contracts, search, tools |
-| Converge tooling | `converge-axiom` | validators, truth parsing, `mock_llm::StaticChatBackend` |
+| Axiom truth contract | `axiom-truth` | truth validation, Gherkin parsing, policy lens |
 | Organism authoring | `organism-pack` | `IntentPacket`, `Plan`, `PlanStep`, reasoning primitives |
 | Organism runtime | `organism-runtime` | `Registry`, readiness, built-in packs |
 
 `converge-core` still matters, but treat it as the constitutional layer and internal re-export surface, not the first import path participants learn from examples.
+
+## Current Foundation Baseline
+
+The participant-facing repo is pinned to these foundation tags:
+
+- Converge `v3.7.3` for runtime, formation substrate, provider contracts, policy, and domain packs.
+- Organism `v1.4.0` for intent, planning, collaboration, simulation, and learning examples.
+- Axiom `v0.7.0` for truth validation, Gherkin parsing, and policy lens work.
+
+Do not switch this repo to sibling path dependencies for participant work. The hackathon template must remain cloneable without `../converge`, `../organism`, or `../axiom` checkouts.
+
+Foundation dependency chain: Organism `v1.4.0` and Axiom `v0.7.0` are aligned to Converge `v3.7.3`, so participant code should see one Converge governance/provider contract across the user-side stack.
+
+## Axiom Contract
+
+Axiom is the executable specification layer for governed decisions. Participant-facing Axiom code should define and validate truth contracts: business intent, policies, examples, invariants, acceptance criteria, policy lens, and admissibility checks.
+
+Axiom code should not:
+
+- run convergence
+- compile formations
+- promote facts
+- learn priors
+- store the authoritative business decision
+
+The handoff is: Axiom defines what must be true, Organism decides how to form the team to satisfy it, Converge governs execution and promotion, and the hackathon app owns product writeback.
 
 ## Converge Authoring Contract
 
@@ -94,7 +120,7 @@ That means Organism examples should stay typed and proposal-oriented, just like 
 There are still places in this repo family that do not match the target surface yet:
 
 - This hackathon repo still imports `converge-core` directly in some runtime code. That is acceptable internally, but participant-facing examples should prefer `converge-pack`, `converge-kernel`, and `converge-provider-api`.
-- `apps/desktop/src-tauri` now uses `ChatBackend` selection plus `StaticChatBackend`; keep future participant examples on that same contract instead of reintroducing gateway-specific APIs.
+- `apps/desktop/src-tauri` now uses `ChatBackend` selection plus offline fallback behavior; keep future participant examples on that same contract instead of reintroducing gateway-specific APIs.
 - `../monterro/crates/monterro-core/src/due_diligence.rs` is useful as a prototype, but its direct provider HTTP calls are not the template we want participants copying.
 - `../monterro/crates/monterro-core/src/convergent_dd.rs` is closer to the target shape because it uses curated Converge and Organism surfaces, but the hackathon repo should keep its participant-facing examples even smaller and more explicit.
 

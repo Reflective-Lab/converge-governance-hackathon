@@ -8,6 +8,7 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 ## Architecture
 - [[Architecture/Overview]] — five-layer model, repo ownership split
 - [[Architecture/Layers]] — crate responsibilities and stack diagram
+- [[Architecture/Axiom Truth Contract]] — Axiom as the normative truth-and-policy specification layer
 - [[Architecture/Convergence Loop]] — how the engine reaches a decision
 
 ## Domain

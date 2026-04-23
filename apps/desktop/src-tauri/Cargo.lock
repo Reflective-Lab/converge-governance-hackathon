@@ -145,14 +145,15 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "axiom-truth"
-version = "0.5.0"
+version = "0.7.0"
+source = "git+https://github.com/Reflective-Lab/axiom?tag=v0.7.0#e7e6a7f6b9ac4c76513cf741beae91c6e6b11182"
 dependencies = [
  "async-trait",
  "chrono",
  "clap",
  "colored",
- "converge-provider",
- "converge-provider-api",
+ "converge-provider 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-provider-api 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv",
  "futures",
  "gherkin",
@@ -206,6 +207,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 dependencies = [
  "serde_core",
+]
+
+[[package]]
+name = "bitvec"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bc2832c24239b0141d5674bb9174f9d68a8b5b3f2753311927c172ca46f7e9c"
+dependencies = [
+ "funty",
+ "radium",
+ "tap",
+ "wyz",
 ]
 
 [[package]]
@@ -467,14 +480,17 @@ dependencies = [
 
 [[package]]
 name = "converge-core"
-version = "3.4.0"
+version = "3.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e61386a393e5c07eac00fa3f8093da732a2f6a7da266935e925e1d73db643780"
 dependencies = [
  "async-trait",
- "converge-pack",
- "converge-provider-api",
+ "converge-pack 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-provider-api 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex",
  "serde",
  "serde_json",
+ "sha2",
  "strum",
  "thiserror 2.0.18",
  "tracing",
@@ -482,23 +498,130 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-pack"
-version = "3.4.0"
+name = "converge-core"
+version = "3.7.3"
+source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
  "async-trait",
+ "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "hex",
  "serde",
+ "serde_json",
+ "sha2",
+ "strum",
+ "thiserror 2.0.18",
+ "tracing",
+ "typed-builder 0.20.1",
+]
+
+[[package]]
+name = "converge-model"
+version = "3.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e327a4c6d2be0bf74e620755338be682d7e2e9ee2a9f5abaf57bcfaccaeed932"
+dependencies = [
+ "converge-core 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-pack 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-provider-api 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
+]
+
+[[package]]
+name = "converge-model"
+version = "3.7.3"
+source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
+dependencies = [
+ "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "serde",
+]
+
+[[package]]
+name = "converge-optimization"
+version = "3.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd9c066db70126b148cf0485088dbaf261b5b58cdcec48ff840c051195b107d5"
+dependencies = [
+ "async-trait",
+ "bitvec",
+ "converge-core 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-model 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-pack 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 2.13.0",
+ "num-traits",
+ "ordered-float",
+ "petgraph",
+ "rayon",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
+name = "converge-optimization"
+version = "3.7.3"
+source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
+dependencies = [
+ "async-trait",
+ "bitvec",
+ "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-model 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "indexmap 2.13.0",
+ "num-traits",
+ "ordered-float",
+ "petgraph",
+ "rayon",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
+name = "converge-pack"
+version = "3.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b3499bae944247e38a846f3bb0cde59e7413c777d86c266072a6559cb9cd365"
+dependencies = [
+ "async-trait",
+ "hex",
+ "serde",
+ "serde_json",
+ "strum",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "converge-pack"
+version = "3.7.3"
+source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
+dependencies = [
+ "async-trait",
+ "hex",
+ "serde",
+ "serde_json",
  "strum",
  "thiserror 2.0.18",
 ]
 
 [[package]]
 name = "converge-provider"
-version = "3.4.0"
+version = "3.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a828f0229daeba66a80dab02ae2fcaae65c2edae340bf649516c18a9c6fa1848"
 dependencies = [
+ "async-trait",
  "base64 0.22.1",
- "converge-core",
- "converge-pack",
- "converge-provider-api",
+ "converge-core 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-optimization 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-pack 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "converge-provider-api 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex-lite",
  "reqwest 0.12.28",
  "schemars 0.8.22",
@@ -514,8 +637,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "converge-provider"
+version = "3.7.3"
+source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-optimization 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "regex-lite",
+ "reqwest 0.12.28",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml 0.8.2",
+ "tracing",
+]
+
+[[package]]
 name = "converge-provider-api"
-version = "3.4.0"
+version = "3.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c99d8437b79ccb88238ca59e0239408eac856aa659a7c7545c8970d4a6b0f5d"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "converge-provider-api"
+version = "3.7.3"
+source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
  "serde",
  "serde_json",
@@ -611,6 +770,25 @@ name = "crossbeam-channel"
 version = "0.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82b8f8f868b36967f9606790d1903570de9ceaf870a7bf9fbbd3016d636a2cb2"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-deque"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9dd111b7b7f7d55b72c0a6ae361660ee5853c9af73f70c3c2ef6858b950e2e51"
+dependencies = [
+ "crossbeam-epoch",
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-epoch"
+version = "0.9.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b82ac4a3c2ca9c3460964f020e1402edd5753411d7737aa39c3714ad1b5420e"
 dependencies = [
  "crossbeam-utils",
 ]
@@ -894,6 +1072,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
+name = "either"
+version = "1.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
+
+[[package]]
 name = "embed-resource"
 version = "3.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -981,6 +1165,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
+name = "fixedbitset"
+version = "0.5.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
+
+[[package]]
 name = "flate2"
 version = "1.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1058,6 +1248,12 @@ checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
 ]
+
+[[package]]
+name = "funty"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6d5a32815ae3f33302d95fdcb2ce17862f8c65363dcfd29360480ba1001fc9c"
 
 [[package]]
 name = "futf"
@@ -1441,8 +1637,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axiom-truth",
- "converge-provider",
- "converge-provider-api",
+ "converge-provider 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
  "dotenv",
  "governance-telemetry",
  "reqwest 0.12.28",
@@ -2499,6 +2695,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
+name = "ordered-float"
+version = "4.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bb71e1b3fa6ca1c61f383464aaf2bb0e2f8e772a1f01d486832464de363b951"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "pango"
 version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2578,6 +2783,16 @@ name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
+
+[[package]]
+name = "petgraph"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3672b37090dbd86368a4145bc067582552b29c27377cad4e0a306c97f9bd7772"
+dependencies = [
+ "fixedbitset",
+ "indexmap 2.13.0",
+]
 
 [[package]]
 name = "phf"
@@ -2949,6 +3164,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
+name = "radium"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
+
+[[package]]
 name = "rand"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3034,6 +3255,26 @@ name = "raw-window-handle"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
+
+[[package]]
+name = "rayon"
+version = "1.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb39b166781f92d482534ef4b4b1b2568f42613b53e5b6c160e24cfbfa30926d"
+dependencies = [
+ "either",
+ "rayon-core",
+]
+
+[[package]]
+name = "rayon-core"
+version = "1.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
+dependencies = [
+ "crossbeam-deque",
+ "crossbeam-utils",
+]
 
 [[package]]
 name = "redox_syscall"
@@ -3956,6 +4197,12 @@ dependencies = [
  "quote",
  "syn 1.0.109",
 ]
+
+[[package]]
+name = "tap"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "target-lexicon"
@@ -5689,6 +5936,15 @@ dependencies = [
  "windows-core 0.61.2",
  "windows-version",
  "x11-dl",
+]
+
+[[package]]
+name = "wyz"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
+dependencies = [
+ "tap",
 ]
 
 [[package]]

@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::{Duration, Utc};
-use converge_kernel::{Context, Engine, TypesRunHooks};
+use converge_kernel::{ContextState, Engine, TypesRunHooks};
 use converge_pack::{AgentEffect, Context as ContextView, ContextKey, ProposedFact, Suggestor};
 use governance_kernel::{Actor, DecisionRecord, InMemoryStore};
 use governance_truths::{EvaluateVendorEvaluator, build_intent, find_truth};
@@ -200,19 +200,21 @@ impl Suggestor for ComplianceScreenerAgent {
             if ctx.get(ContextKey::Seeds).iter().any(|f| f.id == fact_id) {
                 continue;
             }
-            proposals.push(ProposedFact {
-                key: ContextKey::Seeds,
-                id: fact_id,
-                content: serde_json::json!({
+            proposals.push(
+                ProposedFact::new(
+                    ContextKey::Seeds,
+                    fact_id,
+                    serde_json::json!({
                     "vendor_name": name,
                     "gdpr_pass": true,
                     "ai_act_pass": true,
                     "data_residency": "EU",
-                })
-                .to_string(),
-                confidence: 0.85,
-                provenance: "agent:compliance-screener".into(),
-            });
+                    })
+                    .to_string(),
+                    "agent:compliance-screener",
+                )
+                .with_confidence(0.85),
+            );
         }
         AgentEffect { proposals }
     }
@@ -259,18 +261,20 @@ impl Suggestor for CostAnalysisAgent {
             {
                 continue;
             }
-            proposals.push(ProposedFact {
-                key: ContextKey::Evaluations,
-                id: cost_id,
-                content: serde_json::json!({
+            proposals.push(
+                ProposedFact::new(
+                    ContextKey::Evaluations,
+                    cost_id,
+                    serde_json::json!({
                     "vendor_slug": vendor_slug,
                     "monthly_cost_minor": 50_000,
                     "currency_code": "USD",
-                })
-                .to_string(),
-                confidence: 0.75,
-                provenance: "agent:cost-analysis".into(),
-            });
+                    })
+                    .to_string(),
+                    "agent:cost-analysis",
+                )
+                .with_confidence(0.75),
+            );
         }
         AgentEffect { proposals }
     }
@@ -331,20 +335,22 @@ impl Suggestor for VendorRiskAgent {
                 continue;
             }
             // Placeholder: replace with real risk scoring via Kong/LLM
-            proposals.push(ProposedFact {
-                key: ContextKey::Evaluations,
-                id: risk_id,
-                content: serde_json::json!({
+            proposals.push(
+                ProposedFact::new(
+                    ContextKey::Evaluations,
+                    risk_id,
+                    serde_json::json!({
                     "vendor_slug": vendor_slug,
                     "lock_in_risk": "medium",
                     "compliance_risk": "low",
                     "operational_risk": "low",
                     "overall_risk": "low",
-                })
-                .to_string(),
-                confidence: 0.70,
-                provenance: "agent:vendor-risk".into(),
-            });
+                    })
+                    .to_string(),
+                    "agent:vendor-risk",
+                )
+                .with_confidence(0.70),
+            );
         }
         AgentEffect { proposals }
     }
@@ -388,18 +394,20 @@ impl Suggestor for DecisionSynthesisAgent {
 
     async fn execute(&self, _ctx: &dyn ContextView) -> AgentEffect {
         // Replace with an LLM call via Kong in the real implementation
-        AgentEffect::with_proposal(ProposedFact {
-            key: ContextKey::Evaluations,
-            id: "decision:recommendation".into(),
-            content: serde_json::json!({
+        AgentEffect::with_proposal(
+            ProposedFact::new(
+                ContextKey::Evaluations,
+                "decision:recommendation",
+                serde_json::json!({
                 "recommendation": "Vendor A recommended based on compliance and pricing",
                 "confidence": 0.82,
                 "needs_human_review": false,
-            })
-            .to_string(),
-            confidence: 0.82,
-            provenance: "agent:decision-synthesis".into(),
-        })
+                })
+                .to_string(),
+                "agent:decision-synthesis",
+            )
+            .with_confidence(0.82),
+        )
     }
 }
 
@@ -439,7 +447,7 @@ pub async fn execute(
 
     let result = engine
         .run_with_types_intent_and_hooks(
-            Context::new(),
+            ContextState::new(),
             &intent,
             TypesRunHooks {
                 criterion_evaluator: Some(Arc::new(EvaluateVendorEvaluator)),

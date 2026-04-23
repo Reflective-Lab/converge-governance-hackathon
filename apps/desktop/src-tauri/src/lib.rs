@@ -122,7 +122,7 @@ struct GatedActionView {
 }
 
 // ═══════════════════════════════════════════════
-// Tauri Commands — thin wrappers over converge-axiom
+// Tauri Commands — thin wrappers over the Axiom truth validation boundary.
 // ═══════════════════════════════════════════════
 
 #[tauri::command(rename_all = "snake_case")]
@@ -143,9 +143,7 @@ async fn validate_gherkin(spec: String) -> Result<ValidationResponse, String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-async fn guide_truth_heading(
-    spec: String,
-) -> Result<Option<guidance::GuidanceResponse>, String> {
+async fn guide_truth_heading(spec: String) -> Result<Option<guidance::GuidanceResponse>, String> {
     let editor_config = config::editor_config();
     let gc = GuidanceConfig {
         provider_override: editor_config.heading_provider_override().map(Into::into),
@@ -358,9 +356,7 @@ fn generate_cedar_preview(gov: &TruthGovernance) -> String {
                 } else {
                     ""
                 };
-                lines.push(format!(
-                    r#"  resource.gates_passed.contains("{req}"){sep}"#
-                ));
+                lines.push(format!(r#"  resource.gates_passed.contains("{req}"){sep}"#));
             }
             lines.push("};".into());
             lines.push(String::new());
@@ -403,9 +399,7 @@ fn generate_cedar_preview(gov: &TruthGovernance) -> String {
                 "// Escalation path: {}",
                 exception.escalates_to.join(", ")
             ));
-            lines.push(
-                "// When commit is denied and principal has escalatable authority,".into(),
-            );
+            lines.push("// When commit is denied and principal has escalatable authority,".into());
             lines.push("// the decision escalates rather than rejecting outright.".into());
         }
     }

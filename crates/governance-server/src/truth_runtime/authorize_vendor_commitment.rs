@@ -9,9 +9,13 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use chrono::Utc;
 use converge_kernel::{
-    Context, ContextKey, Criterion, CriterionEvaluator, CriterionResult, Engine, TypesRunHooks,
+    AuthorityLevel, Context, ContextKey, ContextState, Criterion, CriterionEvaluator,
+    CriterionResult, Engine, FlowAction, FlowPhase, TypesRunHooks,
 };
-use converge_pack::{AgentEffect, Context as ContextView, ProposedFact, Suggestor};
+use converge_pack::{
+    AgentEffect, Context as ContextView, DomainId, GateId, PolicyVersionId, PrincipalId,
+    ProposedFact, ResourceId, ResourceKind, Suggestor,
+};
 use converge_policy::{
     ContextIn, DecideRequest, PolicyEngine, PolicyOutcome, PrincipalIn, ResourceIn,
 };
@@ -104,7 +108,7 @@ impl Suggestor for CommitmentPolicySuggestor {
 struct VendorCommitmentEvaluator;
 
 impl CriterionEvaluator for VendorCommitmentEvaluator {
-    fn evaluate(&self, criterion: &Criterion, context: &Context) -> CriterionResult {
+    fn evaluate(&self, criterion: &Criterion, context: &dyn Context) -> CriterionResult {
         match criterion.id.as_str() {
             "policy-decision-produced" => {
                 if find_policy_decision(context).is_some() {
@@ -122,7 +126,7 @@ impl CriterionEvaluator for VendorCommitmentEvaluator {
                         reason: decision.reason.unwrap_or_else(|| {
                             "human approval is required before commitment can proceed".into()
                         }),
-                        approval_ref: Some(format!("approval:{}", decision.commitment_id)),
+                        approval_ref: Some(format!("approval:{}", decision.commitment_id).into()),
                     },
                     PolicyOutcome::Reject => CriterionResult::Unmet {
                         reason: decision
@@ -183,6 +187,20 @@ impl VendorCommitmentRequest {
             ));
         }
 
+        let phase = inputs
+            .get("phase")
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "commitment".to_string());
+        if !matches!(
+            phase.as_str(),
+            "intent" | "framing" | "exploration" | "tension" | "convergence" | "commitment"
+        ) {
+            return Err(format!(
+                "unsupported phase {phase}; expected intent, framing, exploration, tension, convergence, or commitment"
+            ));
+        }
+
         Ok(Self {
             principal_id: super::common::required_input(inputs, "principal_id")?.to_string(),
             principal_authority: authority.to_string(),
@@ -202,11 +220,7 @@ impl VendorCommitmentRequest {
                 .map(|value| value.trim().to_string())
                 .filter(|value| !value.is_empty())
                 .unwrap_or_else(|| "contract".to_string()),
-            phase: inputs
-                .get("phase")
-                .map(|value| value.trim().to_string())
-                .filter(|value| !value.is_empty())
-                .unwrap_or_else(|| "commitment".to_string()),
+            phase,
             action,
             amount_minor: parse_i64(inputs, "amount_minor")?,
             currency_code: inputs
@@ -222,22 +236,30 @@ impl VendorCommitmentRequest {
     fn to_decide_request(&self) -> DecideRequest {
         DecideRequest {
             principal: PrincipalIn {
-                id: self.principal_id.clone(),
-                authority: self.principal_authority.clone(),
-                domains: self.domains.clone(),
-                policy_version: self.policy_version.clone(),
+                id: PrincipalId::new(self.principal_id.clone()),
+                authority: parse_authority(&self.principal_authority),
+                domains: self
+                    .domains
+                    .iter()
+                    .map(|domain| DomainId::new(domain.clone()))
+                    .collect(),
+                policy_version: self.policy_version.clone().map(PolicyVersionId::new),
             },
             resource: ResourceIn {
-                id: self.commitment_id.clone(),
-                resource_type: Some(self.commitment_type.clone()),
-                phase: Some(self.phase.clone()),
+                id: ResourceId::new(self.commitment_id.clone()),
+                resource_type: Some(ResourceKind::new(self.commitment_type.clone())),
+                phase: Some(parse_phase(&self.phase)),
                 gates_passed: Some(if self.required_gates_met {
-                    vec!["evidence".into(), "risk".into(), "compliance".into()]
+                    vec![
+                        GateId::new("evidence"),
+                        GateId::new("risk"),
+                        GateId::new("compliance"),
+                    ]
                 } else {
                     Vec::new()
                 }),
             },
-            action: self.action.clone(),
+            action: parse_action(&self.action),
             context: Some(ContextIn {
                 commitment_type: Some(self.commitment_type.clone()),
                 amount: Some(self.amount_minor),
@@ -300,7 +322,7 @@ pub async fn execute(
             .map_err(|err| format!("policy setup failed: {err}"))?,
     );
 
-    let mut initial_context = Context::new();
+    let mut initial_context = ContextState::new();
     initial_context
         .add_input_with_provenance(
             ContextKey::Seeds,
@@ -421,7 +443,7 @@ fn policy_fact_id(commitment_id: &str) -> String {
     format!("policy:decision:{commitment_id}")
 }
 
-fn find_policy_decision(context: &Context) -> Option<PolicyDecisionFact> {
+fn find_policy_decision(context: &dyn Context) -> Option<PolicyDecisionFact> {
     context
         .get(ContextKey::Evaluations)
         .iter()
@@ -450,6 +472,39 @@ fn split_csv(raw: &str) -> Vec<String> {
         .filter(|value| !value.is_empty())
         .map(ToString::to_string)
         .collect()
+}
+
+fn parse_authority(value: &str) -> AuthorityLevel {
+    match value {
+        "advisory" => AuthorityLevel::Advisory,
+        "supervisory" => AuthorityLevel::Supervisory,
+        "participatory" => AuthorityLevel::Participatory,
+        "sovereign" => AuthorityLevel::Sovereign,
+        _ => AuthorityLevel::Advisory,
+    }
+}
+
+fn parse_action(value: &str) -> FlowAction {
+    match value {
+        "propose" => FlowAction::Propose,
+        "validate" => FlowAction::Validate,
+        "promote" => FlowAction::Promote,
+        "commit" => FlowAction::Commit,
+        "advance_phase" => FlowAction::AdvancePhase,
+        _ => FlowAction::Propose,
+    }
+}
+
+fn parse_phase(value: &str) -> FlowPhase {
+    match value {
+        "intent" => FlowPhase::Intent,
+        "framing" => FlowPhase::Framing,
+        "exploration" => FlowPhase::Exploration,
+        "tension" => FlowPhase::Tension,
+        "convergence" => FlowPhase::Convergence,
+        "commitment" => FlowPhase::Commitment,
+        _ => FlowPhase::Intent,
+    }
 }
 
 fn actor_from_principal(principal_id: &str) -> Actor {

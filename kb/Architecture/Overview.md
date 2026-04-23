@@ -13,8 +13,8 @@ This repo is an opinionated local-first application built on top of the full Ref
 │ Desktop UI — Svelte/Tauri — what operators see             │
 ├─────────────────────────────────────────────────────────────┤
 │ Axiom (truth layer)                                        │
-│ App layer — truth definitions, projections, validation     │
-│ the "what" that governance decides                         │
+│ Truth contracts, validation, simulation, policy lens       │
+│ The "what must be true" before governance runs             │
 ├─────────────────────────────────────────────────────────────┤
 │ Organism (intelligence)                                    │
 │ Intent → Huddle → Debate → Suggestors                      │
@@ -32,25 +32,32 @@ This repo is an opinionated local-first application built on top of the full Ref
 The control flow between those layers is:
 
 1. **Helm** calls local Tauri commands.
-2. **Axiom** builds the truth, intent, and projection model for the run.
-3. **Axiom** starts `Engine.run()`, which activates the governed intelligence loop.
-4. **Organism** performs huddle, debate, research, and gap-chasing, emitting `ProposedFact` and `AgentEffect`.
-5. **Converge** decides what is promotable, applies policy and budget, and records the audit trail.
+2. **Axiom** validates the truth contract: inputs, examples, invariants, policy lens, and acceptance criteria.
+3. **Organism** plans the formation or collaboration pattern needed to satisfy the truth.
+4. **Converge** runs the governed loop, promotes valid facts, applies policy and budget, and records the audit trail.
+5. **Hackathon app code** projects promoted evidence into the local product model when writeback is requested.
 6. **Providers** supply the external capabilities behind `ChatBackend`, `WebSearchBackend`, `DdLlm`, and `DdSearch`-style adapters.
 
 ## Repo Ownership Split
 
-**This repo owns Helm and Axiom for the hackathon experience:**
+**This repo owns the hackathon product surface:**
 - The desktop operator surface in `apps/desktop`
 - Governance domain records (vendors, decisions, audit entries)
-- Truth definitions for hackathon use cases
+- Truth contract wiring for hackathon use cases
 - Projection from converged facts into domain records
 - Offline validation and local-first developer workflows
 - The shared application layer and local harness
 
+**Axiom owns the truth contract path:**
+- Definition of what a governed decision must prove
+- Validation of inputs, examples, invariants, and acceptance criteria
+- Simulation of failure modes and admissibility checks
+- Policy lens for required evidence, gates, and approvals
+
 **Organism owns the intelligence path:**
 - Intent decomposition and planning
 - Huddle, debate, research, and gap-chasing
+- Formation strategy and suggestor composition
 - Suggestor-level reasoning that feeds governed proposals
 
 **Converge owns the governance path:**
@@ -67,9 +74,19 @@ The control flow between those layers is:
 
 Teams should build *with* Converge, not around it. The value is governed convergence, not just "multiple calls to an LLM."
 
+Axiom is not another agent layer. Its authority is normative: it says what a valid decision must prove. Organism's authority is strategic: it chooses the formation to prove it. Converge's authority is operational: it runs the governed loop and records what was actually promoted. The hackathon app owns product experience, imported artifacts, demo data, and writeback.
+
+## Foundation Baseline
+
+The user-side application currently consumes Converge `v3.7.3`, Organism `v1.4.0`, and Axiom `v0.7.0` by git tag. Keep this repo tag-pinned for participants; local sibling checkouts belong in foundation development, not the hackathon template.
+
+Converge `v3.7.3` strengthened several boundaries this app now follows: typed pack and policy identifiers, `ContextState` for owned runtime context, `&dyn Context` for evaluator reads, and private `ProposedFact` confidence through builder methods. Those constraints are intentional; they make the user-facing examples match the governance model instead of relying on stringly typed shortcuts.
+
+Organism `v1.4.0` and Axiom `v0.7.0` are aligned to Converge `v3.7.3`, so the user-side stack has one governance/provider contract across intent planning, truth validation, runtime execution, and direct suggestor authoring.
+
 ## Opinionated Implementation
 
-- **Rust-first** for Axiom, domain logic, policy enforcement, integrations, and mocks
+- **Rust-first** for Axiom-facing contracts, domain logic, policy enforcement, integrations, and mocks
 - **Svelte** for Helm
 - **Tauri** for the Helm ⇄ Axiom bridge
 - **Converge** for the commit boundary and governance engine
@@ -85,4 +102,4 @@ The desktop app accepts two local input formats for [[Domain/Vendor Selection|ve
 
 Both are normalized in the Rust app layer before execution.
 
-See also: [[Architecture/Layers]], [[Architecture/Convergence Loop]]
+See also: [[Architecture/Layers]], [[Architecture/Axiom Truth Contract]], [[Architecture/Convergence Loop]]

@@ -26,7 +26,7 @@
 - [x] Canonical in-process runtime examples use `converge-kernel` for `Engine`, `Context`, `Budget`, criteria, and run hooks
 - [x] Canonical LLM examples use `ChatBackend` + `ChatRequest` instead of `KongGateway` / `LlmRequest`
 - [x] Canonical Organism examples use `organism-pack` + `organism-runtime` for `IntentPacket`, `Plan`, and standard-pack registry wiring
-- [x] `apps/desktop/src-tauri` is migrated off legacy `converge-provider` / `converge-axiom` APIs such as `KongGateway` and `StaticLlmProvider`
+- [x] `apps/desktop/src-tauri` is migrated off legacy gateway-specific and pre-Axiom APIs such as `KongGateway`, `StaticLlmProvider`, and `converge-axiom`
 - [x] One `Programming API Surfaces` guide is linked from README, Getting Started, and `kb/Home.md` for participants
 
 ### Example truths (3+ modifiable)

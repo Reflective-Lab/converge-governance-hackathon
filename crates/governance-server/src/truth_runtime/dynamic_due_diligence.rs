@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use chrono::{Duration, Utc};
-use converge_kernel::{Context, Engine, TypesRunHooks};
+use converge_kernel::{ContextState, Engine, TypesRunHooks};
 use converge_pack::{AgentEffect, Context as ContextView, ContextKey, ProposedFact, Suggestor};
 use governance_kernel::{Actor, DecisionRecord, InMemoryStore};
 use governance_truths::{DynamicDueDiligenceEvaluator, build_intent, find_truth};
@@ -281,7 +281,7 @@ impl Suggestor for BreadthResearchSuggestor {
                     proposals.push(
                         ProposedFact::new(
                             ContextKey::Signals,
-                            &signal_id,
+                            signal_id.as_str(),
                             content,
                             "mock-breadth-research",
                         )
@@ -371,7 +371,7 @@ impl Suggestor for DepthResearchSuggestor {
                     proposals.push(
                         ProposedFact::new(
                             ContextKey::Signals,
-                            &signal_id,
+                            signal_id.as_str(),
                             content,
                             "mock-depth-research",
                         )
@@ -412,7 +412,7 @@ impl Suggestor for FactExtractorSuggestor {
                     .processed_signal_ids
                     .lock()
                     .unwrap()
-                    .contains(&signal.id)
+                    .contains(signal.id.as_str())
         })
     }
 
@@ -429,7 +429,7 @@ impl Suggestor for FactExtractorSuggestor {
                 .processed_signal_ids
                 .lock()
                 .unwrap()
-                .contains(&signal.id)
+                .contains(signal.id.as_str())
             {
                 continue;
             }
@@ -438,7 +438,7 @@ impl Suggestor for FactExtractorSuggestor {
                 self.processed_signal_ids
                     .lock()
                     .unwrap()
-                    .insert(signal.id.clone());
+                    .insert(signal.id.to_string());
                 continue;
             };
 
@@ -452,7 +452,7 @@ impl Suggestor for FactExtractorSuggestor {
                 let hypothesis = HypothesisPayload {
                     category: claim.category,
                     claim: claim.claim,
-                    source_id: signal.id.clone(),
+                    source_id: signal.id.to_string(),
                     source_title: payload.title.clone(),
                     source_url: payload.url.clone(),
                     provider: payload.provider,
@@ -465,7 +465,7 @@ impl Suggestor for FactExtractorSuggestor {
                     proposals.push(
                         ProposedFact::new(
                             ContextKey::Hypotheses,
-                            &hypothesis_id,
+                            hypothesis_id.as_str(),
                             content,
                             "dd-fact-extractor",
                         )
@@ -477,7 +477,7 @@ impl Suggestor for FactExtractorSuggestor {
             self.processed_signal_ids
                 .lock()
                 .unwrap()
-                .insert(signal.id.clone());
+                .insert(signal.id.to_string());
         }
 
         AgentEffect { proposals }
@@ -535,7 +535,7 @@ impl Suggestor for ContradictionSuggestor {
                 proposals.push(
                     ProposedFact::new(
                         ContextKey::Evaluations,
-                        &contradiction_id,
+                        contradiction_id.as_str(),
                         content,
                         "dd-contradiction-detector",
                     )
@@ -594,7 +594,7 @@ impl Suggestor for LooseEndSuggestor {
                 proposals.push(
                     ProposedFact::new(
                         ContextKey::Strategies,
-                        &gap_id,
+                        gap_id.as_str(),
                         content,
                         "dd-loose-end-detector",
                     )
@@ -750,7 +750,7 @@ pub async fn execute(
 
     let result = engine
         .run_with_types_intent_and_hooks(
-            Context::new(),
+            ContextState::new(),
             &intent,
             TypesRunHooks {
                 criterion_evaluator: Some(Arc::new(DynamicDueDiligenceEvaluator)),
@@ -964,13 +964,16 @@ fn collect_strategies(ctx: &dyn ContextView, mode: StrategyMode) -> Vec<(String,
             serde_json::from_str::<StrategyPayload>(&fact.content)
                 .ok()
                 .filter(|payload| payload.mode == mode)
-                .map(|payload| (fact.id.clone(), payload))
+                .map(|payload| (fact.id.to_string(), payload))
         })
         .collect()
 }
 
 fn known_fact_ids(ctx: &dyn ContextView, key: ContextKey) -> HashSet<String> {
-    ctx.get(key).iter().map(|fact| fact.id.clone()).collect()
+    ctx.get(key)
+        .iter()
+        .map(|fact| fact.id.to_string())
+        .collect()
 }
 
 fn contradiction_candidates(
@@ -987,10 +990,11 @@ fn contradiction_candidates(
         let Some(normalized_value) = payload.normalized_value else {
             continue;
         };
-        grouped
-            .entry(topic)
-            .or_default()
-            .push((fact.id.clone(), normalized_value, payload.claim));
+        grouped.entry(topic).or_default().push((
+            fact.id.to_string(),
+            normalized_value,
+            payload.claim,
+        ));
     }
     grouped
 }

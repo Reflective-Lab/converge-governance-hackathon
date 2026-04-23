@@ -1,6 +1,7 @@
 use converge_kernel::{Context, ContextKey, CriterionEvaluator, CriterionResult};
 use converge_model::{
-    Criterion, TypesBudgets, TypesIntentId, TypesIntentKind, TypesObjective, TypesRootIntent,
+    Criterion, PackId, TypesBudgets, TypesIntentId, TypesIntentKind, TypesObjective,
+    TypesRootIntent,
 };
 use converge_provider_api::{AgentRequirements, ComplianceLevel, CostClass, DataSovereignty};
 
@@ -97,7 +98,7 @@ pub fn build_intent(truth: &TruthDef) -> TypesRootIntent {
         .kind(TypesIntentKind::Custom)
         .request(truth.summary.to_string())
         .objective(Some(TypesObjective::Custom(truth.display_name.to_string())))
-        .active_packs(truth.packs.iter().map(|p| p.to_string()).collect())
+        .active_packs(truth.packs.iter().map(|pack| PackId::new(*pack)).collect())
         .success_criteria(
             truth
                 .criteria
@@ -240,7 +241,7 @@ pub struct EvaluateVendorEvaluator;
 pub struct DynamicDueDiligenceEvaluator;
 
 impl CriterionEvaluator for DynamicDueDiligenceEvaluator {
-    fn evaluate(&self, criterion: &Criterion, context: &Context) -> CriterionResult {
+    fn evaluate(&self, criterion: &Criterion, context: &dyn Context) -> CriterionResult {
         match criterion.id.as_str() {
             "critical-evidence-collected" => {
                 let categories = context
@@ -295,7 +296,7 @@ impl CriterionEvaluator for DynamicDueDiligenceEvaluator {
 }
 
 impl CriterionEvaluator for EvaluateVendorEvaluator {
-    fn evaluate(&self, criterion: &Criterion, context: &Context) -> CriterionResult {
+    fn evaluate(&self, criterion: &Criterion, context: &dyn Context) -> CriterionResult {
         match criterion.id.as_str() {
             "all-vendors-screened" => {
                 if context
@@ -358,7 +359,11 @@ mod tests {
     fn intent_builds_with_packs() {
         let truth = find_truth("evaluate-vendor").unwrap();
         let intent = build_intent(truth);
-        assert!(intent.active_packs.contains(&"compliance-pack".to_string()));
+        assert!(
+            intent
+                .active_packs
+                .contains(&PackId::new("compliance-pack"))
+        );
     }
 
     #[test]
@@ -388,11 +393,7 @@ mod tests {
     #[test]
     fn all_truths_have_nonempty_packs() {
         for truth in TRUTHS {
-            assert!(
-                !truth.packs.is_empty(),
-                "truth {} has no packs",
-                truth.key
-            );
+            assert!(!truth.packs.is_empty(), "truth {} has no packs", truth.key);
         }
     }
 

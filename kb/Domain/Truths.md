@@ -3,7 +3,9 @@ tags: [domain, truths]
 ---
 # Truths
 
-A truth is a governed job: it declares which suggestor packs participate and what criteria must be met.
+A truth is an Axiom contract: it declares what a governed decision must prove before the app treats the outcome as admissible.
+
+In this hackathon repo, truth definitions also carry pack and evaluator wiring so examples can run end to end. That wiring is application scaffolding. The architectural authority of Axiom is still normative: define, validate, simulate, and explain the policy lens for the decision. Organism chooses the formation strategy, and Converge promotes facts.
 
 ## Truth Catalog
 

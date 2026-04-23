@@ -7,23 +7,23 @@ edition = "2024"
 rust-version = "1.94"
 
 [workspace.dependencies]
-# Converge v3.4.0
-converge-core = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
-converge-pack = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
-converge-kernel = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
-converge-model = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
-converge-provider-api = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
-converge-domain = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
-converge-policy = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
-converge-provider = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0", default-features = false, features = ["anthropic", "gemini", "openai", "mistral", "brave", "tavily", "kong"] }
+# Converge v3.7.3
+converge-core = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.7.3" }
+converge-pack = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.7.3" }
+converge-kernel = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.7.3" }
+converge-model = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.7.3" }
+converge-provider-api = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.7.3" }
+converge-domain = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.7.3" }
+converge-policy = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.7.3" }
+converge-provider = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.7.3", default-features = false, features = ["anthropic", "gemini", "openai", "mistral", "brave", "tavily", "kong"] }
 
-# Organism v1.3.0 (aligned with converge v3.4.0)
-organism-pack = { git = "https://github.com/Reflective-Lab/organism", tag = "v1.3.0" }
-organism-runtime = { git = "https://github.com/Reflective-Lab/organism", tag = "v1.3.0" }
-organism-planning = { git = "https://github.com/Reflective-Lab/organism", tag = "v1.3.0" }
+# Organism v1.4.0
+organism-pack = { git = "https://github.com/Reflective-Lab/organism", tag = "v1.4.0" }
+organism-runtime = { git = "https://github.com/Reflective-Lab/organism", tag = "v1.4.0" }
+organism-planning = { git = "https://github.com/Reflective-Lab/organism", tag = "v1.4.0" }
 
-# Axiom v0.6.0 (aligned with converge v3.4.0)
-axiom-truth = { git = "https://github.com/Reflective-Lab/axiom", tag = "v0.6.0" }
+# Axiom v0.7.0
+axiom-truth = { git = "https://github.com/Reflective-Lab/axiom", tag = "v0.7.0" }
 
 # Server
 axum = "0.8"
