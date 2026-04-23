@@ -18,6 +18,7 @@ converge-domain = { workspace = true }
 converge-policy = { workspace = true }
 converge-pack = { workspace = true }
 converge-kernel = { workspace = true }
+converge-model = { workspace = true }
 converge-provider-api = { workspace = true }
 converge-provider = { workspace = true }
 organism-pack = { workspace = true }

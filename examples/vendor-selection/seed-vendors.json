@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Acme AI",
+    "score": 85.0,
+    "risk_score": 15.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 4200000,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Beta ML",
+    "score": 78.0,
+    "risk_score": 25.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "HIPAA"],
+    "monthly_cost_minor": 2800000,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Gamma LLM",
+    "score": 92.0,
+    "risk_score": 35.0,
+    "compliance_status": "pending",
+    "certifications": ["ISO27001"],
+    "monthly_cost_minor": 6500000,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Delta Systems",
+    "score": 70.0,
+    "risk_score": 10.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR", "FedRAMP"],
+    "monthly_cost_minor": 5500000,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Epsilon AI",
+    "score": 88.0,
+    "risk_score": 20.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "GDPR"],
+    "monthly_cost_minor": 3800000,
+    "currency_code": "USD"
+  }
+]

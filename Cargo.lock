@@ -1127,6 +1127,7 @@ dependencies = [
  "chrono",
  "converge-domain",
  "converge-kernel 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-model 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
  "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
  "converge-policy",
  "converge-provider 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",

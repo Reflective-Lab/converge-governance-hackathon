@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Regulatory Compliance",
+    "weight": 0.25,
+    "description": "Adherence to GDPR, AI Act, data residency, and industry-specific regulations"
+  },
+  {
+    "name": "Security Posture",
+    "weight": 0.20,
+    "description": "SOC2/ISO27001 certification status, penetration test history, incident response"
+  },
+  {
+    "name": "Cost Efficiency",
+    "weight": 0.20,
+    "description": "Total cost of ownership relative to capability tier and contract flexibility"
+  },
+  {
+    "name": "Technical Capability",
+    "weight": 0.20,
+    "description": "Model quality, API reliability, latency SLAs, integration ecosystem"
+  },
+  {
+    "name": "Vendor Stability",
+    "weight": 0.15,
+    "description": "Financial health, runway, customer base diversity, leadership continuity"
+  }
+]

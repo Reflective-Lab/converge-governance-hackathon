@@ -81,6 +81,37 @@ pub const TRUTHS: &[TruthDef] = &[
             ),
         ],
     },
+    TruthDef {
+        key: "vendor-selection",
+        display_name: "Governed Vendor Selection",
+        summary: "Full-stack vendor selection: Organism intent → formation assembly → multi-agent evaluation → Cedar policy gate",
+        packs: &[
+            "intent-pack",
+            "formation-pack",
+            "screening-pack",
+            "evaluation-pack",
+            "policy-pack",
+        ],
+        criteria: &[
+            ("intent-admitted", "Intent packet passes admission control"),
+            (
+                "formation-assembled",
+                "Formation assembled with role assignments",
+            ),
+            (
+                "vendors-screened",
+                "All vendors screened for compliance and risk",
+            ),
+            (
+                "shortlist-produced",
+                "Ranked shortlist with qualifying vendors",
+            ),
+            (
+                "policy-authorized",
+                "Cedar policy authorizes the commitment",
+            ),
+        ],
+    },
     // Add your truths here.
 ];
 
@@ -238,6 +269,8 @@ pub fn find_agent_config(agent_id: &str) -> Option<&'static AgentModelConfig> {
 
 pub struct EvaluateVendorEvaluator;
 
+pub struct VendorSelectionEvaluator;
+
 pub struct DynamicDueDiligenceEvaluator;
 
 impl CriterionEvaluator for DynamicDueDiligenceEvaluator {
@@ -288,6 +321,108 @@ impl CriterionEvaluator for DynamicDueDiligenceEvaluator {
                     CriterionResult::Unmet {
                         reason: "no due-diligence brief has been synthesized".into(),
                     }
+                }
+            }
+            _ => CriterionResult::Indeterminate,
+        }
+    }
+}
+
+impl CriterionEvaluator for VendorSelectionEvaluator {
+    fn evaluate(&self, criterion: &Criterion, context: &dyn Context) -> CriterionResult {
+        match criterion.id.as_str() {
+            "intent-admitted" => {
+                // Intent is admitted if strategies have been seeded
+                if context
+                    .get(ContextKey::Strategies)
+                    .iter()
+                    .any(|f| f.id.starts_with("strategy:"))
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "intent has not been admitted — no strategies seeded".into(),
+                    }
+                }
+            }
+            "formation-assembled" => {
+                if context
+                    .get(ContextKey::Strategies)
+                    .iter()
+                    .any(|f| f.id.starts_with("formation:plan:"))
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "no formation plan has been assembled".into(),
+                    }
+                }
+            }
+            "vendors-screened" => {
+                let screened = context
+                    .get(ContextKey::Seeds)
+                    .iter()
+                    .any(|f| f.id.starts_with("compliance:screen:"));
+                let risk_scored = context
+                    .get(ContextKey::Evaluations)
+                    .iter()
+                    .any(|f| f.id.starts_with("risk:score:"));
+                if screened && risk_scored {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "vendors are not fully screened (compliance + risk)".into(),
+                    }
+                }
+            }
+            "shortlist-produced" => {
+                if context
+                    .get(ContextKey::Proposals)
+                    .iter()
+                    .any(|f| f.id == "vendor:shortlist")
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "no ranked vendor shortlist has been produced".into(),
+                    }
+                }
+            }
+            "policy-authorized" => {
+                let decision = context
+                    .get(ContextKey::Evaluations)
+                    .iter()
+                    .find(|f| f.id.starts_with("policy:decision:"));
+                match decision {
+                    Some(fact) => {
+                        if let Ok(payload) =
+                            serde_json::from_str::<serde_json::Value>(&fact.content)
+                        {
+                            match payload.get("outcome").and_then(|v| v.as_str()) {
+                                Some("Promote") => CriterionResult::Met { evidence: vec![] },
+                                Some("Escalate") => CriterionResult::Blocked {
+                                    reason: payload
+                                        .get("reason")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("human approval required")
+                                        .into(),
+                                    approval_ref: Some(
+                                        "approval:vendor-commitment".to_string().into(),
+                                    ),
+                                },
+                                _ => CriterionResult::Unmet {
+                                    reason: "policy rejected the commitment".into(),
+                                },
+                            }
+                        } else {
+                            CriterionResult::Unmet {
+                                reason: "policy decision payload is malformed".into(),
+                            }
+                        }
+                    }
+                    None => CriterionResult::Unmet {
+                        reason: "no policy decision has been produced".into(),
+                    },
                 }
             }
             _ => CriterionResult::Indeterminate,
