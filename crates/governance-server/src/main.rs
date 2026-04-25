@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use governance_kernel::InMemoryStore;
-use governance_server::experience::InMemoryExperienceStream;
+use governance_server::experience::{ExperienceRegistry, InMemoryExperienceStream};
 use governance_server::{AppState, build_router};
 
 #[tokio::main]
@@ -10,7 +10,11 @@ async fn main() {
 
     let experience_stream = Arc::new(InMemoryExperienceStream::default());
     let store = InMemoryStore::new().with_domain_event_stream(experience_stream);
-    let state: AppState = Arc::new(store);
+    let experience = Arc::new(ExperienceRegistry::new());
+    let state = AppState {
+        store: Arc::new(store),
+        experience,
+    };
 
     let app = build_router(state);
 

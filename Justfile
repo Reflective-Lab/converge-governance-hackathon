@@ -31,6 +31,60 @@ test-coverage:
     cargo llvm-cov --workspace --html
     @echo "Coverage report: target/llvm-cov/html/index.html"
 
+live-test:
+    cargo test --features live-tests -p governance-server -- live_ --nocapture
+
+# Run model competition (13 models × 4 roles = 52 runs, ~15-30 min)
+competition:
+    cargo run -p governance-server --bin model-competition --release
+
+# Run the headless vendor-selection flow demo
+demo-flow *ARGS:
+    @cargo run -q -p governance-server --bin vendor-selection-demo -- {{ARGS}}
+
+demo-flow-governed:
+    @cargo run -q -p governance-server --bin vendor-selection-demo -- --mode=governed
+
+demo-flow-breakout:
+    @cargo run -q -p governance-server --bin vendor-selection-demo -- --mode=pareto-breakout
+
+# Run the full presentation demo (offline deterministic)
+demo:
+    @./scripts/demo/presentation.sh
+
+# Run the full presentation demo with live LLM/search providers
+demo-live:
+    @./scripts/demo/presentation.sh --live
+
+# Run the live governed-selection demo only
+demo-today:
+    @./scripts/demo/today.sh
+
+# Run the live creative/Pareto-breakout demo only
+demo-creative:
+    @./scripts/demo/creative.sh
+
+# Run a single presentation step (1-7)
+demo-step STEP:
+    @./scripts/demo/presentation.sh step {{STEP}}
+
+# Verify the expected business story for the offline presentation demo
+demo-verify:
+    @./scripts/demo/verify.sh
+
+# Run governed selection with real AI vendor names
+demo-ai-vendors *ARGS:
+    @cargo run -q -p governance-server --bin vendor-selection-demo -- --vendors-json=examples/vendor-selection/demo-ai-vendors.json {{ARGS}}
+
+# Run with competition-validated models (8 vendors from the 21-model competition)
+demo-competition *ARGS:
+    @cargo run -q -p governance-server --bin vendor-selection-demo -- --vendors-json=examples/vendor-selection/demo-competition-vendors.json {{ARGS}}
+
+# Competition vendors: governed then pareto-breakout side by side
+demo-competition-both:
+    @echo "=== GOVERNED ===" && cargo run -q -p governance-server --bin vendor-selection-demo -- --vendors-json=examples/vendor-selection/demo-competition-vendors.json --mode=governed
+    @echo "" && echo "=== PARETO BREAKOUT ===" && cargo run -q -p governance-server --bin vendor-selection-demo -- --vendors-json=examples/vendor-selection/demo-competition-vendors.json --mode=pareto-breakout
+
 build:
     cargo build --workspace
 
@@ -43,7 +97,7 @@ install-desktop:
     cd apps/desktop && bun install
 
 desktop: install-desktop
-    cd apps/desktop && bun run tauri dev; reset
+    cd apps/desktop && bun run tauri dev
 
 dev:
     #!/usr/bin/env bash

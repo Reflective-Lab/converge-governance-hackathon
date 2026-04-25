@@ -1,0 +1,112 @@
+[
+  {
+    "name": "Anthropic Claude Enterprise",
+    "score": 96.0,
+    "risk_score": 14.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 7600000,
+    "currency_code": "USD",
+    "best_for": ["agentic coding", "high-ambiguity reasoning"],
+    "weaknesses": ["high cost", "single-provider concentration"]
+  },
+  {
+    "name": "OpenAI Enterprise",
+    "score": 94.0,
+    "risk_score": 18.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 6800000,
+    "currency_code": "USD",
+    "best_for": ["general reasoning", "tool ecosystem"],
+    "weaknesses": ["high cost", "administrative concentration"]
+  },
+  {
+    "name": "Google Vertex AI",
+    "score": 90.0,
+    "risk_score": 16.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR", "FedRAMP"],
+    "monthly_cost_minor": 6200000,
+    "currency_code": "USD",
+    "best_for": ["enterprise platform", "governed model hosting"],
+    "weaknesses": ["platform lock-in", "operational complexity"]
+  },
+  {
+    "name": "Mistral EU",
+    "score": 84.0,
+    "risk_score": 20.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 2800000,
+    "currency_code": "USD",
+    "best_for": ["EU posture", "routine synthesis", "cost control"],
+    "weaknesses": ["lower peak reasoning score"]
+  },
+  {
+    "name": "Cohere Enterprise",
+    "score": 82.0,
+    "risk_score": 18.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 3600000,
+    "currency_code": "USD",
+    "best_for": ["enterprise retrieval", "structured language tasks"],
+    "weaknesses": ["less suitable as only provider"]
+  },
+  {
+    "name": "Fireworks AI",
+    "score": 78.0,
+    "risk_score": 24.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2"],
+    "monthly_cost_minor": 1800000,
+    "currency_code": "USD",
+    "best_for": ["low-cost inference", "open model routing"],
+    "weaknesses": ["lighter certification coverage"]
+  },
+  {
+    "name": "Qwen Alibaba Cloud",
+    "score": 86.0,
+    "risk_score": 38.0,
+    "compliance_status": "pending",
+    "certifications": ["ISO27001"],
+    "monthly_cost_minor": 1600000,
+    "currency_code": "USD",
+    "best_for": ["low-cost multilingual models"],
+    "weaknesses": ["pending compliance", "risk above buyer threshold"]
+  },
+  {
+    "name": "Kong AI Gateway",
+    "score": 80.0,
+    "risk_score": 12.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 2400000,
+    "currency_code": "USD",
+    "best_for": ["policy", "rate limits", "audit", "PII controls"],
+    "weaknesses": ["not a reasoning model by itself"]
+  },
+  {
+    "name": "Brave Search API",
+    "score": 76.0,
+    "risk_score": 16.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "GDPR"],
+    "monthly_cost_minor": 800000,
+    "currency_code": "USD",
+    "best_for": ["broad web evidence", "market discovery"],
+    "weaknesses": ["wide evidence needs downstream validation"]
+  },
+  {
+    "name": "Tavily Research API",
+    "score": 78.0,
+    "risk_score": 14.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "GDPR"],
+    "monthly_cost_minor": 1200000,
+    "currency_code": "USD",
+    "best_for": ["deep focused retrieval", "canonical evidence"],
+    "weaknesses": ["not a broad model provider"]
+  }
+]

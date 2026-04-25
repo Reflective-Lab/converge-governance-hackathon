@@ -44,7 +44,16 @@ pub async fn execute_vendor_selection_source(
     persist: bool,
 ) -> Result<TruthExecutionResult, String> {
     let preview = preview_vendor_selection_source(source)?;
-    super::execute_truth(store, &preview.truth_key, preview.inputs, persist).await
+    let tmp = std::env::temp_dir().join("source-import-experience.json");
+    let experience = crate::experience::ExperienceRegistry::with_path(&tmp);
+    super::execute_truth(
+        store,
+        &preview.truth_key,
+        preview.inputs,
+        persist,
+        &experience,
+    )
+    .await
 }
 
 fn detect_format(source: &TruthSourceFile) -> Result<TruthSourceFormat, String> {

@@ -73,6 +73,33 @@ body {
   max-width: 36rem;
 }
 
+.slide-picker {
+  width: 12rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: rgba(18, 21, 28, 0.72);
+  color: var(--color-bright);
+  padding: 0.55rem 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  outline: none;
+  transition: border-color 160ms, box-shadow 160ms, background 160ms;
+}
+
+.slide-picker:focus {
+  border-color: var(--color-lime);
+  background: rgba(18, 21, 28, 0.95);
+  box-shadow: 0 0 0 3px var(--color-lime-glow);
+}
+
+.slide-picker::placeholder {
+  color: var(--color-muted);
+}
+
+.print-only {
+  display: none;
+}
+
 /* --- Buttons (Kong pill style) --- */
 
 .btn-primary {
@@ -252,6 +279,90 @@ body {
 .token.tag { color: #c084fc; font-weight: 600; }
 .token.comment { color: var(--color-muted); font-style: italic; }
 .token.table-cell { color: #60a5fa; }
+
+@media print {
+  @page {
+    margin: 18mm;
+    size: A4;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .dd-print-page,
+  .dd-print-page * {
+    visibility: visible;
+  }
+
+  .dd-print-page {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: none !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .dd-print-page .slide-eyebrow,
+  .dd-print-page .card-label {
+    color: #374151 !important;
+  }
+
+  .dd-print-page .slide-headline,
+  .dd-print-page .text-bright,
+  .dd-print-page .text-text {
+    color: #111827 !important;
+  }
+
+  .dd-print-page .text-subtle,
+  .dd-print-page .text-muted {
+    color: #4b5563 !important;
+  }
+
+  .dd-print-page .bg-raised,
+  .dd-print-page .bg-deep,
+  .dd-print-page .callout {
+    background: #fff !important;
+  }
+
+  .dd-print-page .border,
+  .dd-print-page .border-border,
+  .dd-print-page .callout {
+    border-color: #d1d5db !important;
+  }
+
+  .dd-print-page .callout,
+  .dd-print-page .rounded-xl {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  .dd-print-page .grid {
+    display: grid !important;
+  }
+
+  .dd-print-page .pill {
+    border: 1px solid #d1d5db !important;
+    background: #f9fafb !important;
+    color: #111827 !important;
+  }
+}
 
 /* --- Results panel --- */
 

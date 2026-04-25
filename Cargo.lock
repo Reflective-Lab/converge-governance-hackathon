@@ -341,6 +341,23 @@ checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 [[package]]
 name = "converge-core"
 version = "3.7.3"
+dependencies = [
+ "async-trait",
+ "converge-pack 3.7.3",
+ "converge-provider-api 3.7.3",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "strum",
+ "thiserror 2.0.18",
+ "tracing",
+ "typed-builder",
+]
+
+[[package]]
+name = "converge-core"
+version = "3.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e61386a393e5c07eac00fa3f8093da732a2f6a7da266935e925e1d73db643780"
 dependencies = [
@@ -358,36 +375,29 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-core"
-version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
-dependencies = [
- "async-trait",
- "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "hex",
- "serde",
- "serde_json",
- "sha2",
- "strum",
- "thiserror 2.0.18",
- "tracing",
- "typed-builder",
-]
-
-[[package]]
 name = "converge-domain"
 version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
  "async-trait",
- "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-core 3.7.3",
  "converge-policy",
- "converge-provider 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-provider 3.7.3",
  "futures",
  "serde",
  "serde_json",
  "tracing",
+]
+
+[[package]]
+name = "converge-kernel"
+version = "3.7.3"
+dependencies = [
+ "converge-core 3.7.3",
+ "converge-model 3.7.3",
+ "converge-optimization 3.7.3",
+ "converge-pack 3.7.3",
+ "converge-provider 3.7.3",
+ "converge-provider-api 3.7.3",
 ]
 
 [[package]]
@@ -405,16 +415,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-kernel"
+name = "converge-model"
 version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
- "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-model 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-optimization 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-provider 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-core 3.7.3",
+ "converge-pack 3.7.3",
+ "converge-provider-api 3.7.3",
+ "serde",
 ]
 
 [[package]]
@@ -430,14 +437,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-model"
+name = "converge-optimization"
 version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
- "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "async-trait",
+ "bitvec",
+ "converge-core 3.7.3",
+ "converge-model 3.7.3",
+ "converge-pack 3.7.3",
+ "indexmap 2.14.0",
+ "num-traits",
+ "ordered-float",
+ "petgraph 0.7.1",
+ "rayon",
  "serde",
+ "serde_json",
+ "smallvec",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]
@@ -464,25 +481,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-optimization"
+name = "converge-pack"
 version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
  "async-trait",
- "bitvec",
- "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-model 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "indexmap 2.14.0",
- "num-traits",
- "ordered-float",
- "petgraph 0.7.1",
- "rayon",
+ "hex",
  "serde",
  "serde_json",
- "smallvec",
+ "strum",
  "thiserror 2.0.18",
- "tracing",
 ]
 
 [[package]]
@@ -500,30 +507,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-pack"
-version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
-dependencies = [
- "async-trait",
- "hex",
- "serde",
- "serde_json",
- "strum",
- "thiserror 2.0.18",
-]
-
-[[package]]
 name = "converge-policy"
 version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
  "async-trait",
  "axum",
  "base64",
  "cedar-policy",
  "ciborium",
- "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-core 3.7.3",
+ "converge-pack 3.7.3",
  "ed25519-dalek",
  "regex",
  "serde",
@@ -532,6 +525,30 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "converge-provider"
+version = "3.7.3"
+dependencies = [
+ "async-trait",
+ "base64",
+ "converge-core 3.7.3",
+ "converge-optimization 3.7.3",
+ "converge-pack 3.7.3",
+ "converge-provider-api 3.7.3",
+ "regex-lite",
+ "reqwest",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml",
+ "tracing",
+ "urlencoding",
 ]
 
 [[package]]
@@ -561,28 +578,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-provider"
+name = "converge-provider-api"
 version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
- "async-trait",
- "base64",
- "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-optimization 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "regex-lite",
- "reqwest",
- "schemars 0.8.22",
  "serde",
  "serde_json",
- "serde_yaml",
- "sha2",
  "thiserror 2.0.18",
- "tokio",
- "toml",
- "tracing",
- "urlencoding",
 ]
 
 [[package]]
@@ -590,16 +591,6 @@ name = "converge-provider-api"
 version = "3.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c99d8437b79ccb88238ca59e0239408eac856aa659a7c7545c8970d4a6b0f5d"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "converge-provider-api"
-version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
  "serde",
  "serde_json",
@@ -1126,12 +1117,12 @@ dependencies = [
  "axum",
  "chrono",
  "converge-domain",
- "converge-kernel 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-model 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-kernel 3.7.3",
+ "converge-model 3.7.3",
+ "converge-pack 3.7.3",
  "converge-policy",
- "converge-provider 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-provider 3.7.3",
+ "converge-provider-api 3.7.3",
  "dotenv",
  "governance-kernel",
  "governance-telemetry",
@@ -1161,9 +1152,9 @@ dependencies = [
 name = "governance-truths"
 version = "0.1.0"
 dependencies = [
- "converge-kernel 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-model 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-kernel 3.7.3",
+ "converge-model 3.7.3",
+ "converge-provider-api 3.7.3",
  "proptest",
  "serde",
  "serde_json",
@@ -1840,7 +1831,6 @@ dependencies = [
 [[package]]
 name = "organism-adversarial"
 version = "1.4.0"
-source = "git+https://github.com/Reflective-Lab/organism?tag=v1.4.0#c9653f4d387075e4e91afc4fd866c3f181e8dbcc"
 dependencies = [
  "async-trait",
  "converge-pack 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1854,7 +1844,6 @@ dependencies = [
 [[package]]
 name = "organism-domain"
 version = "1.4.0"
-source = "git+https://github.com/Reflective-Lab/organism?tag=v1.4.0#c9653f4d387075e4e91afc4fd866c3f181e8dbcc"
 dependencies = [
  "serde",
  "serde_json",
@@ -1863,7 +1852,6 @@ dependencies = [
 [[package]]
 name = "organism-intent"
 version = "1.4.0"
-source = "git+https://github.com/Reflective-Lab/organism?tag=v1.4.0#c9653f4d387075e4e91afc4fd866c3f181e8dbcc"
 dependencies = [
  "chrono",
  "serde",
@@ -1875,7 +1863,6 @@ dependencies = [
 [[package]]
 name = "organism-learning"
 version = "1.4.0"
-source = "git+https://github.com/Reflective-Lab/organism?tag=v1.4.0#c9653f4d387075e4e91afc4fd866c3f181e8dbcc"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1890,7 +1877,6 @@ dependencies = [
 [[package]]
 name = "organism-pack"
 version = "1.4.0"
-source = "git+https://github.com/Reflective-Lab/organism?tag=v1.4.0#c9653f4d387075e4e91afc4fd866c3f181e8dbcc"
 dependencies = [
  "converge-pack 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "organism-adversarial",
@@ -1903,7 +1889,6 @@ dependencies = [
 [[package]]
 name = "organism-planning"
 version = "1.4.0"
-source = "git+https://github.com/Reflective-Lab/organism?tag=v1.4.0#c9653f4d387075e4e91afc4fd866c3f181e8dbcc"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1920,7 +1905,6 @@ dependencies = [
 [[package]]
 name = "organism-runtime"
 version = "1.4.0"
-source = "git+https://github.com/Reflective-Lab/organism?tag=v1.4.0#c9653f4d387075e4e91afc4fd866c3f181e8dbcc"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1944,7 +1928,6 @@ dependencies = [
 [[package]]
 name = "organism-simulation"
 version = "1.4.0"
-source = "git+https://github.com/Reflective-Lab/organism?tag=v1.4.0#c9653f4d387075e4e91afc4fd866c3f181e8dbcc"
 dependencies = [
  "async-trait",
  "converge-pack 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",

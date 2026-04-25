@@ -30,8 +30,12 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 - [[Integrations/Kong Gateway]] — LLM, MCP, and API access through Kong
 - [[Integrations/Why Kong]] — How Kong maps to every challenge requirement
 - [[Integrations/Kong Demo Story]] — End-to-end two-layer governance walkthrough
+- [[Integrations/Web Search Demo Story]] — Brave-wide and Tavily-deep provider mix for governed evidence gathering
 - [[Integrations/MCP Tools]] — Model Context Protocol for business services
 - [[Integrations/External Services]] — mocking pattern for unavailable backends
+
+## Presentations
+- [[Presentations/Team Pitch - Governed Vendor Selection]] — team pitch, demo lines, and fulfillment plan for the vendor-selection story
 
 ## Workflow
 - [[Workflow/Working with Claude]] — skills vs Justfile, when to use which

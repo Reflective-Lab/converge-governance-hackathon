@@ -10,3 +10,6 @@ dist/
 apps/desktop/node_modules
 apps/desktop/dist
 apps/desktop/src-tauri/target
+data/
+competition_report.json
+local/

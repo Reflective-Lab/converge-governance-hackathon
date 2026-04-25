@@ -146,7 +146,6 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 [[package]]
 name = "axiom-truth"
 version = "0.7.0"
-source = "git+https://github.com/Reflective-Lab/axiom?tag=v0.7.0#e7e6a7f6b9ac4c76513cf741beae91c6e6b11182"
 dependencies = [
  "async-trait",
  "chrono",
@@ -154,14 +153,14 @@ dependencies = [
  "colored",
  "converge-provider 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "converge-provider-api 3.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "dotenv",
+ "dotenvy",
  "futures",
  "gherkin",
  "regex",
  "serde",
  "serde_json",
  "serde_yaml",
- "sha2",
+ "sha2 0.11.0",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -228,6 +227,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "block-buffer"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdd35008169921d80bc60d3d0ab416eecb028c4cd653352907921d95084790be"
+dependencies = [
+ "hybrid-array",
 ]
 
 [[package]]
@@ -460,12 +468,11 @@ checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
 name = "colored"
-version = "2.2.0"
+version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
+checksum = "faf9468729b8cbcea668e36183cb69d317348c2e08e994829fb56ebfdfbaac34"
 dependencies = [
- "lazy_static",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -476,6 +483,29 @@ checksum = "ba5a308b75df32fe02788e748662718f03fde005016435c444eea572398219fd"
 dependencies = [
  "bytes",
  "memchr",
+]
+
+[[package]]
+name = "const-oid"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
+
+[[package]]
+name = "converge-core"
+version = "3.7.3"
+dependencies = [
+ "async-trait",
+ "converge-pack 3.7.3",
+ "converge-provider-api 3.7.3",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "strum",
+ "thiserror 2.0.18",
+ "tracing",
+ "typed-builder 0.20.1",
 ]
 
 [[package]]
@@ -490,7 +520,7 @@ dependencies = [
  "hex",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.10.9",
  "strum",
  "thiserror 2.0.18",
  "tracing",
@@ -498,21 +528,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-core"
+name = "converge-model"
 version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
- "async-trait",
- "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "hex",
+ "converge-core 3.7.3",
+ "converge-pack 3.7.3",
+ "converge-provider-api 3.7.3",
  "serde",
- "serde_json",
- "sha2",
- "strum",
- "thiserror 2.0.18",
- "tracing",
- "typed-builder 0.20.1",
 ]
 
 [[package]]
@@ -528,14 +550,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-model"
+name = "converge-optimization"
 version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
- "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "async-trait",
+ "bitvec",
+ "converge-core 3.7.3",
+ "converge-model 3.7.3",
+ "converge-pack 3.7.3",
+ "indexmap 2.13.0",
+ "num-traits",
+ "ordered-float",
+ "petgraph",
+ "rayon",
  "serde",
+ "serde_json",
+ "smallvec",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]
@@ -562,25 +594,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-optimization"
+name = "converge-pack"
 version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
  "async-trait",
- "bitvec",
- "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-model 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "indexmap 2.13.0",
- "num-traits",
- "ordered-float",
- "petgraph",
- "rayon",
+ "hex",
  "serde",
  "serde_json",
- "smallvec",
+ "strum",
  "thiserror 2.0.18",
- "tracing",
 ]
 
 [[package]]
@@ -598,16 +620,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-pack"
+name = "converge-provider"
 version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
  "async-trait",
- "hex",
+ "base64 0.22.1",
+ "converge-core 3.7.3",
+ "converge-optimization 3.7.3",
+ "converge-pack 3.7.3",
+ "converge-provider-api 3.7.3",
+ "regex-lite",
+ "reqwest 0.12.28",
+ "schemars 0.8.22",
  "serde",
  "serde_json",
- "strum",
+ "serde_yaml",
+ "sha2 0.10.9",
  "thiserror 2.0.18",
+ "tokio",
+ "toml 0.8.2",
+ "tracing",
 ]
 
 [[package]]
@@ -628,7 +660,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "sha2",
+ "sha2 0.10.9",
  "thiserror 2.0.18",
  "tokio",
  "toml 0.8.2",
@@ -637,27 +669,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-provider"
+name = "converge-provider-api"
 version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
- "async-trait",
- "base64 0.22.1",
- "converge-core 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-optimization 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-pack 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "regex-lite",
- "reqwest 0.12.28",
- "schemars 0.8.22",
  "serde",
  "serde_json",
- "serde_yaml",
- "sha2",
  "thiserror 2.0.18",
- "tokio",
- "toml 0.8.2",
- "tracing",
 ]
 
 [[package]]
@@ -665,16 +682,6 @@ name = "converge-provider-api"
 version = "3.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c99d8437b79ccb88238ca59e0239408eac856aa659a7c7545c8970d4a6b0f5d"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "converge-provider-api"
-version = "3.7.3"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.7.3#84cfe094befaba8d6b2b1456d15afb01339d76cc"
 dependencies = [
  "serde",
  "serde_json",
@@ -757,6 +764,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpufeatures"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b2a41393f66f16b0823bb79094d54ac5fbd34ab292ddafb9a0456ac9f87d201"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -807,6 +823,15 @@ checksum = "78c8292055d1c1df0cce5d180393dc8cce0abec0a7102adb6c7b1eef6016d60a"
 dependencies = [
  "generic-array",
  "typenum",
+]
+
+[[package]]
+name = "crypto-common"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77727bb15fa921304124b128af125e7e3b968275d1b108b379190264f4423710"
+dependencies = [
+ "hybrid-array",
 ]
 
 [[package]]
@@ -943,8 +968,19 @@ version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
- "block-buffer",
- "crypto-common",
+ "block-buffer 0.10.4",
+ "crypto-common 0.1.7",
+]
+
+[[package]]
+name = "digest"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4850db49bf08e663084f7fb5c87d202ef91a3907271aff24a94eb97ff039153c"
+dependencies = [
+ "block-buffer 0.12.0",
+ "const-oid",
+ "crypto-common 0.2.1",
 ]
 
 [[package]]
@@ -1034,6 +1070,12 @@ name = "dotenv"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
+
+[[package]]
+name = "dotenvy"
+version = "0.15.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "dpi"
@@ -1520,19 +1562,19 @@ dependencies = [
 
 [[package]]
 name = "gherkin"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20b79820c0df536d1f3a089a2fa958f61cb96ce9e0f3f8f507f5a31179567755"
+checksum = "70197ce7751bfe8bc828e3a855502d3a869a1e9416b58b10c4bde5cf8a0a3cb3"
 dependencies = [
- "heck 0.4.1",
+ "heck 0.5.0",
  "peg",
  "quote",
  "serde",
  "serde_json",
  "syn 2.0.117",
  "textwrap",
- "thiserror 1.0.69",
- "typed-builder 0.15.2",
+ "thiserror 2.0.18",
+ "typed-builder 0.23.2",
 ]
 
 [[package]]
@@ -1637,8 +1679,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axiom-truth",
- "converge-provider 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
- "converge-provider-api 3.7.3 (git+https://github.com/Reflective-Lab/converge?tag=v3.7.3)",
+ "converge-provider 3.7.3",
+ "converge-provider-api 3.7.3",
  "dotenv",
  "governance-telemetry",
  "reqwest 0.12.28",
@@ -1826,6 +1868,15 @@ name = "httparse"
 version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
+
+[[package]]
+name = "hybrid-array"
+version = "0.4.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3944cf8cf766b40e2a1a333ee5e9b563f854d5fa49d6a8ca2764e97c6eddb214"
+dependencies = [
+ "typenum",
+]
 
 [[package]]
 name = "hyper"
@@ -2213,12 +2264,6 @@ dependencies = [
  "indexmap 2.13.0",
  "selectors 0.24.0",
 ]
-
-[[package]]
-name = "lazy_static"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "leb128fmt"
@@ -3859,8 +3904,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
 dependencies = [
  "cfg-if",
- "cpufeatures",
- "digest",
+ "cpufeatures 0.2.17",
+ "digest 0.10.7",
+]
+
+[[package]]
+name = "sha2"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "446ba717509524cb3f22f17ecc096f10f4822d76ab5c0b9822c5f9c284e825f4"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.3.0",
+ "digest 0.11.2",
 ]
 
 [[package]]
@@ -4300,7 +4356,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.10.9",
  "syn 2.0.117",
  "tauri-utils",
  "thiserror 2.0.18",
@@ -4832,15 +4888,6 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "typed-builder"
-version = "0.15.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fe83c85a85875e8c4cb9ce4a890f05b23d38cd0d47647db7895d3d2a79566d2"
-dependencies = [
- "typed-builder-macro 0.15.2",
-]
-
-[[package]]
-name = "typed-builder"
 version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd9d30e3a08026c78f246b173243cf07b3696d274debd26680773b6773c2afc7"
@@ -4849,10 +4896,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "typed-builder-macro"
-version = "0.15.2"
+name = "typed-builder"
+version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29a3151c41d0b13e3d011f98adc24434560ef06673a155a6c7f66b9879eecce2"
+checksum = "31aa81521b70f94402501d848ccc0ecaa8f93c8eb6999eb9747e72287757ffda"
+dependencies = [
+ "typed-builder-macro 0.23.2",
+]
+
+[[package]]
+name = "typed-builder-macro"
+version = "0.20.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c36781cc0e46a83726d9879608e4cf6c2505237e263a8eb8c24502989cfdb28"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4861,9 +4917,9 @@ dependencies = [
 
 [[package]]
 name = "typed-builder-macro"
-version = "0.20.1"
+version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c36781cc0e46a83726d9879608e4cf6c2505237e263a8eb8c24502989cfdb28"
+checksum = "076a02dc54dd46795c2e9c8282ed40bcfb1e22747e955de9389a1de28190fb26"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5924,7 +5980,7 @@ dependencies = [
  "once_cell",
  "percent-encoding",
  "raw-window-handle",
- "sha2",
+ "sha2 0.10.9",
  "soup3",
  "tao-macros",
  "thiserror 2.0.18",

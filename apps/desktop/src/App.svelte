@@ -3,101 +3,257 @@
   import { invokeTauri } from "./lib/tauri";
   import { randomVerb } from "./lib/spinner";
   import ProviderSelector from "./lib/ProviderSelector.svelte";
+  import AIProviderEvaluation from "./lib/AIProviderEvaluation.svelte";
 
   // ─── Phases ───
-  let phase = $state("slides"); // slides | providers | demo | apps | dd
+  let phase = $state("slides"); // slides | providers | loop | demo | apps | dd
   let currentSlide = $state(0);
+  let slideSelectionInput = $state("");
+  let slideSelectionStatus = $state("");
 
-  const slides = [
+  interface Slide {
+    number: number;
+    eyebrow: string;
+    headline: string;
+    body: string;
+    image: string;
+  }
+
+  const allSlides: Slide[] = [
     {
+      number: 1,
       eyebrow: "The Problem",
       headline: "Vendor decisions\nare a black box.",
       body: "Enterprises evaluate AI vendors with spreadsheets, email chains, and gut feel. No audit trail, no reproducibility, no governance.",
       image: "/images/slides/hero.jpg",
     },
     {
+      number: 2,
       eyebrow: "The Enterprise Reality",
       headline: "Towers of process.\nZero transparency.",
       body: "Procurement committees, legal review boards, security checklists — layers of approval that produce paper trails instead of machine-readable decisions.",
       image: "/images/slides/towers.jpg",
     },
     {
+      number: 3,
       eyebrow: "Why It Matters",
       headline: "Compliance fails\nwhen process is invisible.",
       body: "Regulators ask for evidence. Boards ask for rationale. Without machine-readable governance, you are rebuilding the story after the fact.",
       image: "/images/slides/problem.jpg",
     },
     {
+      number: 4,
       eyebrow: "The Scale",
       headline: "Every organization.\nEvery border.\nEvery decision.",
       body: "Vendor governance is not a local problem. Enterprises operate across jurisdictions, regulations, and risk profiles. The rules must travel with the data.",
       image: "/images/slides/earth.jpg",
     },
     {
+      number: 5,
       eyebrow: "The Converge Way",
       headline: "Governance\nas code.",
       body: "A Truth is a machine-readable governance spec. Intent, authority, constraints, and evidence — declared up front, validated automatically, auditable forever.",
       image: "/images/slides/converge.jpg",
     },
     {
+      number: 6,
       eyebrow: "The Pattern",
       headline: "Structure that\nemerges from flow.",
       body: "Governance is not a gate you pass through once. It is a continuous flow — living constraints that adapt as context shifts, not static checklists that rot.",
       image: "/images/slides/flow.jpg",
     },
     {
+      number: 7,
       eyebrow: "How It Works",
       headline: "Intent. Authority.\nConstraint. Evidence.",
       body: "Every vendor decision declares what outcome it seeks, who can approve it, what limits apply, and what proof is required. Agents propose. Humans promote.",
       image: "/images/slides/howit.jpg",
     },
     {
+      number: 8,
       eyebrow: "Deep Architecture",
       headline: "Layers that\ncompose cleanly.",
       body: "Domain packs, policy engines, promotion gates, and agent runtimes — each layer has a single responsibility. Compose them to build governance that fits your org.",
       image: "/images/slides/layers.jpg",
     },
     {
+      number: 9,
       eyebrow: "The Stack",
       headline: "Converge platform.\nOrganism runtime.\nHelm desktop.",
       body: "Write a truth. Validate it against policy. Act on it with confidence. Governance that learns from every decision — processes that strengthen under stress and keep your organization safe by default.",
       image: "/images/slides/stack.jpg",
     },
     {
+      number: 10,
       eyebrow: "Under The Hood",
       headline: "Silicon-level\nconfidence.",
       body: "From circuit board to policy decision — every layer is typed, validated, and auditable. Zero unsafe code. Zero runtime surprises. The machine earns trust.",
       image: "/images/slides/circuit.jpg",
     },
     {
+      number: 11,
       eyebrow: "The Grid",
       headline: "Structured decisions\nat enterprise scale.",
       body: "Not a single vendor scorecard — a composable grid of evaluations, constraints, and approvals that scales across teams, business units, and geographies.",
       image: "/images/slides/grid.jpg",
     },
     {
+      number: 12,
       eyebrow: "Living Systems",
       headline: "Governance that\nevolves organically.",
       body: "Organisms adapt. So should your vendor governance. As markets shift and regulations change, Truths update — and the audit trail shows exactly what changed and why.",
       image: "/images/slides/organic.jpg",
     },
     {
+      number: 13,
       eyebrow: "Corporate Trust",
       headline: "The board sees\nwhat the machine sees.",
       body: "No more translating between technical artifacts and executive summaries. One Truth spec serves the engineer, the auditor, and the board — same artifact, same source of truth.",
       image: "/images/slides/corporate.jpg",
     },
     {
+      number: 14,
       eyebrow: "Your Mission",
-      headline: "Write a governance\ntruth that holds.",
-      body: "Today you will write a vendor-selection Truth spec, validate it live against policy, and see how structured governance enables trustworthy AI decisions.",
+      headline: "Watch governance\nconverge.",
+      body: "Today you will inspect a vendor-selection loop as formation, agents, optimization, policy, and gates turn proposals into an auditable decision.",
+      image: "/images/slides/participants.jpg",
+    },
+    {
+      number: 15,
+      eyebrow: "RFI / RFP Intake",
+      headline: "Documents become\nmachine-readable flow.",
+      body: "The buyer uploads an RFI/RFP package. Intake extracts requirements, candidate vendors, constraints, and source artifacts before any agent starts deciding.",
+      image: "/images/slides/towers.jpg",
+    },
+    {
+      number: 16,
+      eyebrow: "Formation",
+      headline: "Declare needs.\nDo not pick tools too early.",
+      body: "The top level asks for compliance evidence, pricing analysis, risk scoring, optimization, synthesis, and policy authorization. Lower layers choose the right provider/model/tool mix.",
+      image: "/images/slides/converge.jpg",
+    },
+    {
+      number: 17,
+      eyebrow: "Huddle",
+      headline: "Agents coordinate\nthrough promoted facts.",
+      body: "This is not a loose chat room. Agents propose facts into typed context; Converge decides what becomes shared evidence before the next step can depend on it.",
+      image: "/images/slides/grid.jpg",
+    },
+    {
+      number: 18,
+      eyebrow: "Steps",
+      headline: "Compliance. Price.\nRisk. Optimization.",
+      body: "Each step has a different shape: policy evidence, cost curves, operational risk, and mathematical trade-offs. The demo makes each step visible before consensus.",
+      image: "/images/slides/flow.jpg",
+    },
+    {
+      number: 19,
+      eyebrow: "Consensus",
+      headline: "The record is\nnot a vibe.",
+      body: "Consensus means no suggestor has a new promotable fact under the current context, budget, authority, and policy gates. If a gate fails, the system honestly stops.",
+      image: "/images/slides/circuit.jpg",
+    },
+    {
+      number: 20,
+      eyebrow: "Wide + Deep Search",
+      headline: "Brave for breadth.\nTavily for depth.",
+      body: "Risk wants broad market signals. Compliance wants canonical evidence. Cost often needs both: wide discovery to find pricing surfaces, then deep retrieval to ground the numbers.",
+      image: "/images/slides/earth.jpg",
+    },
+    {
+      number: 21,
+      eyebrow: "Not Every Agent Is An LLM",
+      headline: "RAG is one\nteammate.",
+      body: "The governed team also needs policy, optimization, statistics, data analysis, machine learning, and knowledgebase retrieval before a decision becomes trustworthy.",
+      image: "/images/slides/layers.jpg",
+    },
+    {
+      number: 22,
+      eyebrow: "Mode 1",
+      headline: "Governed selection\nreplaces document exchange.",
+      body: "This mode keeps the vendor choice inside the original RFI/RFP candidate set, while HITL and Cedar policy gates increasingly become formal delegation chains learned from prior runs.",
+      image: "/images/slides/corporate.jpg",
+    },
+    {
+      number: 23,
+      eyebrow: "Mode 2",
+      headline: "Creative breakout\nchallenges the premise.",
+      body: "Sometimes the local optimum is the wrong frame. The formation can propose a Pareto breakout: a multi-provider mix behind a governed router, not a single forced winner.",
+      image: "/images/slides/organic.jpg",
+    },
+    {
+      number: 24,
+      eyebrow: "Router Hypothesis",
+      headline: "Kong or OpenRouter\nbecomes the answer.",
+      body: "We thought we were evaluating AI vendors. The system can discover that the better architecture is a gateway/router: policy, audit, rate limits, search, models, and workload routing.",
+      image: "/images/slides/stack.jpg",
+    },
+    {
+      number: 25,
+      eyebrow: "Demo Close",
+      headline: "A governed team,\nnot one magic model.",
+      body: "We formed a team: Brave for breadth, Tavily for depth, specialized models for each role, and Converge to decide which evidence becomes part of the record.",
       image: "/images/slides/participants.jpg",
     },
   ];
 
+  let slides = $state(allSlides);
+
+  function parseSlideNumbers(raw: string): number[] {
+    const seen = new Set<number>();
+    return raw
+      .replace(/[{}]/g, "")
+      .split(/[,\s]+/)
+      .map((part) => Number.parseInt(part.trim(), 10))
+      .filter((number) => Number.isInteger(number))
+      .filter((number) => {
+        if (seen.has(number)) return false;
+        seen.add(number);
+        return true;
+      });
+  }
+
+  function applySlideSelectionFrom(raw: string) {
+    const numbers = parseSlideNumbers(raw);
+    if (numbers.length === 0) {
+      slides = allSlides;
+      currentSlide = 0;
+      slideSelectionStatus = `Showing all ${allSlides.length} slides`;
+      return;
+    }
+
+    const selected = numbers
+      .map((number) => allSlides.find((slide) => slide.number === number))
+      .filter((slide): slide is Slide => Boolean(slide));
+    const missing = numbers.filter(
+      (number) => !allSlides.some((slide) => slide.number === number),
+    );
+
+    if (selected.length === 0) {
+      slideSelectionStatus = `No valid slide numbers. Available: 1-${allSlides.length}`;
+      return;
+    }
+
+    slides = selected;
+    currentSlide = 0;
+    slideSelectionStatus =
+      missing.length > 0
+        ? `Showing ${selected.length}; ignored ${missing.join(", ")}`
+        : `Showing ${selected.length} selected slides`;
+  }
+
+  function applySlideSelection() {
+    applySlideSelectionFrom(slideSelectionInput);
+  }
+
+  function showAllSlides() {
+    slideSelectionInput = "";
+    applySlideSelectionFrom("");
+  }
+
   function nextSlide() {
     if (currentSlide < slides.length - 1) currentSlide++;
-    else phase = "providers";
+    else phase = "loop";
   }
 
   function prevSlide() {
@@ -106,6 +262,10 @@
 
   function goToDemo() {
     phase = "demo";
+  }
+
+  function goToConvergence() {
+    phase = "loop";
   }
 
   function goToSlides() {
@@ -550,6 +710,14 @@ Scenario: Parse should fail early
 
   const appCards: AppCard[] = [
     {
+      id: "convergence-loop",
+      title: "Vendor Decision Lab",
+      description: "Try loop patterns, inspect root intent, resources, invariants, optimization, policy, and experience.",
+      status: "active",
+      icon: "◎",
+      action: () => { phase = "loop"; },
+    },
+    {
       id: "truth-editor",
       title: "Truth Spec Editor",
       description: "Write and validate governance specs. Syntax checking, policy extraction, Cedar generation.",
@@ -636,12 +804,25 @@ Scenario: Parse should fail early
     llm_calls?: DdLlmCall[];
   }
 
+  interface TruthExecutionResult {
+    converged: boolean;
+    cycles: number;
+    stop_reason: string;
+    criteria_outcomes: { criterion: string; result: string }[];
+    projection: {
+      events_emitted: number;
+      details: Record<string, any> | null;
+    } | null;
+    llm_calls?: DdLlmCall[] | null;
+  }
+
   let ddCompanyName = $state("");
   let ddReport = $state<DdReport | null>(null);
   let ddLoading = $state(false);
   let ddError = $state("");
   let ddSteps = $state<DdStep[]>([]);
   let ddSpinnerVerb = $state(randomVerb());
+  let ddPrintTimestamp = $state("");
   let ddSpinnerInterval: ReturnType<typeof setInterval> | null = null;
   let ddTimers: ReturnType<typeof setTimeout>[] = [];
 
@@ -675,11 +856,7 @@ Scenario: Parse should fail early
     }
 
     try {
-      ddReport = await invokeTauri("run_due_diligence", {
-        companyName: ddCompanyName.trim(),
-        productName: null,
-        focusAreas: [],
-      });
+      ddReport = await runDueDiligence(ddCompanyName.trim());
     } catch (e) {
       ddError = String(e);
     } finally {
@@ -690,10 +867,93 @@ Scenario: Parse should fail early
     }
   }
 
+  async function runDueDiligence(companyName: string): Promise<DdReport> {
+    if ((window as any).__TAURI_INTERNALS__) {
+      return invokeTauri("run_due_diligence", {
+        companyName,
+        productName: null,
+        focusAreas: [],
+      });
+    }
+
+    const response = await fetch("http://127.0.0.1:8080/v1/truths/dynamic-due-diligence/execute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        inputs: {
+          company_name: companyName,
+          focus_areas: "market, technology, competition, financials",
+        },
+        persist_projection: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(body || `HTTP ${response.status}`);
+    }
+
+    const result: TruthExecutionResult = await response.json();
+    return mapDynamicDueDiligenceResult(companyName, result);
+  }
+
+  function mapDynamicDueDiligenceResult(companyName: string, result: TruthExecutionResult): DdReport {
+    const details = result.projection?.details ?? {};
+    const market = asStringArray(details.market_analysis);
+    const competition = asStringArray(details.competitive_landscape);
+    const technology = asStringArray(details.technology_assessment);
+    const ownership = asStringArray(details.ownership_and_financials);
+    const contradictions = asStringArray(details.contradictions);
+    const gaps = asStringArray(details.remaining_gaps);
+    const focusAreas = asStringArray(details.focus_areas);
+
+    const keyFacts: DdFact[] = [
+      ...market.slice(0, 2).map((claim) => ({ claim, category: "market", confidence: 0.82 })),
+      ...technology.slice(0, 2).map((claim) => ({ claim, category: "technology", confidence: 0.8 })),
+      ...competition.slice(0, 2).map((claim) => ({ claim, category: "competition", confidence: 0.78 })),
+      ...ownership.slice(0, 1).map((claim) => ({ claim, category: "financials", confidence: 0.74 })),
+    ];
+
+    return {
+      company_name: typeof details.company_name === "string" ? details.company_name : companyName,
+      product_name: null,
+      pass1: {
+        summary: typeof details.executive_summary === "string"
+          ? details.executive_summary
+          : `Dynamic due diligence converged in ${result.cycles} cycles across ${focusAreas.join(", ") || "core"} focus areas.`,
+        key_facts: keyFacts,
+      },
+      final_report: {
+        market_analysis: market.join("\n\n"),
+        competitive_landscape: competition.join("\n\n"),
+        technology_assessment: technology.join("\n\n"),
+        risk_factors: [...contradictions, ...gaps],
+        growth_opportunities: focusAreas.map((area) => `Follow-up diligence available for ${area}.`),
+        recommendation: typeof details.recommendation === "string"
+          ? details.recommendation
+          : result.stop_reason,
+      },
+      pass1_hits: [],
+      llm_calls: result.llm_calls ?? [],
+    };
+  }
+
+  function asStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return value.filter((item): item is string => typeof item === "string");
+  }
+
   function ddNewSearch() {
     ddReport = null;
     ddSteps = [];
     ddError = "";
+    ddPrintTimestamp = "";
+  }
+
+  function printDdReport() {
+    if (!ddReport) return;
+    ddPrintTimestamp = new Date().toLocaleString();
+    requestAnimationFrame(() => window.print());
   }
 </script>
 
@@ -733,9 +993,35 @@ Scenario: Parse should fail early
     <!-- Slide content -->
     <div class="relative z-10 flex h-full flex-col justify-between p-12">
       <!-- Top bar -->
-      <div class="flex items-center justify-between">
-        <span class="font-mono text-xs tracking-widest text-muted uppercase">Converge Governance</span>
-        <button class="btn-ghost text-sm" onclick={goToDemo}>
+      <div class="flex items-start justify-between gap-6">
+        <div>
+          <span class="font-mono text-xs tracking-widest text-muted uppercase">Converge Governance</span>
+          <div class="mt-2 flex flex-wrap items-center gap-2">
+            <span class="font-mono text-[0.68rem] tracking-widest text-muted uppercase">Deck</span>
+            <input
+              class="slide-picker"
+              aria-label="Slide numbers to present"
+              placeholder="1,2,3,8,12"
+              bind:value={slideSelectionInput}
+              onkeydown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  applySlideSelection();
+                }
+              }}
+            />
+            <button class="btn-ghost px-3! py-2! text-xs!" onclick={applySlideSelection}>
+              Use
+            </button>
+            <button class="btn-ghost px-3! py-2! text-xs!" onclick={showAllSlides}>
+              All
+            </button>
+            {#if slideSelectionStatus}
+              <span class="font-mono text-[0.68rem] text-muted">{slideSelectionStatus}</span>
+            {/if}
+          </div>
+        </div>
+        <button class="btn-ghost text-sm" onclick={goToConvergence}>
           Skip to Demo &rarr;
         </button>
       </div>
@@ -743,14 +1029,19 @@ Scenario: Parse should fail early
       <!-- Main content -->
       {#key currentSlide}
         <div class="fade-in max-w-3xl">
-          <p class="slide-eyebrow mb-4">{slides[currentSlide].eyebrow}</p>
+          <p class="slide-eyebrow mb-4">
+            <span class="mr-3 text-subtle">#{slides[currentSlide].number}</span>{slides[currentSlide].eyebrow}
+          </p>
           <h1 class="slide-headline mb-6 whitespace-pre-line">{slides[currentSlide].headline}</h1>
           <p class="slide-body">{slides[currentSlide].body}</p>
 
           {#if currentSlide === slides.length - 1}
             <div class="mt-10 flex gap-4">
-              <button class="btn-lime" onclick={goToDemo}>
-                Launch the Editor
+              <button class="btn-lime" onclick={goToConvergence}>
+                Launch Demo
+              </button>
+              <button class="btn-ghost" onclick={goToDemo}>
+                Spec Studio
               </button>
             </div>
           {/if}
@@ -759,20 +1050,21 @@ Scenario: Parse should fail early
 
       <!-- Bottom nav -->
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          {#each slides as _, i}
+        <div class="flex max-w-[58vw] flex-wrap items-center gap-2">
+          {#each slides as slide, i}
             <button
               class="nav-dot"
               class:active={i === currentSlide}
               onclick={() => (currentSlide = i)}
-              aria-label="Go to slide {i + 1}"
+              aria-label="Go to slide {slide.number}"
+              title="Slide {slide.number}"
             ></button>
           {/each}
         </div>
 
         <div class="flex items-center gap-3">
           <span class="font-mono text-xs text-muted">
-            {currentSlide + 1} / {slides.length}
+            #{slides[currentSlide].number} · {currentSlide + 1} / {slides.length} selected · {allSlides.length} total
           </span>
           <button
             class="btn-ghost text-sm"
@@ -812,9 +1104,15 @@ Scenario: Parse should fail early
 
     <!-- Provider selector -->
     <div class="p-8">
-      <ProviderSelector on:provider-selection-complete={(e) => { phase = "demo"; }} />
+      <ProviderSelector on:provider-selection-complete={(e) => { phase = "loop"; }} />
     </div>
   </div>
+
+<!-- ═══════════════════════════════════════════════
+     CONVERGENCE LOOP PHASE
+     ═══════════════════════════════════════════════ -->
+{:else if phase === "loop"}
+  <AIProviderEvaluation onBack={goToSlides} onApps={goToApps} onSpecStudio={goToDemo} />
 
 <!-- ═══════════════════════════════════════════════
      DEMO PHASE
@@ -1313,19 +1611,26 @@ Scenario: Parse should fail early
       </div>
     </header>
 
-    <div class="mx-auto max-w-3xl px-8 py-8">
+    <div class="mx-auto max-w-3xl px-8 py-8 dd-stage" class:dd-print-page={Boolean(ddReport)}>
       {#if ddReport}
         <!-- Report -->
-        <div class="mb-8 flex items-center justify-between">
+        <div class="mb-8 flex items-center justify-between gap-4">
           <div>
             <p class="slide-eyebrow mb-1">Due Diligence Report</p>
             <h1 class="slide-headline text-3xl!">{ddReport.company_name}</h1>
+            <p class="print-only mt-2 text-sm text-muted">
+              Generated {ddPrintTimestamp || new Date().toLocaleString()} by Converge Governance
+            </p>
           </div>
-          <button class="btn-ghost" onclick={ddNewSearch}>New Search</button>
+          <div class="no-print flex gap-3">
+            <button class="btn-lime" onclick={printDdReport}>Print / Save PDF</button>
+            <button class="btn-ghost" onclick={ddNewSearch}>New Search</button>
+          </div>
         </div>
 
         {#if ddReport.pass1?.summary}
           <div class="callout callout-lime mb-6">
+            <span class="card-label mb-2 block">Executive Summary</span>
             <p class="whitespace-pre-wrap text-sm text-text">{ddReport.pass1.summary}</p>
           </div>
         {/if}
@@ -1348,7 +1653,7 @@ Scenario: Parse should fail early
         {/if}
 
         {#if ddReport.llm_calls?.length}
-          <section class="mb-6">
+          <section class="mb-6 no-print">
             <span class="card-label mb-3 block">LLM Telemetry ({ddReport.llm_calls.length})</span>
             <div class="space-y-3">
               {#each ddReport.llm_calls as call}

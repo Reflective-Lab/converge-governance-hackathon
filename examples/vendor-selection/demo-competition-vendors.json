@@ -1,0 +1,74 @@
+[
+  {
+    "name": "Gemma 4 31B (Google)",
+    "score": 92.0,
+    "risk_score": 12.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 1300,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Mistral Small 4 (Mistral)",
+    "score": 90.0,
+    "risk_score": 15.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "GDPR"],
+    "monthly_cost_minor": 1500,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Arcee Trinity Large (Arcee AI)",
+    "score": 88.0,
+    "risk_score": 14.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2"],
+    "monthly_cost_minor": 1500,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Gemini 3.1 Flash Lite (Google)",
+    "score": 85.0,
+    "risk_score": 10.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR", "FedRAMP"],
+    "monthly_cost_minor": 2500,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Claude Opus 4.7 (Anthropic)",
+    "score": 86.0,
+    "risk_score": 8.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 500000,
+    "currency_code": "USD"
+  },
+  {
+    "name": "GPT-5.4 Pro (OpenAI)",
+    "score": 78.0,
+    "risk_score": 28.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001"],
+    "monthly_cost_minor": 3000000,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Grok 4.20 Multi-Agent (xAI)",
+    "score": 75.0,
+    "risk_score": 32.0,
+    "compliance_status": "pending",
+    "certifications": ["SOC2"],
+    "monthly_cost_minor": 200000,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Qwen 3.6 Plus (Alibaba Cloud)",
+    "score": 80.0,
+    "risk_score": 35.0,
+    "compliance_status": "pending",
+    "certifications": ["ISO27001"],
+    "monthly_cost_minor": 3300,
+    "currency_code": "USD"
+  }
+]

@@ -1,18 +1,26 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
+use converge_provider_api::SelectionCriteria;
 use governance_kernel::InMemoryStore;
-use governance_truths::AGENT_MODELS;
+use governance_truths::{AGENT_MODELS, AgentModelConfig};
 use serde::{Deserialize, Serialize};
+use tower_http::cors::{Any, CorsLayer};
 
-/// Shared state type for governance HTTP handlers.
-pub type AppState = Arc<InMemoryStore>;
+use crate::experience::ExperienceRegistry;
+
+/// Shared application state for governance HTTP handlers.
+#[derive(Clone)]
+pub struct AppState {
+    pub store: Arc<InMemoryStore>,
+    pub experience: Arc<ExperienceRegistry>,
+}
 
 /// Build the full governance API router.
 pub fn build_router(state: AppState) -> Router {
@@ -23,9 +31,16 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v1/decisions", get(list_decisions))
         .route("/v1/vendors", get(list_vendors))
         .route("/v1/audit", get(list_audit))
+        .route("/v1/experience/{truth_key}", get(get_experience))
         .route(
             "/v1/agents/available-models",
             get(list_available_agent_models),
+        )
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any),
         )
         .with_state(state)
 }
@@ -48,14 +63,15 @@ async fn list_truths() -> Json<Vec<TruthListItem>> {
 }
 
 async fn execute_truth(
-    State(store): State<AppState>,
+    State(state): State<AppState>,
     axum::extract::Path(key): axum::extract::Path<String>,
     Json(request): Json<ExecuteTruthRequest>,
 ) -> Result<Json<crate::truth_runtime::TruthExecutionResult>, (StatusCode, String)> {
     let persist = request.persist_projection.unwrap_or(true);
     // The converge Engine future is !Send (trait-object suggestors), so run on
     // a blocking thread with a local async runtime to satisfy axum's Send bound.
-    let store_inner = (*store).clone();
+    let store_inner = (*state.store).clone();
+    let experience = state.experience.clone();
     tokio::task::spawn_blocking(move || {
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -66,6 +82,7 @@ async fn execute_truth(
                 &key,
                 request.inputs,
                 persist,
+                &experience,
             ))
     })
     .await
@@ -74,8 +91,9 @@ async fn execute_truth(
     .map_err(|e| (StatusCode::BAD_REQUEST, e))
 }
 
-async fn list_decisions(State(store): State<AppState>) -> impl IntoResponse {
-    let decisions = store
+async fn list_decisions(State(state): State<AppState>) -> impl IntoResponse {
+    let decisions = state
+        .store
         .read(|k| {
             k.recent_decisions(20)
                 .into_iter()
@@ -86,18 +104,27 @@ async fn list_decisions(State(store): State<AppState>) -> impl IntoResponse {
     Json(decisions)
 }
 
-async fn list_vendors(State(store): State<AppState>) -> impl IntoResponse {
-    let vendors = store
+async fn list_vendors(State(state): State<AppState>) -> impl IntoResponse {
+    let vendors = state
+        .store
         .read(|k| k.vendors_list().into_iter().cloned().collect::<Vec<_>>())
         .unwrap_or_default();
     Json(vendors)
 }
 
-async fn list_audit(State(store): State<AppState>) -> impl IntoResponse {
-    let entries = store
+async fn list_audit(State(state): State<AppState>) -> impl IntoResponse {
+    let entries = state
+        .store
         .read(|k| k.recent_audit(50).into_iter().cloned().collect::<Vec<_>>())
         .unwrap_or_default();
     Json(entries)
+}
+
+async fn get_experience(
+    State(state): State<AppState>,
+    Path(truth_key): Path<String>,
+) -> impl IntoResponse {
+    Json(state.experience.snapshot(&truth_key))
 }
 
 async fn list_available_agent_models() -> Result<Json<Vec<AgentModelOptions>>, (StatusCode, String)>
@@ -105,7 +132,7 @@ async fn list_available_agent_models() -> Result<Json<Vec<AgentModelOptions>>, (
     let mut result = Vec::new();
 
     for agent_config in AGENT_MODELS {
-        let config = ChatBackendSelectionConfig::default();
+        let config = agent_selection_config(agent_config);
         let selected = match select_healthy_chat_backend(&config).await {
             Ok(s) => Some(ModelOption {
                 provider: s.provider().to_string(),
@@ -127,6 +154,12 @@ async fn list_available_agent_models() -> Result<Json<Vec<AgentModelOptions>>, (
     }
 
     Ok(Json(result))
+}
+
+fn agent_selection_config(agent_config: &AgentModelConfig) -> ChatBackendSelectionConfig {
+    ChatBackendSelectionConfig::default().with_criteria(SelectionCriteria::from_agent_requirements(
+        &agent_config.requirements,
+    ))
 }
 
 #[derive(Deserialize)]
@@ -156,4 +189,66 @@ struct AgentModelOptions {
     agent_name: String,
     description: String,
     selected: Option<ModelOption>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use converge_provider_api::{
+        AgentRequirements, ComplianceLevel, CostClass, CostTier, DataSovereignty, LatencyClass,
+        TaskComplexity,
+    };
+
+    #[test]
+    fn agent_selection_preserves_structured_output_and_context_requirements() {
+        let requirements = AgentRequirements {
+            max_cost_class: CostClass::Low,
+            max_latency_ms: 5_000,
+            min_quality: 0.75,
+            requires_reasoning: false,
+            requires_web_search: false,
+            requires_tool_use: true,
+            requires_vision: false,
+            requires_code: false,
+            requires_multilingual: false,
+            requires_structured_output: true,
+            min_context_tokens: Some(4_000),
+            data_sovereignty: DataSovereignty::Any,
+            compliance: ComplianceLevel::None,
+        };
+
+        let criteria = SelectionCriteria::from_agent_requirements(&requirements);
+
+        assert_eq!(criteria.cost, CostTier::Minimal);
+        assert_eq!(criteria.latency, LatencyClass::Background);
+        assert!(criteria.capabilities.tool_use);
+        assert!(criteria.capabilities.structured_output);
+        assert_eq!(criteria.capabilities.min_context_tokens, Some(4_000));
+    }
+
+    #[test]
+    fn reasoning_agent_uses_reasoning_complexity() {
+        let requirements = AgentRequirements {
+            max_cost_class: CostClass::Medium,
+            max_latency_ms: 10_000,
+            min_quality: 0.85,
+            requires_reasoning: true,
+            requires_web_search: false,
+            requires_tool_use: false,
+            requires_vision: false,
+            requires_code: false,
+            requires_multilingual: false,
+            requires_structured_output: true,
+            min_context_tokens: Some(8_000),
+            data_sovereignty: DataSovereignty::Any,
+            compliance: ComplianceLevel::None,
+        };
+
+        let criteria = SelectionCriteria::from_agent_requirements(&requirements);
+
+        assert_eq!(criteria.cost, CostTier::Standard);
+        assert_eq!(criteria.latency, LatencyClass::Background);
+        assert_eq!(criteria.complexity, TaskComplexity::Reasoning);
+        assert!(criteria.capabilities.structured_output);
+    }
 }

@@ -1,0 +1,9 @@
+workload,monthly_requests,avg_prompt_tokens,avg_completion_tokens,expected_model_class,escalation_rate,notes
+discussion_synthesis,12000,3200,700,primary,0.05,Main huddle and synthesis workload
+coding_agent_execution,4500,12000,1800,primary_or_escalation,0.15,Escalate complex repository changes
+compliance_risk_extraction,2500,5000,900,primary,0.10,Structured evidence extraction
+stakeholder_polishing,1800,2200,500,secondary,0.02,Writer style summaries
+deep_reasoning_escalation,500,18000,2500,escalation,1.00,Only high ambiguity cases
+wide_search,3000,900,300,tool,0.00,Brave breadth discovery
+deep_search,1200,1200,400,tool,0.00,Tavily source grounding
+

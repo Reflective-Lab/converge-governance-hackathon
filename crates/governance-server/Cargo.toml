@@ -10,6 +10,14 @@ path = "src/lib.rs"
 name = "governance-server"
 path = "src/main.rs"
 
+[[bin]]
+name = "model-competition"
+path = "src/bin/model_competition.rs"
+
+[[bin]]
+name = "vendor-selection-demo"
+path = "src/bin/vendor_selection_demo.rs"
+
 [dependencies]
 governance-kernel = { path = "../governance-kernel" }
 governance-truths = { path = "../governance-truths" }
@@ -36,6 +44,9 @@ tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 dotenv = { workspace = true }
+
+[features]
+live-tests = []
 
 [dev-dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }

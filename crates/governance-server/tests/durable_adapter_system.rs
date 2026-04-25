@@ -9,6 +9,7 @@ use axum::{
     http::{Method, Request, StatusCode},
 };
 use governance_kernel::{DomainEvent, DomainEventStream, InMemoryStore};
+use governance_server::experience::ExperienceRegistry;
 use governance_server::{AppState, build_router};
 use reqwest::StatusCode as ReqwestStatusCode;
 use tower::util::ServiceExt;
@@ -67,7 +68,10 @@ async fn run_system_truth_endpoint_with_durable_adapter() {
         path: path.clone(),
         lock: Mutex::new(()),
     });
-    let store: AppState = Arc::new(InMemoryStore::new().with_domain_event_stream(adapter));
+    let store = AppState {
+        store: Arc::new(InMemoryStore::new().with_domain_event_stream(adapter)),
+        experience: Arc::new(ExperienceRegistry::with_path(temp_path("experience-test"))),
+    };
 
     let app = build_router(store.clone());
 
@@ -102,7 +106,7 @@ async fn run_system_truth_endpoint_with_durable_adapter() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let decisions = store.read(|kernel| kernel.decisions.len()).unwrap();
+    let decisions = store.store.read(|kernel| kernel.decisions.len()).unwrap();
     assert_eq!(decisions, 1, "truth execution should persist a decision");
 
     let durable_rows = fs::read_to_string(&path).unwrap_or_default();
@@ -132,7 +136,10 @@ async fn run_system_truth_endpoint_over_tcp_with_durable_adapter() {
         path: path.clone(),
         lock: Mutex::new(()),
     });
-    let store: AppState = Arc::new(InMemoryStore::new().with_domain_event_stream(adapter));
+    let store = AppState {
+        store: Arc::new(InMemoryStore::new().with_domain_event_stream(adapter)),
+        experience: Arc::new(ExperienceRegistry::with_path(temp_path("experience-test"))),
+    };
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -155,7 +162,7 @@ async fn run_system_truth_endpoint_over_tcp_with_durable_adapter() {
 
     assert_eq!(response, ReqwestStatusCode::OK);
 
-    let decisions = store.read(|kernel| kernel.decisions.len()).unwrap();
+    let decisions = store.store.read(|kernel| kernel.decisions.len()).unwrap();
     assert_eq!(decisions, 1, "truth execution should persist a decision");
 
     let lines = wait_for_durable_events(&path, 1).await;

@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { createEventDispatcher, onMount } from 'svelte'
+
+  const dispatch = createEventDispatcher()
 
   interface ModelOption {
     provider: string
@@ -21,7 +23,7 @@
 
   onMount(async () => {
     try {
-      const response = await fetch('http://localhost:8080/v1/agents/available-models')
+      const response = await fetch('http://127.0.0.1:8080/v1/agents/available-models')
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`)
       }
@@ -52,8 +54,7 @@
 
   function handleStart() {
     saveSelections()
-    // Dispatch event or callback to parent
-    window.dispatchEvent(new CustomEvent('provider-selection-complete', { detail: selectedModels }))
+    dispatch('provider-selection-complete', selectedModels)
   }
 
   function getRecommendationLabel(agent: AgentModelOptions): string {
@@ -77,7 +78,7 @@
   {:else if error}
     <div class="error">
       <p>{error}</p>
-      <p>Make sure the governance server is running on localhost:8080</p>
+      <p>Make sure the governance server is running on 127.0.0.1:8080</p>
     </div>
   {:else if agents.length === 0}
     <div class="error">
@@ -117,10 +118,14 @@
     </div>
 
     <div class="actions">
-      <button class="start-button" on:click={handleStart} disabled={agents.some((a) => !a.selected)}>
-        Start Demo
+      <button class="start-button" on:click={handleStart}>
+        {agents.some((a) => !a.selected) ? "Continue Offline" : "Start Demo"}
       </button>
-      <p class="hint">Each agent will use its recommended model. Settings are saved in localStorage.</p>
+      <p class="hint">
+        {agents.some((a) => !a.selected)
+          ? "The convergence showcase can run with the local deterministic baseline."
+          : "Each agent will use its recommended model. Settings are saved in localStorage."}
+      </p>
     </div>
   {/if}
 </div>

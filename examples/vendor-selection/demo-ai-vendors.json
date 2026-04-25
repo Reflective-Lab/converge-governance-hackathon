@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Anthropic",
+    "score": 92.0,
+    "risk_score": 12.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 4800000,
+    "currency_code": "USD"
+  },
+  {
+    "name": "OpenAI",
+    "score": 90.0,
+    "risk_score": 18.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 5200000,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Google DeepMind",
+    "score": 88.0,
+    "risk_score": 15.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR", "FedRAMP"],
+    "monthly_cost_minor": 4500000,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Mistral",
+    "score": 82.0,
+    "risk_score": 22.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "GDPR"],
+    "monthly_cost_minor": 2200000,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Qwen (Alibaba Cloud)",
+    "score": 79.0,
+    "risk_score": 35.0,
+    "compliance_status": "pending",
+    "certifications": ["ISO27001"],
+    "monthly_cost_minor": 1800000,
+    "currency_code": "USD"
+  }
+]

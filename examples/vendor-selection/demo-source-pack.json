@@ -1,0 +1,41 @@
+{
+  "name": "vendor-selection-demo-source-pack",
+  "version": "2026-04-25",
+  "purpose": "Editable business and data inputs for the governed vendor-selection demo.",
+  "documents": [
+    {
+      "path": "buyer-brief.md",
+      "purpose": "Business problem, upstream assumptions, scope, and success criteria."
+    },
+    {
+      "path": "evaluation-model.md",
+      "purpose": "Hard gates, objective weights, and tuning guidance."
+    },
+    {
+      "path": "downstream-actions.md",
+      "purpose": "Post-decision procurement actions and open team questions."
+    }
+  ],
+  "data": [
+    {
+      "path": "demo-ai-vendors.json",
+      "used_in_steps": [2, 3, 4, 5, 6],
+      "purpose": "Stable governed vendor-selection story."
+    },
+    {
+      "path": "demo-competition-vendors.json",
+      "used_in_steps": [7],
+      "purpose": "Competition-derived candidate set for the breakout optimization."
+    },
+    {
+      "path": "competition-matrix.json",
+      "used_in_steps": [7],
+      "purpose": "Role-level competition evidence for the provider-mix recommendation."
+    },
+    {
+      "path": "demo-ai-provider-mix.json",
+      "used_in_steps": [],
+      "purpose": "Compact router/provider-mix scenario retained for alternate runs."
+    }
+  ]
+}

@@ -41,14 +41,22 @@ Telemetry is not used for facts or authority decisions; it is a **runtime projec
 
 ## What is Experience Store (Status)
 
-An explicit experience store is not yet wired as a standalone substrate.
+The hackathon harness now has a small persistent experience store for local learning and demo recall.
 
-- `GovernanceKernel` currently models domain events in `pending_events` (`DomainEvent`) and exposes `drain_events()`.
-- This gives us a clean migration path toward `converge-experience` without changing truth logic.
-- Planned step:
-  - map `DomainEvent` values to `ExperienceEvent` equivalents,
-  - append them through an adapter in the truth runtime execution boundary,
-  - keep `AuditEntry` as the authoritative legal log and move recommendation memory into the experience layer.
+- `crates/governance-server/src/experience.rs` owns `ExperienceRegistry`.
+- The default path is `data/experience_store.json`.
+- Model competition uses a separate persistent path, `data/model_competition_experience_store.json`, so repeated `just competition` runs can reuse prior vendor-selection summaries. Override it with `GOVERNANCE_COMPETITION_EXPERIENCE_PATH` when isolating experiments.
+- Vendor-selection runs append `RunSummary` records: run id, cycles, elapsed time, vendor count, convergence flag, confidence, recommendation, and timestamp.
+- `GET /v1/experience/{truth_key}` returns the stored run summaries plus aggregate metrics such as convergence rate, average cycles, average confidence, average elapsed time, and recommendation frequencies.
+- The desktop Vendor Decision Lab reads this endpoint to show prior-run learning without turning that learning into authority.
+
+This is intentionally not the legal audit trail. Experience calibrates planning and demo recall; it does not authorize commitments or bypass gates.
+
+The migration path remains:
+- map richer `DomainEvent` values to dedicated `ExperienceEvent` records,
+- append them through a durable adapter at the truth runtime execution boundary,
+- keep `AuditEntry` as the authoritative legal log,
+- move recommendation memory into the experience layer without changing truth logic.
 
 ## Kong-free implementation boundary
 

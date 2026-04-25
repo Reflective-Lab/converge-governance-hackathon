@@ -3,7 +3,9 @@
 
 use std::time::Instant;
 
-use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
+use converge_provider::{
+    ChatBackendSelectionConfig, JsonChatResponse, chat_json_lenient, select_healthy_chat_backend,
+};
 use converge_provider_api::{ChatMessage, ChatRequest, ChatRole, ResponseFormat};
 use governance_telemetry::{
     InMemoryLlmCallCollector, LlmCallSink, LlmCallTelemetry, LlmUsageSummary,
@@ -93,9 +95,9 @@ Produce a JSON response with this exact structure:
 }}"#
     );
 
-    let raw = call_llm(&prompt, "desktop-dd:analysis", &llm_call_collector).await?;
-    let v: serde_json::Value =
-        serde_json::from_str(&strip_fences(&raw)).unwrap_or_else(|_| serde_json::json!({}));
+    let v = call_llm_json(&prompt, "desktop-dd:analysis", &llm_call_collector)
+        .await
+        .unwrap_or_else(|error| fallback_analysis_json(&subject, &hits, &error));
 
     let key_facts: Vec<TaggedFact> = v["key_facts"]
         .as_array()
@@ -191,11 +193,11 @@ async fn search_brave(query: &str) -> anyhow::Result<Vec<SearchHit>> {
     Ok(hits)
 }
 
-async fn call_llm(
+async fn call_llm_json(
     prompt: &str,
     context: &str,
     llm_call_sink: &impl LlmCallSink,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<serde_json::Value> {
     let started_at = Instant::now();
     let mut config = ChatBackendSelectionConfig::from_env().unwrap_or_default();
     if config.provider_override.is_none() && std::env::var_os("OPENROUTER_API_KEY").is_some() {
@@ -206,25 +208,28 @@ async fn call_llm(
         .await
         .map_err(|e| anyhow::anyhow!("No LLM backend available: {e}"))?;
 
-    let response = selected
-        .backend
-        .chat(ChatRequest {
+    let JsonChatResponse { value, response } = chat_json_lenient::<serde_json::Value>(
+        selected.backend.as_ref(),
+        ChatRequest {
             messages: vec![ChatMessage {
                 role: ChatRole::User,
                 content: prompt.to_string(),
                 tool_calls: Vec::new(),
                 tool_call_id: None,
             }],
-            system: None,
+            system: Some(
+                "You are a rigorous due diligence analyst. Respond with JSON only.".to_string(),
+            ),
             tools: Vec::new(),
             response_format: ResponseFormat::Json,
             max_tokens: Some(4096),
             temperature: Some(0.0),
             stop_sequences: Vec::new(),
             model: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("LLM error: {e}"))?;
+        },
+    )
+    .await
+    .map_err(|e| anyhow::anyhow!("LLM error: {e}"))?;
 
     llm_call_sink.record_llm_call(LlmCallTelemetry {
         context: context.to_string(),
@@ -243,20 +248,47 @@ async fn call_llm(
         metadata: Default::default(),
     });
 
-    Ok(response.content)
+    Ok(value)
 }
 
-fn strip_fences(s: &str) -> String {
-    let trimmed = s.trim();
-    if let Some(start) = trimmed.find("```") {
-        let after = &trimmed[start + 3..];
-        if let Some(nl) = after.find('\n') {
-            let body = &after[nl + 1..];
-            if let Some(end) = body.rfind("```") {
-                return body[..end].trim().to_string();
-            }
-            return body.trim().to_string();
-        }
-    }
-    trimmed.to_string()
+fn fallback_analysis_json(
+    subject: &str,
+    hits: &[SearchHit],
+    error: &anyhow::Error,
+) -> serde_json::Value {
+    let top_hits = hits
+        .iter()
+        .take(5)
+        .map(|hit| format!("{} ({})", hit.title, hit.url))
+        .collect::<Vec<_>>();
+    let evidence = if top_hits.is_empty() {
+        "No Brave search results were available for this run.".to_string()
+    } else {
+        format!("Available evidence: {}", top_hits.join("; "))
+    };
+
+    serde_json::json!({
+        "summary": format!(
+            "{subject} due diligence continued with a search-grounded fallback because the LLM analysis response could not be recovered. {evidence}"
+        ),
+        "key_facts": hits.iter().take(6).map(|hit| {
+            serde_json::json!({
+                "claim": format!("Search result found: {} ({})", hit.title, hit.url),
+                "category": "source",
+                "confidence": 0.45
+            })
+        }).collect::<Vec<_>>(),
+        "market_analysis": "Market analysis requires analyst review because the structured LLM response failed after provider-level JSON repair.",
+        "competitive_landscape": "Competitive landscape is deferred to the sourced search results until a successful deep analysis pass is available.",
+        "technology_assessment": "Technology assessment is not asserted by the fallback path; treat this as an evidence collection checkpoint.",
+        "risk_factors": [
+            format!("LLM structured analysis failed: {error}"),
+            "Report is based on search-result metadata only; claims need source review before promotion."
+        ],
+        "growth_opportunities": [
+            "Retry the analysis with a model ranked higher for short structured synthesis.",
+            "Use deep search on the strongest source URLs before final promotion."
+        ],
+        "recommendation": "Do not promote this due diligence report as final. Use it as a recoverable checkpoint and rerun the governed analysis with provider-level JSON repair enabled."
+    })
 }

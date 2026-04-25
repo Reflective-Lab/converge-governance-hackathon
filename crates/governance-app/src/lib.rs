@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use governance_kernel::{AuditEntry, DecisionRecord, InMemoryStore, Vendor};
+use governance_server::experience::ExperienceRegistry;
 use governance_server::truth_runtime;
 use serde::{Deserialize, Serialize};
 
@@ -33,11 +34,15 @@ pub struct TruthListItem {
 
 pub struct GovernanceApp {
     store: InMemoryStore,
+    experience: ExperienceRegistry,
 }
 
 impl GovernanceApp {
     pub fn new(store: InMemoryStore) -> Self {
-        Self { store }
+        Self {
+            store,
+            experience: ExperienceRegistry::new(),
+        }
     }
 
     pub fn dashboard(&self) -> Dashboard {
@@ -72,7 +77,7 @@ impl GovernanceApp {
         inputs: HashMap<String, String>,
         persist: bool,
     ) -> Result<truth_runtime::TruthExecutionResult, String> {
-        truth_runtime::execute_truth(&self.store, key, inputs, persist).await
+        truth_runtime::execute_truth(&self.store, key, inputs, persist, &self.experience).await
     }
 
     pub fn preview_vendor_selection_source(

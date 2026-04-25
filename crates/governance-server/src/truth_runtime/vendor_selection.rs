@@ -30,6 +30,14 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::TruthExecutionResult;
+use super::vendor_selection_live::{
+    LiveComplianceScreenerAgent, LiveCostAnalysisAgent, LiveDecisionSynthesisAgent,
+    LiveVendorRiskAgent, MODEL_FAST, MODEL_FAST_FALLBACK, MODEL_MID, MODEL_MID_FALLBACK,
+    MODEL_STRONG, MODEL_STRONG_FALLBACK,
+};
+use crate::experience::{ExperienceRegistry, RunSummaryInput};
+use crate::llm_helpers::{SelectedLlm, load_env, select_llm, select_llm_for_model};
+use governance_telemetry::{InMemoryLlmCallCollector, LlmCallSink, LlmCallTelemetry};
 
 const POLICY_TEXT: &str =
     include_str!("../../../../examples/vendor-selection/vendor-selection-policy.cedar");
@@ -40,14 +48,14 @@ const HITL_THRESHOLD_MAJOR: i64 = 50_000;
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct VendorInput {
-    name: String,
-    score: f64,
-    risk_score: f64,
-    compliance_status: String,
-    certifications: Vec<String>,
-    monthly_cost_minor: i64,
-    currency_code: String,
+pub(crate) struct VendorInput {
+    pub(crate) name: String,
+    pub(crate) score: f64,
+    pub(crate) risk_score: f64,
+    pub(crate) compliance_status: String,
+    pub(crate) certifications: Vec<String>,
+    pub(crate) monthly_cost_minor: i64,
+    pub(crate) currency_code: String,
 }
 
 fn parse_vendors(inputs: &HashMap<String, String>) -> Result<Vec<VendorInput>, String> {
@@ -84,13 +92,46 @@ fn parse_vendors(inputs: &HashMap<String, String>) -> Result<Vec<VendorInput>, S
     }
 }
 
-fn slug(name: &str) -> String {
+pub(crate) fn slug(name: &str) -> String {
     name.to_lowercase().replace(' ', "-")
 }
 
 fn amount_major_from_minor(amount_minor: i64) -> i64 {
     let amount_minor = amount_minor.max(0);
     (amount_minor + 99) / 100
+}
+
+fn certification_coverage_score(vendor: &VendorInput) -> f64 {
+    let required = ["SOC2", "ISO27001", "GDPR"];
+    let matched = required
+        .iter()
+        .filter(|required_cert| {
+            vendor
+                .certifications
+                .iter()
+                .any(|cert| cert.eq_ignore_ascii_case(required_cert))
+        })
+        .count();
+    (matched as f64 / required.len() as f64) * 100.0
+}
+
+fn cost_efficiency_score(cost_major: i64, min_cost: i64, max_cost: i64) -> f64 {
+    if max_cost <= min_cost {
+        return 100.0;
+    }
+    let range = (max_cost - min_cost) as f64;
+    let normalized = 1.0 - ((cost_major - min_cost) as f64 / range);
+    (normalized.clamp(0.0, 1.0) * 100.0 * 10.0).round() / 10.0
+}
+
+fn vendor_objective_score(vendor: &VendorInput, min_cost: i64, max_cost: i64) -> f64 {
+    let cost_major = amount_major_from_minor(vendor.monthly_cost_minor);
+    let risk_adjusted = (100.0 - vendor.risk_score).clamp(0.0, 100.0);
+    let score = vendor.score.clamp(0.0, 100.0);
+    let cost = cost_efficiency_score(cost_major, min_cost, max_cost);
+    let certifications = certification_coverage_score(vendor);
+    let composite = 0.35 * score + 0.25 * risk_adjusted + 0.20 * cost + 0.20 * certifications;
+    (composite * 10.0).round() / 10.0
 }
 
 fn parse_optional_bool(
@@ -120,11 +161,68 @@ fn parse_authority(inputs: &HashMap<String, String>) -> AuthorityLevel {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DemoMode {
+    GovernedSelection,
+    ParetoBreakout,
+}
+
+impl DemoMode {
+    fn parse(inputs: &HashMap<String, String>) -> Self {
+        match super::common::optional_input(inputs, "demo_mode")
+            .unwrap_or_else(|| "governed".into())
+            .as_str()
+        {
+            "pareto-breakout" | "creative" | "open" => Self::ParetoBreakout,
+            _ => Self::GovernedSelection,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::GovernedSelection => "governed",
+            Self::ParetoBreakout => "pareto-breakout",
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::GovernedSelection => "Governed selection",
+            Self::ParetoBreakout => "Creative Pareto breakout",
+        }
+    }
+
+    fn thesis(self) -> &'static str {
+        match self {
+            Self::GovernedSelection => {
+                "Replace human document exchange with AI-supported converging flows, while keeping HITL and Cedar policy gates explicit."
+            }
+            Self::ParetoBreakout => {
+                "Challenge the single-vendor assumption and search for a better Pareto balance through a governed provider mix and routing layer."
+            }
+        }
+    }
+
+    fn selection_boundary(self) -> &'static str {
+        match self {
+            Self::GovernedSelection => {
+                "Selection remains among the vendors entered through the RFI/RFP intake."
+            }
+            Self::ParetoBreakout => {
+                "Formation may propose a router/provider-mix strategy, but policy, authority, and provenance gates still apply."
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Organism planning seed
 // ---------------------------------------------------------------------------
 
-fn build_planning_seed(vendors: &[VendorInput]) -> Vec<(&'static str, String)> {
+fn build_planning_seed(
+    vendors: &[VendorInput],
+    demo_mode: DemoMode,
+) -> Vec<(&'static str, String)> {
     let vendor_list: Vec<&str> = vendors.iter().map(|v| v.name.as_str()).collect();
     let intent = IntentPacket::new(
         format!("Governed vendor selection: {}", vendor_list.join(", ")),
@@ -176,6 +274,14 @@ fn build_planning_seed(vendors: &[VendorInput]) -> Vec<(&'static str, String)> {
 
     vec![
         (
+            "strategy:vendor-sel:tactic",
+            problem_solving_tactic(vendors, demo_mode).to_string(),
+        ),
+        (
+            "strategy:vendor-sel:router-hypothesis",
+            router_hypothesis(vendors, demo_mode).to_string(),
+        ),
+        (
             "strategy:vendor-sel:compliance",
             compliance.steps[0].action.clone(),
         ),
@@ -192,12 +298,167 @@ fn build_planning_seed(vendors: &[VendorInput]) -> Vec<(&'static str, String)> {
     ]
 }
 
+fn router_hypothesis(vendors: &[VendorInput], demo_mode: DemoMode) -> serde_json::Value {
+    let compliant_count = vendors
+        .iter()
+        .filter(|vendor| vendor.compliance_status == "compliant")
+        .count();
+    let high_capability_count = vendors.iter().filter(|vendor| vendor.score >= 85.0).count();
+    let low_risk_count = vendors
+        .iter()
+        .filter(|vendor| vendor.risk_score <= 20.0)
+        .count();
+    let cost_range = {
+        let min_cost = vendors
+            .iter()
+            .map(|vendor| amount_major_from_minor(vendor.monthly_cost_minor))
+            .min()
+            .unwrap_or(0);
+        let max_cost = vendors
+            .iter()
+            .map(|vendor| amount_major_from_minor(vendor.monthly_cost_minor))
+            .max()
+            .unwrap_or(min_cost);
+        max_cost.saturating_sub(min_cost)
+    };
+
+    let router_fit = demo_mode == DemoMode::ParetoBreakout
+        && compliant_count >= 3
+        && high_capability_count >= 2
+        && low_risk_count >= 2
+        && cost_range >= 20_000;
+
+    serde_json::json!({
+        "mode": demo_mode.as_str(),
+        "name": if router_fit { "router-first-provider-strategy" } else { "single-primary-provider-strategy" },
+        "router_fit": router_fit,
+        "why": if router_fit {
+            "The candidate set has multiple viable providers with different strengths and costs. A router can assign models/providers per workload instead of forcing one winner."
+        } else if demo_mode == DemoMode::GovernedSelection {
+            "This mode stays inside the original RFI/RFP sandbox: select from the provided vendors, replace document exchange with governed flow, and use learning to calibrate future policy delegation."
+        } else {
+            "The candidate set does not yet show enough differentiated viable providers to justify routing as the primary strategy."
+        },
+        "gateway_options": ["Kong", "OpenRouter"],
+        "provider_mix": [
+            {
+                "need": "programming and agentic reasoning",
+                "route": "strong reasoning/coding model when ambiguity or risk is high"
+            },
+            {
+                "need": "routine structured synthesis",
+                "route": "fast reliable structured-output model"
+            },
+            {
+                "need": "broad web evidence",
+                "route": "Brave-style wide search"
+            },
+            {
+                "need": "deep canonical evidence",
+                "route": "Tavily-style focused retrieval"
+            },
+            {
+                "need": "governance controls",
+                "route": "Kong-style gateway for policy, rate limits, audit, PII, and cost controls"
+            }
+        ],
+        "demo_line": if router_fit {
+            "We thought we were selecting one AI vendor. The formation found that the better answer is a governed provider mix behind a router."
+        } else if demo_mode == DemoMode::GovernedSelection {
+            "This run replaces human document exchange with AI-supported convergence, but still selects among the original RFI/RFP vendors."
+        } else {
+            "The formation still prefers a single primary provider, with escalation paths for special cases."
+        }
+    })
+}
+
+fn problem_solving_tactic(vendors: &[VendorInput], demo_mode: DemoMode) -> serde_json::Value {
+    let has_pending_or_failed_compliance = vendors
+        .iter()
+        .any(|vendor| vendor.compliance_status != "compliant");
+    let max_risk = vendors
+        .iter()
+        .map(|vendor| vendor.risk_score)
+        .fold(0.0_f64, f64::max);
+    let min_risk = vendors
+        .iter()
+        .map(|vendor| vendor.risk_score)
+        .fold(f64::INFINITY, f64::min);
+    let max_cost = vendors
+        .iter()
+        .map(|vendor| amount_major_from_minor(vendor.monthly_cost_minor))
+        .max()
+        .unwrap_or(0);
+    let min_cost = vendors
+        .iter()
+        .map(|vendor| amount_major_from_minor(vendor.monthly_cost_minor))
+        .min()
+        .unwrap_or(0);
+    let cost_spread = max_cost.saturating_sub(min_cost);
+    let risk_spread = if min_risk.is_finite() {
+        max_risk - min_risk
+    } else {
+        0.0
+    };
+
+    let (name, why, surprise_line) = if demo_mode == DemoMode::ParetoBreakout
+        && vendors.len() >= 5
+        && has_pending_or_failed_compliance
+        && cost_spread >= 20_000
+    {
+        (
+            "pareto-breakout-router-search",
+            "The requested single-vendor decision looks like a local minimum. Explore whether a multi-provider router gives a better Pareto balance across capability, cost, risk, and governance.",
+            "Oboy, it broke out of the single-vendor sandbox and selected a router-first Pareto strategy this time.",
+        )
+    } else if vendors.len() >= 5 && has_pending_or_failed_compliance && cost_spread >= 20_000 {
+        (
+            "dijkstra-shortest-governance-path",
+            "Many candidates, mixed compliance, and wide cost spread: minimize the path through required evidence and policy gates before ranking.",
+            "Oboy, it selected a Dijkstra-style shortest governance path this time.",
+        )
+    } else if risk_spread >= 20.0 {
+        (
+            "pareto-frontier-risk-pruning",
+            "Risk spread is high: prune dominated candidates before weighted ranking.",
+            "It switched to Pareto-frontier risk pruning for this run.",
+        )
+    } else {
+        (
+            "weighted-constraint-ranking",
+            "The candidate set is already narrow: apply hard constraints, then rank by the objective function.",
+            "It stayed with weighted constraint ranking for this run.",
+        )
+    };
+
+    serde_json::json!({
+        "name": name,
+        "class": "formation-selected problem-solving tactic",
+        "why": why,
+        "surprise_line": surprise_line,
+        "note": "The formation selects the tactic from problem shape; lower layers still choose concrete providers, models, tools, and algorithms."
+    })
+}
+
 // ---------------------------------------------------------------------------
 // Formation assembly
 // ---------------------------------------------------------------------------
 
 fn build_formation_catalog() -> Vec<ProfileSnapshot> {
     vec![
+        ProfileSnapshot {
+            name: "planning-seed".into(),
+            role: SuggestorRole::Planning,
+            output_keys: vec![ContextKey::Strategies],
+            cost_hint: converge_provider_api::CostClass::Low,
+            latency_hint: converge_provider_api::LatencyClass::Interactive,
+            capabilities: vec![
+                SuggestorCapability::KnowledgeRetrieval,
+                SuggestorCapability::ExperienceLearning,
+            ],
+            confidence_min: 0.8,
+            confidence_max: 1.0,
+        },
         ProfileSnapshot {
             name: "compliance-screener".into(),
             role: SuggestorRole::Analysis,
@@ -248,6 +509,19 @@ fn build_formation_catalog() -> Vec<ProfileSnapshot> {
             confidence_min: 0.75,
             confidence_max: 0.95,
         },
+        ProfileSnapshot {
+            name: "policy-gate".into(),
+            role: SuggestorRole::Constraint,
+            output_keys: vec![ContextKey::Evaluations],
+            cost_hint: converge_provider_api::CostClass::Low,
+            latency_hint: converge_provider_api::LatencyClass::Realtime,
+            capabilities: vec![
+                SuggestorCapability::PolicyEnforcement,
+                SuggestorCapability::HumanInTheLoop,
+            ],
+            confidence_min: 1.0,
+            confidence_max: 1.0,
+        },
     ]
 }
 
@@ -295,14 +569,19 @@ impl Suggestor for PlanningSeedSuggestor {
         let request = FormationRequest {
             id: "vendor-selection".into(),
             required_roles: vec![
+                SuggestorRole::Planning,
                 SuggestorRole::Analysis,
                 SuggestorRole::Evaluation,
+                SuggestorRole::Evaluation,
                 SuggestorRole::Synthesis,
+                SuggestorRole::Synthesis,
+                SuggestorRole::Constraint,
             ],
             required_capabilities: vec![
                 SuggestorCapability::PolicyEnforcement,
                 SuggestorCapability::Analytics,
                 SuggestorCapability::Optimization,
+                SuggestorCapability::LlmReasoning,
             ],
         };
 
@@ -326,6 +605,7 @@ impl Suggestor for PlanningSeedSuggestor {
 fn assemble_formation(request: &FormationRequest, catalog: &[ProfileSnapshot]) -> FormationPlan {
     let mut assignments = Vec::new();
     let mut used = Vec::new();
+    let mut unmatched_roles = Vec::new();
 
     for role in &request.required_roles {
         if let Some(profile) = catalog
@@ -337,6 +617,8 @@ fn assemble_formation(request: &FormationRequest, catalog: &[ProfileSnapshot]) -
                 suggestor: profile.name.clone(),
             });
             used.push(profile.name.clone());
+        } else {
+            unmatched_roles.push(*role);
         }
     }
 
@@ -349,16 +631,7 @@ fn assemble_formation(request: &FormationRequest, catalog: &[ProfileSnapshot]) -
     FormationPlan {
         request_id: request.id.clone(),
         assignments,
-        unmatched_roles: request
-            .required_roles
-            .iter()
-            .filter(|r| {
-                !used
-                    .iter()
-                    .any(|u| catalog.iter().any(|p| &p.role == *r && &p.name == u))
-            })
-            .cloned()
-            .collect(),
+        unmatched_roles,
         coverage_ratio: coverage,
     }
 }
@@ -587,9 +860,22 @@ impl Suggestor for VendorShortlistAgent {
             })
             .collect();
 
+        let min_cost = self
+            .vendors
+            .iter()
+            .map(|vendor| amount_major_from_minor(vendor.monthly_cost_minor))
+            .min()
+            .unwrap_or(0);
+        let max_cost = self
+            .vendors
+            .iter()
+            .map(|vendor| amount_major_from_minor(vendor.monthly_cost_minor))
+            .max()
+            .unwrap_or(min_cost);
+
         qualifying.sort_by(|a, b| {
-            b.score
-                .partial_cmp(&a.score)
+            vendor_objective_score(b, min_cost, max_cost)
+                .partial_cmp(&vendor_objective_score(a, min_cost, max_cost))
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
         let shortlisted: Vec<_> = qualifying.iter().take(self.max_vendors).collect();
@@ -630,12 +916,20 @@ impl Suggestor for VendorShortlistAgent {
             .iter()
             .enumerate()
             .map(|(rank, v)| {
+                let cost_major = amount_major_from_minor(v.monthly_cost_minor);
+                let cost_score = cost_efficiency_score(cost_major, min_cost, max_cost);
+                let certification_score = certification_coverage_score(v);
+                let composite_score = vendor_objective_score(v, min_cost, max_cost);
                 serde_json::json!({
                     "rank": rank + 1,
                     "vendor_name": v.name,
                     "score": v.score,
                     "risk_score": v.risk_score,
-                    "composite_score": v.score - v.risk_score,
+                    "cost_major": cost_major,
+                    "cost_score": cost_score,
+                    "certification_score": certification_score,
+                    "composite_score": composite_score,
+                    "objective": "0.35*capability + 0.25*risk_adjusted + 0.20*cost_efficiency + 0.20*certification_coverage",
                 })
             })
             .collect();
@@ -887,19 +1181,119 @@ fn selected_vendor_name(ctx: &dyn ContextView) -> Option<String> {
 // Executor
 // ---------------------------------------------------------------------------
 
+/// Per-role model overrides for competition/benchmarking.
+#[derive(Debug, Clone, Default)]
+pub struct ModelOverrides {
+    pub compliance: Option<String>,
+    pub cost: Option<String>,
+    pub risk: Option<String>,
+    pub synthesis: Option<String>,
+}
+
+impl ModelOverrides {
+    pub fn is_empty(&self) -> bool {
+        self.compliance.is_none()
+            && self.cost.is_none()
+            && self.risk.is_none()
+            && self.synthesis.is_none()
+    }
+}
+
 pub async fn execute(
     store: &InMemoryStore,
     inputs: &HashMap<String, String>,
     persist: bool,
 ) -> Result<TruthExecutionResult, String> {
+    execute_with_experience(store, inputs, persist, None).await
+}
+
+pub async fn execute_with_model_overrides(
+    store: &InMemoryStore,
+    inputs: &HashMap<String, String>,
+    persist: bool,
+    experience: Option<&ExperienceRegistry>,
+    overrides: &ModelOverrides,
+) -> Result<TruthExecutionResult, String> {
+    execute_inner(store, inputs, persist, experience, Some(overrides)).await
+}
+
+pub async fn execute_with_experience(
+    store: &InMemoryStore,
+    inputs: &HashMap<String, String>,
+    persist: bool,
+    experience: Option<&ExperienceRegistry>,
+) -> Result<TruthExecutionResult, String> {
+    execute_inner(store, inputs, persist, experience, None).await
+}
+
+async fn select_live_llm(
+    role: &str,
+    primary_model: &str,
+    fallback_model: &str,
+    direct_providers: &[&str],
+) -> Result<SelectedLlm, String> {
+    match select_llm_for_model(primary_model).await {
+        Ok(llm) => Ok(llm),
+        Err(primary_error) => match select_llm_for_model(fallback_model).await {
+            Ok(llm) => Ok(llm),
+            Err(fallback_error) => {
+                let mut direct_errors = Vec::new();
+                for provider in direct_providers {
+                    match select_llm(Some(provider), None).await {
+                        Ok(llm) => return Ok(llm),
+                        Err(error) => direct_errors.push(format!("{provider}: {error}")),
+                    }
+                }
+                Err(format!(
+                    "failed to select {role} LLM ({primary_model}); fallback ({fallback_model}) also failed: primary={primary_error}; fallback={fallback_error}; direct providers failed: {}",
+                    direct_errors.join("; ")
+                ))
+            }
+        },
+    }
+}
+
+fn record_llm_selection_fallback(
+    collector: &InMemoryLlmCallCollector,
+    role: &str,
+    requested_model: &str,
+    error: &str,
+) {
+    let mut metadata = HashMap::new();
+    metadata.insert("fallback".to_string(), "true".to_string());
+    metadata.insert("stage".to_string(), "model-selection".to_string());
+    metadata.insert("requested_model".to_string(), requested_model.to_string());
+    metadata.insert("error".to_string(), error.to_string());
+
+    collector.record_llm_call(LlmCallTelemetry {
+        context: format!("{role}:model-selection"),
+        provider: "none".to_string(),
+        model: "deterministic-fallback".to_string(),
+        elapsed_ms: 0,
+        finish_reason: Some("provider-unavailable".to_string()),
+        usage: None,
+        metadata,
+    });
+}
+
+async fn execute_inner(
+    store: &InMemoryStore,
+    inputs: &HashMap<String, String>,
+    persist: bool,
+    experience: Option<&ExperienceRegistry>,
+    model_overrides: Option<&ModelOverrides>,
+) -> Result<TruthExecutionResult, String> {
     let truth = find_truth("vendor-selection").ok_or("truth not found")?;
     let intent = build_intent(truth);
 
     let vendors = parse_vendors(inputs)?;
-    let strategies = build_planning_seed(&vendors);
+    let demo_mode = DemoMode::parse(inputs);
+    let strategies = build_planning_seed(&vendors, demo_mode);
     let catalog = build_formation_catalog();
     let principal_authority = parse_authority(inputs);
+    let principal_authority_label = principal_authority.as_str().to_string();
     let human_approval_present = parse_optional_bool(inputs, "human_approval_present")?;
+    let live_mode = parse_optional_bool(inputs, "live_mode")?.unwrap_or(false);
 
     let policy_engine = Arc::new(
         PolicyEngine::from_policy_str(POLICY_TEXT)
@@ -919,6 +1313,14 @@ pub async fn execute(
         .and_then(|s| s.parse::<usize>().ok())
         .unwrap_or(3);
 
+    // Collect prior decisions from experience store
+    let prior_context = experience
+        .map(|reg| reg.prior_decisions_summary("vendor-selection"))
+        .unwrap_or_default();
+
+    // LLM telemetry collector (populated only in live mode)
+    let llm_collector = InMemoryLlmCallCollector::default();
+
     let mut engine = Engine::new();
     engine.register_suggestor_in_pack(
         "intent-pack",
@@ -927,24 +1329,162 @@ pub async fn execute(
             catalog,
         },
     );
-    engine.register_suggestor_in_pack(
-        "screening-pack",
-        ComplianceScreenerAgent {
-            vendors: vendors.clone(),
-        },
-    );
-    engine.register_suggestor_in_pack(
-        "evaluation-pack",
-        CostAnalysisAgent {
-            vendors: vendors.clone(),
-        },
-    );
-    engine.register_suggestor_in_pack(
-        "evaluation-pack",
-        VendorRiskAgent {
-            vendors: vendors.clone(),
-        },
-    );
+
+    if live_mode {
+        load_env();
+        let compliance_model = model_overrides
+            .and_then(|o| o.compliance.as_deref())
+            .unwrap_or(MODEL_FAST);
+        let cost_model = model_overrides
+            .and_then(|o| o.cost.as_deref())
+            .unwrap_or(MODEL_MID);
+        let risk_model = model_overrides
+            .and_then(|o| o.risk.as_deref())
+            .unwrap_or(MODEL_MID);
+        let synthesis_model = model_overrides
+            .and_then(|o| o.synthesis.as_deref())
+            .unwrap_or(MODEL_STRONG);
+
+        let fast_llm = select_live_llm(
+            "compliance",
+            compliance_model,
+            MODEL_FAST_FALLBACK,
+            &["gemini", "openai", "anthropic"],
+        )
+        .await;
+        let cost_llm = select_live_llm(
+            "cost",
+            cost_model,
+            MODEL_MID_FALLBACK,
+            &["gemini", "openai", "anthropic"],
+        )
+        .await;
+        let risk_llm = select_live_llm(
+            "risk",
+            risk_model,
+            MODEL_MID_FALLBACK,
+            &["gemini", "openai", "anthropic"],
+        )
+        .await;
+        let strong_llm = select_live_llm(
+            "synthesis",
+            synthesis_model,
+            MODEL_STRONG_FALLBACK,
+            &["anthropic", "openai", "gemini"],
+        )
+        .await;
+
+        match fast_llm {
+            Ok(llm) => {
+                engine.register_suggestor_in_pack(
+                    "screening-pack",
+                    LiveComplianceScreenerAgent {
+                        vendors: vendors.clone(),
+                        llm,
+                        collector: llm_collector.clone(),
+                    },
+                );
+            }
+            Err(error) => {
+                tracing::warn!(role = "compliance", error = %error, "live LLM unavailable, using deterministic suggestor");
+                record_llm_selection_fallback(
+                    &llm_collector,
+                    "compliance",
+                    compliance_model,
+                    &error,
+                );
+                engine.register_suggestor_in_pack(
+                    "screening-pack",
+                    ComplianceScreenerAgent {
+                        vendors: vendors.clone(),
+                    },
+                );
+            }
+        }
+        match cost_llm {
+            Ok(llm) => {
+                engine.register_suggestor_in_pack(
+                    "evaluation-pack",
+                    LiveCostAnalysisAgent {
+                        vendors: vendors.clone(),
+                        llm,
+                        collector: llm_collector.clone(),
+                    },
+                );
+            }
+            Err(error) => {
+                tracing::warn!(role = "cost", error = %error, "live LLM unavailable, using deterministic suggestor");
+                record_llm_selection_fallback(&llm_collector, "cost", cost_model, &error);
+                engine.register_suggestor_in_pack(
+                    "evaluation-pack",
+                    CostAnalysisAgent {
+                        vendors: vendors.clone(),
+                    },
+                );
+            }
+        }
+        match risk_llm {
+            Ok(llm) => {
+                engine.register_suggestor_in_pack(
+                    "evaluation-pack",
+                    LiveVendorRiskAgent {
+                        vendors: vendors.clone(),
+                        llm,
+                        collector: llm_collector.clone(),
+                    },
+                );
+            }
+            Err(error) => {
+                tracing::warn!(role = "risk", error = %error, "live LLM unavailable, using deterministic suggestor");
+                record_llm_selection_fallback(&llm_collector, "risk", risk_model, &error);
+                engine.register_suggestor_in_pack(
+                    "evaluation-pack",
+                    VendorRiskAgent {
+                        vendors: vendors.clone(),
+                    },
+                );
+            }
+        }
+        match strong_llm {
+            Ok(llm) => {
+                engine.register_suggestor_in_pack(
+                    "evaluation-pack",
+                    LiveDecisionSynthesisAgent {
+                        llm,
+                        collector: llm_collector.clone(),
+                        prior_context: prior_context.clone(),
+                    },
+                );
+            }
+            Err(error) => {
+                tracing::warn!(role = "synthesis", error = %error, "live LLM unavailable, using deterministic suggestor");
+                record_llm_selection_fallback(&llm_collector, "synthesis", synthesis_model, &error);
+                engine.register_suggestor_in_pack("evaluation-pack", DecisionSynthesisAgent);
+            }
+        }
+    } else {
+        engine.register_suggestor_in_pack(
+            "screening-pack",
+            ComplianceScreenerAgent {
+                vendors: vendors.clone(),
+            },
+        );
+        engine.register_suggestor_in_pack(
+            "evaluation-pack",
+            CostAnalysisAgent {
+                vendors: vendors.clone(),
+            },
+        );
+        engine.register_suggestor_in_pack(
+            "evaluation-pack",
+            VendorRiskAgent {
+                vendors: vendors.clone(),
+            },
+        );
+        engine.register_suggestor_in_pack("evaluation-pack", DecisionSynthesisAgent);
+    }
+
+    // Shortlist agent is always deterministic (constraint solver)
     engine.register_suggestor_in_pack(
         "evaluation-pack",
         VendorShortlistAgent {
@@ -954,7 +1494,6 @@ pub async fn execute(
             max_vendors,
         },
     );
-    engine.register_suggestor_in_pack("evaluation-pack", DecisionSynthesisAgent);
     engine.register_suggestor_in_pack(
         "policy-pack",
         PolicyGateSuggestor {
@@ -965,19 +1504,93 @@ pub async fn execute(
         },
     );
 
+    // Wire experience observer if available
+    let experience_stream = experience.map(|reg| reg.get_or_create("vendor-selection"));
+
+    let started_at = std::time::Instant::now();
     let result = engine
         .run_with_types_intent_and_hooks(
             ContextState::new(),
             &intent,
             TypesRunHooks {
                 criterion_evaluator: Some(Arc::new(VendorSelectionEvaluator)),
-                event_observer: None,
+                event_observer: experience_stream
+                    .as_ref()
+                    .map(|s| Arc::clone(s) as Arc<dyn converge_kernel::ExperienceEventObserver>),
             },
         )
         .await
         .map_err(|e| format!("convergence failed: {e}"))?;
+    let elapsed_ms = started_at.elapsed().as_millis() as u64;
 
-    let projection_details = vendor_selection_projection_details(&result.context);
+    let projection_details = vendor_selection_projection_details(
+        &result.context,
+        &vendors,
+        ProjectionOptions {
+            min_score,
+            max_risk,
+            max_vendors,
+            principal_authority: &principal_authority_label,
+            human_approval_present,
+            demo_mode,
+        },
+    );
+
+    // Record run summary in experience store for learning
+    let confidence = result
+        .context
+        .get(ContextKey::Evaluations)
+        .iter()
+        .find(|f| f.id == "decision:recommendation")
+        .and_then(|f| serde_json::from_str::<serde_json::Value>(&f.content).ok())
+        .and_then(|v| v.get("confidence").and_then(|c| c.as_f64()))
+        .unwrap_or(0.5);
+
+    let synthesized_recommendation = result
+        .context
+        .get(ContextKey::Evaluations)
+        .iter()
+        .find(|f| f.id == "decision:recommendation")
+        .and_then(|f| serde_json::from_str::<serde_json::Value>(&f.content).ok())
+        .and_then(|v| {
+            v.get("recommendation")
+                .and_then(|r| r.as_str())
+                .map(String::from)
+        })
+        .unwrap_or_default();
+    let recommended_vendor =
+        selected_vendor_name(&result.context).unwrap_or(synthesized_recommendation);
+
+    if let Some(registry) = experience {
+        registry.record_run_summary(
+            "vendor-selection",
+            RunSummaryInput {
+                cycles: result.cycles,
+                elapsed_ms,
+                vendor_count: vendors.len(),
+                converged: result.converged,
+                confidence,
+                recommended_vendor: &recommended_vendor,
+            },
+        );
+    }
+
+    // Build learning metrics from prior runs
+    let learning_metrics =
+        experience.map(|reg| reg.learning_metrics("vendor-selection", result.cycles, confidence));
+
+    // Merge learning metrics into projection details
+    let enriched_details = match (projection_details, learning_metrics) {
+        (Some(mut details), Some(metrics)) => {
+            if let Some(obj) = details.as_object_mut() {
+                obj.insert("learning".to_string(), metrics);
+            }
+            Some(details)
+        }
+        (Some(details), None) => Some(details),
+        (None, Some(metrics)) => Some(serde_json::json!({ "learning": metrics })),
+        (None, None) => None,
+    };
 
     let projection = if persist {
         let policy = policy_decision_payload(&result.context);
@@ -985,7 +1598,6 @@ pub async fn execute(
             .write_with_events(|kernel| {
                 let actor = Actor::agent("vendor-selection");
 
-                // Register vendors
                 for vendor in &vendors {
                     kernel.register_vendor(
                         vendor.name.clone(),
@@ -994,7 +1606,6 @@ pub async fn execute(
                     );
                 }
 
-                // Record the decision
                 if let Some(fact) = result
                     .context
                     .get(ContextKey::Evaluations)
@@ -1059,8 +1670,18 @@ pub async fn execute(
             .map_err(|e| format!("projection failed: {e}"))?;
         Some(super::TruthProjection {
             events_emitted: write_result.events.len(),
-            details: projection_details,
+            details: enriched_details,
         })
+    } else {
+        enriched_details.map(|details| super::TruthProjection {
+            events_emitted: 0,
+            details: Some(details),
+        })
+    };
+
+    let llm_calls_snapshot = if live_mode {
+        let calls = llm_collector.snapshot();
+        if calls.is_empty() { None } else { Some(calls) }
     } else {
         None
     };
@@ -1078,7 +1699,7 @@ pub async fn execute(
             })
             .collect(),
         projection,
-        llm_calls: None,
+        llm_calls: llm_calls_snapshot,
     })
 }
 
@@ -1097,7 +1718,20 @@ fn policy_decision_payload(ctx: &ContextState) -> Option<PolicyDecisionPayload> 
         .and_then(|fact| serde_json::from_str::<PolicyDecisionPayload>(&fact.content).ok())
 }
 
-fn vendor_selection_projection_details(ctx: &ContextState) -> Option<serde_json::Value> {
+struct ProjectionOptions<'a> {
+    min_score: f64,
+    max_risk: f64,
+    max_vendors: usize,
+    principal_authority: &'a str,
+    human_approval_present: Option<bool>,
+    demo_mode: DemoMode,
+}
+
+fn vendor_selection_projection_details(
+    ctx: &ContextState,
+    vendors: &[VendorInput],
+    options: ProjectionOptions<'_>,
+) -> Option<serde_json::Value> {
     let recommendation = ctx
         .get(ContextKey::Evaluations)
         .iter()
@@ -1122,7 +1756,300 @@ fn vendor_selection_projection_details(ctx: &ContextState) -> Option<serde_json:
         "recommendation": recommendation,
         "shortlist": shortlist,
         "policy": policy,
+        "formation": formation_plan_payload(ctx),
+        "agents": vendor_selection_agent_roster(),
+        "root_intent": root_intent_payload(
+            vendors,
+            options.min_score,
+            options.max_risk,
+            options.max_vendors,
+            options.principal_authority,
+            options.demo_mode,
+        ),
+        "resources": resource_payload(vendors, options.human_approval_present),
+        "invariants": invariant_payload(vendors, options.min_score, options.max_risk),
+        "optimization": optimization_payload(
+            vendors,
+            options.min_score,
+            options.max_risk,
+            options.max_vendors,
+        ),
+        "fixed_point": fixed_point_payload(ctx),
+        "context": {
+            "strategies": fact_views(ctx, ContextKey::Strategies),
+            "seeds": fact_views(ctx, ContextKey::Seeds),
+            "evaluations": fact_views(ctx, ContextKey::Evaluations),
+            "proposals": fact_views(ctx, ContextKey::Proposals),
+        },
     }))
+}
+
+fn root_intent_payload(
+    vendors: &[VendorInput],
+    min_score: f64,
+    max_risk: f64,
+    max_vendors: usize,
+    principal_authority: &str,
+    demo_mode: DemoMode,
+) -> serde_json::Value {
+    let vendor_names: Vec<_> = vendors.iter().map(|vendor| vendor.name.as_str()).collect();
+    serde_json::json!({
+        "statement": "Select a preferred AI vendor with auditable rationale, bounded authority, and evidence-backed policy compliance.",
+        "outcome": "A ranked vendor recommendation or an honest escalation/rejection.",
+        "demo_mode": {
+            "id": demo_mode.as_str(),
+            "label": demo_mode.label(),
+            "thesis": demo_mode.thesis(),
+            "selection_boundary": demo_mode.selection_boundary(),
+        },
+        "candidate_vendors": vendor_names,
+        "authority": {
+            "principal": "user:procurement-lead",
+            "level": principal_authority,
+            "domain": "procurement",
+        },
+        "objective": {
+            "max_vendors": max_vendors,
+            "min_score": min_score,
+            "max_risk": max_risk,
+        },
+    })
+}
+
+fn resource_payload(
+    vendors: &[VendorInput],
+    human_approval_present: Option<bool>,
+) -> serde_json::Value {
+    let total_monthly_cost_major: i64 = vendors
+        .iter()
+        .map(|vendor| amount_major_from_minor(vendor.monthly_cost_minor))
+        .sum();
+    serde_json::json!({
+        "candidate_count": vendors.len(),
+        "evidence_channels": ["declared vendor response", "compliance screen", "cost model", "risk model", "Cedar policy"],
+        "agent_roles": ["planning", "formation", "compliance", "cost", "risk", "optimization", "synthesis", "policy"],
+        "compute_budget": {
+            "max_cycles": 10,
+            "live_llm_optional": true,
+            "deterministic_fallback": true,
+        },
+        "financial_boundary": {
+            "hitl_threshold_major": HITL_THRESHOLD_MAJOR,
+            "candidate_monthly_cost_major": total_monthly_cost_major,
+        },
+        "human_approval_present": human_approval_present,
+    })
+}
+
+fn invariant_payload(vendors: &[VendorInput], min_score: f64, max_risk: f64) -> serde_json::Value {
+    let screened = vendors.len();
+    serde_json::json!([
+        {
+            "id": "score-floor",
+            "statement": format!("A shortlisted vendor must have score >= {min_score:.0}."),
+            "owned_by": "constraint solver",
+        },
+        {
+            "id": "risk-ceiling",
+            "statement": format!("A shortlisted vendor must have risk <= {max_risk:.0}."),
+            "owned_by": "risk model",
+        },
+        {
+            "id": "compliance-required",
+            "statement": "A shortlisted vendor must be compliant before commitment.",
+            "owned_by": "compliance screener",
+        },
+        {
+            "id": "policy-gated-commitment",
+            "statement": format!("Commitments above ${HITL_THRESHOLD_MAJOR} require human approval."),
+            "owned_by": "Cedar policy",
+        },
+        {
+            "id": "provenance",
+            "statement": format!("All {screened} candidates must leave promoted facts with provenance."),
+            "owned_by": "Converge promotion gate",
+        }
+    ])
+}
+
+fn optimization_payload(
+    vendors: &[VendorInput],
+    min_score: f64,
+    max_risk: f64,
+    max_vendors: usize,
+) -> serde_json::Value {
+    let min_cost = vendors
+        .iter()
+        .map(|vendor| amount_major_from_minor(vendor.monthly_cost_minor))
+        .min()
+        .unwrap_or(0);
+    let max_cost = vendors
+        .iter()
+        .map(|vendor| amount_major_from_minor(vendor.monthly_cost_minor))
+        .max()
+        .unwrap_or(min_cost);
+    let mut rows: Vec<_> = vendors
+        .iter()
+        .map(|vendor| {
+            let cost_major = amount_major_from_minor(vendor.monthly_cost_minor);
+            let feasible = vendor.compliance_status == "compliant"
+                && vendor.score >= min_score
+                && vendor.risk_score <= max_risk;
+            serde_json::json!({
+                "vendor": vendor.name,
+                "feasible": feasible,
+                "score": vendor.score,
+                "risk": vendor.risk_score,
+                "cost_major": cost_major,
+                "cost_score": cost_efficiency_score(cost_major, min_cost, max_cost),
+                "certification_score": certification_coverage_score(vendor),
+                "objective_score": vendor_objective_score(vendor, min_cost, max_cost),
+                "pareto_frontier": is_pareto_frontier_vendor(vendor, vendors),
+            })
+        })
+        .collect();
+    rows.sort_by(|a, b| {
+        let a_score = a
+            .get("objective_score")
+            .and_then(|value| value.as_f64())
+            .unwrap_or(0.0);
+        let b_score = b
+            .get("objective_score")
+            .and_then(|value| value.as_f64())
+            .unwrap_or(0.0);
+        b_score
+            .partial_cmp(&a_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    serde_json::json!({
+        "solver": "deterministic constraint optimizer",
+        "objective": "maximize 0.35*capability + 0.25*risk_adjusted + 0.20*cost_efficiency + 0.20*certification_coverage",
+        "hard_constraints": [
+            format!("score >= {min_score:.0}"),
+            format!("risk <= {max_risk:.0}"),
+            "compliance_status == compliant".to_string(),
+            format!("selected_count <= {max_vendors}"),
+        ],
+        "rows": rows,
+    })
+}
+
+fn is_pareto_frontier_vendor(vendor: &VendorInput, vendors: &[VendorInput]) -> bool {
+    let cost = amount_major_from_minor(vendor.monthly_cost_minor);
+    !vendors.iter().any(|other| {
+        if other.name == vendor.name {
+            return false;
+        }
+        let other_cost = amount_major_from_minor(other.monthly_cost_minor);
+        let at_least_as_good = other.score >= vendor.score
+            && other.risk_score <= vendor.risk_score
+            && other_cost <= cost;
+        let strictly_better =
+            other.score > vendor.score || other.risk_score < vendor.risk_score || other_cost < cost;
+        at_least_as_good && strictly_better
+    })
+}
+
+fn fixed_point_payload(ctx: &ContextState) -> serde_json::Value {
+    serde_json::json!({
+        "definition": "No suggestor can propose a new promotable fact under the current context, budget, authority, and policy gates.",
+        "fact_counts": {
+            "strategies": ctx.get(ContextKey::Strategies).len(),
+            "seeds": ctx.get(ContextKey::Seeds).len(),
+            "evaluations": ctx.get(ContextKey::Evaluations).len(),
+            "proposals": ctx.get(ContextKey::Proposals).len(),
+        },
+        "terminal_facts": [
+            "vendor:shortlist",
+            "decision:recommendation",
+            "policy:decision:vendor-selection"
+        ],
+    })
+}
+
+fn formation_plan_payload(ctx: &ContextState) -> Option<serde_json::Value> {
+    ctx.get(ContextKey::Strategies)
+        .iter()
+        .find(|fact| fact.id == "formation:plan:vendor-selection")
+        .and_then(|fact| serde_json::from_str::<serde_json::Value>(&fact.content).ok())
+}
+
+fn fact_views(ctx: &ContextState, key: ContextKey) -> Vec<serde_json::Value> {
+    ctx.get(key)
+        .iter()
+        .map(|fact| {
+            let content = serde_json::from_str::<serde_json::Value>(&fact.content)
+                .unwrap_or_else(|_| serde_json::Value::String(fact.content.clone()));
+            serde_json::json!({
+                "key": format!("{:?}", key),
+                "id": fact.id.as_str(),
+                "content": content,
+                "promotion": fact.promotion_record(),
+            })
+        })
+        .collect()
+}
+
+fn vendor_selection_agent_roster() -> serde_json::Value {
+    serde_json::json!([
+        {
+            "id": "planning-seed",
+            "pack": "intent-pack",
+            "class": "Organism planning",
+            "role": "Intent and formation",
+            "model": "local deterministic",
+            "output": "Strategies + formation plan"
+        },
+        {
+            "id": "compliance-screener",
+            "pack": "screening-pack",
+            "class": "Policy analysis",
+            "role": "Compliance screening",
+            "model": "local deterministic",
+            "output": "Compliance evidence"
+        },
+        {
+            "id": "cost-analysis",
+            "pack": "evaluation-pack",
+            "class": "Analytics",
+            "role": "Cost evaluation",
+            "model": "local deterministic",
+            "output": "Comparable cost facts"
+        },
+        {
+            "id": "vendor-risk",
+            "pack": "evaluation-pack",
+            "class": "Risk model",
+            "role": "Risk scoring",
+            "model": "local deterministic",
+            "output": "Risk evaluations"
+        },
+        {
+            "id": "vendor-shortlist",
+            "pack": "evaluation-pack",
+            "class": "Optimization",
+            "role": "Shortlist ranking",
+            "model": "constraint solver",
+            "output": "Ranked vendor proposal"
+        },
+        {
+            "id": "decision-synthesis",
+            "pack": "evaluation-pack",
+            "class": "LLM reasoning",
+            "role": "Decision synthesis",
+            "model": "offline stub for hackathon baseline",
+            "output": "Recommendation proposal"
+        },
+        {
+            "id": "policy-gate",
+            "pack": "policy-pack",
+            "class": "Policy agent",
+            "role": "Cedar authorization",
+            "model": "Cedar policy engine",
+            "output": "Promote / Escalate / Reject"
+        }
+    ])
 }
 
 #[cfg(test)]
@@ -1350,6 +2277,92 @@ mod tests {
         let result = execute(&store, &inputs, false).await.unwrap();
 
         assert!(result.converged);
+    }
+
+    #[tokio::test]
+    async fn pareto_breakout_projects_router_hypothesis() {
+        let store = InMemoryStore::new();
+        let vendors_json = serde_json::json!([
+            {
+                "name": "Acme AI",
+                "score": 85.0,
+                "risk_score": 15.0,
+                "compliance_status": "compliant",
+                "certifications": ["SOC2", "ISO27001", "GDPR"],
+                "monthly_cost_minor": 4200000,
+                "currency_code": "USD"
+            },
+            {
+                "name": "Beta ML",
+                "score": 78.0,
+                "risk_score": 25.0,
+                "compliance_status": "compliant",
+                "certifications": ["SOC2", "HIPAA"],
+                "monthly_cost_minor": 2800000,
+                "currency_code": "USD"
+            },
+            {
+                "name": "Gamma LLM",
+                "score": 92.0,
+                "risk_score": 35.0,
+                "compliance_status": "pending",
+                "certifications": ["ISO27001"],
+                "monthly_cost_minor": 6500000,
+                "currency_code": "USD"
+            },
+            {
+                "name": "Delta Systems",
+                "score": 70.0,
+                "risk_score": 10.0,
+                "compliance_status": "compliant",
+                "certifications": ["SOC2", "ISO27001", "GDPR", "FedRAMP"],
+                "monthly_cost_minor": 5500000,
+                "currency_code": "USD"
+            },
+            {
+                "name": "Epsilon AI",
+                "score": 88.0,
+                "risk_score": 20.0,
+                "compliance_status": "compliant",
+                "certifications": ["SOC2", "GDPR"],
+                "monthly_cost_minor": 3800000,
+                "currency_code": "USD"
+            }
+        ]);
+        let inputs = HashMap::from([
+            ("vendors_json".into(), vendors_json.to_string()),
+            ("demo_mode".into(), "pareto-breakout".into()),
+        ]);
+
+        let result = execute(&store, &inputs, false).await.unwrap();
+        let details = result
+            .projection
+            .and_then(|projection| projection.details)
+            .expect("projection details");
+        let router = details
+            .pointer("/context/strategies")
+            .and_then(|value| value.as_array())
+            .and_then(|facts| {
+                facts.iter().find(|fact| {
+                    fact.get("id").and_then(serde_json::Value::as_str)
+                        == Some("strategy:vendor-sel:router-hypothesis")
+                })
+            })
+            .and_then(|fact| fact.get("content"))
+            .expect("router hypothesis");
+
+        assert_eq!(
+            details
+                .pointer("/root_intent/demo_mode/id")
+                .and_then(serde_json::Value::as_str),
+            Some("pareto-breakout")
+        );
+        assert_eq!(
+            router
+                .get("router_fit")
+                .and_then(serde_json::Value::as_bool),
+            Some(true)
+        );
     }
 
     // --- Negative tests ---
