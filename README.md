@@ -157,9 +157,10 @@ All dependencies are pinned to git tags. Cargo enforces version consistency.
 
 | Dependency | Tag | What |
 |---|---|---|
-| Converge | v3.7.3 | Governance engine, promotion gates, Cedar policy, formation substrate |
+| Converge | v3.7.4 | Governance engine, promotion gates, Cedar policy, formation substrate |
 | Organism | v1.4.0 | Intent, planning, adversarial, simulation, learning |
 | Axiom | v0.7.0 | Truth validation, Gherkin parsing, policy lens |
+| Ferrox | v0.3.12 | Optimization substrate for Pareto and constraint decisions |
 
 ## Judging Criteria
 

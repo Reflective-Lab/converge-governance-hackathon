@@ -1,7 +1,8 @@
 {
   "meta": {
     "source": "Model competition 2026-04-24, 21 models x 4 roles = 84 runs via OpenRouter",
-    "pricing_source": "OpenRouter API (openrouter.ai/api/v1/models), tokencalculator.ai for reference",
+    "pricing_source": "OpenRouter API, Artificial Analysis (artificialanalysis.ai), tokencalculator.ai",
+    "benchmark_source": "Artificial Analysis Intelligence Index (341 models ranked), OpenRouter usage rankings",
     "scoring": "Composite = weighted(success, latency, quality, cost) per role",
     "purpose": "Input matrix for governed vendor selection — the system evaluates these as AI provider candidates"
   },
@@ -13,6 +14,8 @@
       "input_per_1m": 0.13,
       "output_per_1m": 0.38,
       "context_window": 262144,
+      "intelligence_index": 39,
+      "speed_tokens_per_sec": 35,
       "competition_rank": 1,
       "composite": 0.8039,
       "role_scores": { "compliance": 0.7415, "cost": 0.7360, "risk": 0.7406, "synthesis": 0.9977 },
@@ -20,7 +23,7 @@
       "avg_latency_ms": 14673,
       "avg_tokens": 858,
       "basket_role": "synthesis",
-      "notes": "Blowout synthesis winner. The 'business-smart model' — turns evidence into recommendations."
+      "notes": "Blowout synthesis winner (0.9977). Intelligence Index 39 — mid-tier on generic benchmarks but dominant on structured business reasoning. The 'business-smart model'."
     },
     {
       "id": "mistralai/mistral-small-2603",
@@ -29,6 +32,8 @@
       "input_per_1m": 0.15,
       "output_per_1m": 0.60,
       "context_window": 262144,
+      "intelligence_index": 28,
+      "speed_tokens_per_sec": 161,
       "competition_rank": 2,
       "composite": 0.8002,
       "role_scores": { "compliance": 0.7433, "cost": 0.7482, "risk": 0.7476, "synthesis": 0.9615 },
@@ -36,7 +41,7 @@
       "avg_latency_ms": 2318,
       "avg_tokens": 900,
       "basket_role": "primary-all-rounder",
-      "notes": "Fastest all-rounder. Strong across every role at 2.3s latency. Primary workhorse."
+      "notes": "Fastest all-rounder (2.3s, 161 t/s). Intelligence Index only 28 but #2 overall in our competition. Generic benchmarks miss task-specific strength."
     },
     {
       "id": "arcee-ai/trinity-large-preview",
@@ -45,6 +50,9 @@
       "input_per_1m": 0.15,
       "output_per_1m": 0.45,
       "context_window": 131000,
+      "intelligence_index": 32,
+      "intelligence_index_note": "Trinity Large Thinking variant; preview may differ",
+      "speed_tokens_per_sec": 117,
       "competition_rank": 3,
       "composite": 0.7972,
       "role_scores": { "compliance": 0.7436, "cost": 0.7483, "risk": 0.7479, "synthesis": 0.9490 },
@@ -52,7 +60,7 @@
       "avg_latency_ms": 2827,
       "avg_tokens": 712,
       "basket_role": "efficient-secondary",
-      "notes": "Lightest token usage (712 avg). Strong compliance/cost/risk. Cost-efficient secondary."
+      "notes": "Lightest token usage (712 avg). Strong across all roles. Cost-efficient secondary."
     },
     {
       "id": "google/gemini-3.1-flash-lite-preview",
@@ -61,6 +69,8 @@
       "input_per_1m": 0.25,
       "output_per_1m": 1.50,
       "context_window": 1048576,
+      "intelligence_index": 34,
+      "speed_tokens_per_sec": 340,
       "competition_rank": 4,
       "composite": 0.7785,
       "role_scores": { "compliance": 0.7439, "cost": 0.7484, "risk": 0.7481, "synthesis": 0.8736 },
@@ -68,7 +78,7 @@
       "avg_latency_ms": 2130,
       "avg_tokens": 851,
       "basket_role": "compliance-screening",
-      "notes": "Won 3 of 4 role races (compliance, cost, risk) by razor-thin margins. 1M context window."
+      "notes": "Won 3 of 4 role races by razor-thin margins. Fastest speed (340 t/s). 1M context window."
     },
     {
       "id": "writer/palmyra-x5",
@@ -77,6 +87,9 @@
       "input_per_1m": 0.60,
       "output_per_1m": 6.00,
       "context_window": 1040000,
+      "intelligence_index": null,
+      "intelligence_index_note": "Not ranked on Artificial Analysis",
+      "speed_tokens_per_sec": null,
       "competition_rank": 5,
       "composite": 0.7464,
       "role_scores": { "compliance": 0.7421, "cost": 0.7476, "risk": 0.7469, "synthesis": 0.7492 },
@@ -84,7 +97,7 @@
       "avg_latency_ms": 3971,
       "avg_tokens": 819,
       "basket_role": "stakeholder-polishing",
-      "notes": "Consistent mid-tier across all roles. Strong at polished stakeholder-ready output."
+      "notes": "Consistent mid-tier across all roles. Enterprise-focused. Unranked on public benchmarks."
     },
     {
       "id": "openai/gpt-5.4-nano",
@@ -93,6 +106,9 @@
       "input_per_1m": 0.20,
       "output_per_1m": 1.25,
       "context_window": 400000,
+      "intelligence_index": 44,
+      "intelligence_index_note": "xhigh reasoning effort; 24 without reasoning",
+      "speed_tokens_per_sec": 157,
       "competition_rank": 6,
       "composite": 0.7457,
       "role_scores": { "compliance": 0.7417, "cost": 0.7448, "risk": 0.7476, "synthesis": 0.7488 },
@@ -100,7 +116,7 @@
       "avg_latency_ms": 5311,
       "avg_tokens": 861,
       "basket_role": null,
-      "notes": "Solid everywhere but never best anywhere. OpenAI's budget option."
+      "notes": "Intelligence Index 44 (with reasoning) but only #6 in our competition. Higher generic intelligence doesn't guarantee task-specific performance."
     },
     {
       "id": "nvidia/nemotron-3-super-120b-a12b",
@@ -109,6 +125,8 @@
       "input_per_1m": 0.09,
       "output_per_1m": 0.45,
       "context_window": 262144,
+      "intelligence_index": 36,
+      "speed_tokens_per_sec": 154,
       "competition_rank": 7,
       "composite": 0.7439,
       "role_scores": { "compliance": 0.7224, "cost": 0.7447, "risk": 0.7359, "synthesis": 0.7726 },
@@ -116,7 +134,7 @@
       "avg_latency_ms": 22203,
       "avg_tokens": 1012,
       "basket_role": null,
-      "notes": "Cheapest input price. High latency drags composite down despite decent quality."
+      "notes": "Cheapest input ($0.09/1M). High latency via OpenRouter despite 154 t/s rated speed."
     },
     {
       "id": "anthropic/claude-opus-4.7",
@@ -125,6 +143,8 @@
       "input_per_1m": 5.00,
       "output_per_1m": 25.00,
       "context_window": 1000000,
+      "intelligence_index": 57,
+      "speed_tokens_per_sec": 49,
       "competition_rank": 8,
       "composite": 0.7437,
       "role_scores": { "compliance": 0.7355, "cost": 0.7465, "risk": 0.7456, "synthesis": 0.7471 },
@@ -132,7 +152,7 @@
       "avg_latency_ms": 7557,
       "avg_tokens": 1359,
       "basket_role": "escalation-reasoning",
-      "notes": "Premium escalation model. 33x more expensive than Mistral Small. Reserve for high-risk decisions."
+      "notes": "Intelligence Index 57 (#3 globally) but #8 in our competition. 33x more expensive than Mistral Small. Premium escalation only."
     },
     {
       "id": "google/gemini-3.1-pro-preview",
@@ -141,6 +161,8 @@
       "input_per_1m": 2.00,
       "output_per_1m": 12.00,
       "context_window": 1048576,
+      "intelligence_index": 57,
+      "speed_tokens_per_sec": 123,
       "competition_rank": 9,
       "composite": 0.7396,
       "role_scores": { "compliance": 0.7292, "cost": 0.7426, "risk": 0.7430, "synthesis": 0.7437 },
@@ -148,7 +170,7 @@
       "avg_latency_ms": 14149,
       "avg_tokens": 1838,
       "basket_role": null,
-      "notes": "Expensive for what it delivers. 1M context useful for large document ingestion."
+      "notes": "Intelligence Index 57 (tied with Opus) but #9 in competition. Expensive and verbose for what it delivers."
     },
     {
       "id": "minimax/minimax-m2.5",
@@ -157,6 +179,9 @@
       "input_per_1m": 0.15,
       "output_per_1m": 1.15,
       "context_window": 196608,
+      "intelligence_index": null,
+      "intelligence_index_note": "M2.7 rated at 50; M2.5 likely lower",
+      "speed_tokens_per_sec": 48,
       "competition_rank": 10,
       "composite": 0.7346,
       "role_scores": { "compliance": 0.7118, "cost": 0.7400, "risk": 0.7393, "synthesis": 0.7473 },
@@ -164,7 +189,7 @@
       "avg_latency_ms": 27203,
       "avg_tokens": 1362,
       "basket_role": null,
-      "notes": "High latency. Cheap but slow."
+      "notes": "Cheap but slow (27s). M2.7 successor rated Intelligence Index 50."
     },
     {
       "id": "qwen/qwen3.6-plus",
@@ -173,6 +198,8 @@
       "input_per_1m": 0.33,
       "output_per_1m": 1.95,
       "context_window": 1000000,
+      "intelligence_index": 50,
+      "speed_tokens_per_sec": 52,
       "competition_rank": 11,
       "composite": 0.7212,
       "role_scores": { "compliance": 0.6926, "cost": 0.7266, "risk": 0.7268, "synthesis": 0.7385 },
@@ -180,7 +207,7 @@
       "avg_latency_ms": 48254,
       "avg_tokens": 3148,
       "basket_role": null,
-      "notes": "Very high latency (48s) and token usage (3.1K). 1M context window."
+      "notes": "Intelligence Index 50 but #11 in competition. 48s latency, 3.1K token avg. High intelligence wasted on verbosity."
     },
     {
       "id": "bytedance-seed/seed-2.0-lite",
@@ -189,6 +216,9 @@
       "input_per_1m": 0.25,
       "output_per_1m": 2.00,
       "context_window": 262144,
+      "intelligence_index": null,
+      "intelligence_index_note": "Not ranked on Artificial Analysis",
+      "speed_tokens_per_sec": null,
       "competition_rank": 12,
       "composite": 0.7201,
       "role_scores": { "compliance": 0.6947, "cost": 0.7225, "risk": 0.7228, "synthesis": 0.7404 },
@@ -196,7 +226,7 @@
       "avg_latency_ms": 54273,
       "avg_tokens": 2331,
       "basket_role": null,
-      "notes": "Very slow. Mid-tier quality."
+      "notes": "Very slow (54s). Mid-tier quality. Unranked publicly."
     },
     {
       "id": "qwen/qwen3.5-27b",
@@ -205,6 +235,9 @@
       "input_per_1m": 0.20,
       "output_per_1m": 1.56,
       "context_window": 262144,
+      "intelligence_index": 46,
+      "intelligence_index_note": "Reasoning mode; 37 without reasoning",
+      "speed_tokens_per_sec": 64,
       "competition_rank": 13,
       "composite": 0.7194,
       "role_scores": { "compliance": 0.6767, "cost": 0.7309, "risk": 0.7293, "synthesis": 0.7409 },
@@ -212,7 +245,7 @@
       "avg_latency_ms": 44525,
       "avg_tokens": 4776,
       "basket_role": null,
-      "notes": "Extremely high token usage (4.8K avg). Slow and verbose."
+      "notes": "Extremely verbose (4.8K avg tokens). Intelligence Index 46 (reasoning) but slow and wasteful in practice."
     },
     {
       "id": "x-ai/grok-4.20-multi-agent",
@@ -221,6 +254,8 @@
       "input_per_1m": 2.00,
       "output_per_1m": 6.00,
       "context_window": 2000000,
+      "intelligence_index": 49,
+      "speed_tokens_per_sec": 115,
       "competition_rank": 14,
       "composite": 0.6811,
       "role_scores": { "compliance": 0.5818, "cost": 0.7135, "risk": 0.7173, "synthesis": 0.7117 },
@@ -228,7 +263,7 @@
       "avg_latency_ms": 21365,
       "avg_tokens": 28126,
       "basket_role": null,
-      "notes": "Catastrophic token usage (28K avg). 2M context window. Expensive and verbose."
+      "notes": "Intelligence Index 49 but CATASTROPHIC token usage (28K avg, 71K on compliance). 2M context window. xAI markets Grok on math/reasoning but that doesn't transfer to governed business decisions. The multi-agent variant over-generates massively."
     },
     {
       "id": "openai/gpt-5.4-pro",
@@ -237,6 +272,9 @@
       "input_per_1m": 30.00,
       "output_per_1m": 180.00,
       "context_window": 1050000,
+      "intelligence_index": null,
+      "intelligence_index_note": "GPT-5.4 xhigh variant rated 57; Pro variant not separately listed",
+      "speed_tokens_per_sec": null,
       "competition_rank": 15,
       "composite": 0.6550,
       "role_scores": { "compliance": 0.5438, "cost": 0.7237, "risk": 0.6347, "synthesis": 0.7179 },
@@ -244,7 +282,7 @@
       "avg_latency_ms": 203938,
       "avg_tokens": 1370,
       "basket_role": null,
-      "notes": "Dead last. 204s average latency. $30/$180 per 1M tokens. The most expensive option by far."
+      "notes": "Dead last. 204s average latency. $30/$180 per 1M tokens. Most expensive option by 100x. Proves that price does not equal performance."
     },
     {
       "id": "moonshotai/kimi-k2.5",
@@ -253,6 +291,8 @@
       "input_per_1m": 0.44,
       "output_per_1m": 2.00,
       "context_window": 262144,
+      "intelligence_index": 37,
+      "speed_tokens_per_sec": 38,
       "competition_rank": 16,
       "composite": 0.5508,
       "role_scores": { "compliance": 0.0000, "cost": 0.7481, "risk": 0.7140, "synthesis": 0.7411 },
@@ -260,7 +300,7 @@
       "avg_latency_ms": 53926,
       "avg_tokens": 1270,
       "basket_role": null,
-      "notes": "Failed compliance role entirely. Partial failure."
+      "notes": "Failed compliance role entirely. Successor K2.6 now at Intelligence Index 54 and #3 on OpenRouter usage."
     },
     {
       "id": "anthropic/claude-sonnet-4.6",
@@ -269,6 +309,8 @@
       "input_per_1m": 3.00,
       "output_per_1m": 15.00,
       "context_window": 1000000,
+      "intelligence_index": 44,
+      "speed_tokens_per_sec": 47,
       "competition_rank": null,
       "composite": null,
       "role_scores": null,
@@ -276,7 +318,7 @@
       "avg_latency_ms": null,
       "avg_tokens": null,
       "basket_role": "live-decision-synthesis",
-      "notes": "Used as the strong-tier model in live vendor selection runs. Not in the competition matrix."
+      "notes": "Strong-tier model in live vendor selection. #1 on OpenRouter usage (1.35T tokens/week). Intelligence Index 44."
     },
     {
       "id": "meta-llama/llama-3.1-8b-instruct",
@@ -285,6 +327,9 @@
       "input_per_1m": 0.02,
       "output_per_1m": 0.05,
       "context_window": 131072,
+      "intelligence_index": null,
+      "intelligence_index_note": "Older model, no longer ranked on Artificial Analysis",
+      "speed_tokens_per_sec": null,
       "competition_rank": null,
       "composite": null,
       "role_scores": null,
@@ -292,7 +337,7 @@
       "avg_latency_ms": null,
       "avg_tokens": null,
       "basket_role": "fast-compliance-screening",
-      "notes": "Used as the fast-tier model in live vendor selection. Cheapest option. Not in the competition matrix."
+      "notes": "Cheapest option ($0.02/$0.05). Fast-tier model in live vendor selection."
     },
     {
       "id": "google/gemini-2.0-flash-001",
@@ -301,6 +346,9 @@
       "input_per_1m": 0.10,
       "output_per_1m": 0.40,
       "context_window": 1048576,
+      "intelligence_index": null,
+      "intelligence_index_note": "Superseded by Gemini 3.x; no longer tracked",
+      "speed_tokens_per_sec": null,
       "competition_rank": null,
       "composite": null,
       "role_scores": null,
@@ -308,36 +356,78 @@
       "avg_latency_ms": null,
       "avg_tokens": null,
       "basket_role": "mid-tier-cost-risk",
-      "notes": "Used as the mid-tier model in live vendor selection for cost and risk analysis. Not in the competition matrix."
+      "notes": "Mid-tier model in live vendor selection. Superseded by Gemini 3.1 Flash Lite."
     }
   ],
+  "external_benchmarks": {
+    "source": "Artificial Analysis Intelligence Index, OpenRouter weekly usage rankings (2026-04-24)",
+    "key_insight": "Intelligence Index correlates weakly with task-specific governed decision performance. Our top 3 (Gemma 39, Mistral 28, Trinity 32) all have LOWER Intelligence Index scores than models they beat (Opus 57, Gemini Pro 57, Qwen 50, Grok 49, GPT Nano 44).",
+    "intelligence_index_vs_competition": [
+      { "model": "Claude Opus 4.7",     "intelligence_index": 57, "competition_rank": 8,  "gap": "high intelligence, mediocre task performance" },
+      { "model": "Gemini 3.1 Pro",      "intelligence_index": 57, "competition_rank": 9,  "gap": "high intelligence, mediocre task performance" },
+      { "model": "Qwen 3.6 Plus",       "intelligence_index": 50, "competition_rank": 11, "gap": "high intelligence, poor task performance" },
+      { "model": "Grok 4.20",           "intelligence_index": 49, "competition_rank": 14, "gap": "high intelligence, near-bottom task performance" },
+      { "model": "GPT-5.4 Nano",        "intelligence_index": 44, "competition_rank": 6,  "gap": "moderate — closest alignment" },
+      { "model": "Gemma 4 31B",         "intelligence_index": 39, "competition_rank": 1,  "gap": "low intelligence, TOP task performance" },
+      { "model": "Nemotron 3 Super",    "intelligence_index": 36, "competition_rank": 7,  "gap": "low intelligence, decent task performance" },
+      { "model": "Gemini Flash Lite",   "intelligence_index": 34, "competition_rank": 4,  "gap": "low intelligence, strong task performance" },
+      { "model": "Arcee Trinity",       "intelligence_index": 32, "competition_rank": 3,  "gap": "low intelligence, TOP task performance" },
+      { "model": "Mistral Small 4",     "intelligence_index": 28, "competition_rank": 2,  "gap": "lowest intelligence of top 10, #2 task performance" }
+    ],
+    "openrouter_weekly_usage_top10": [
+      { "rank": 1,  "model": "Claude Sonnet 4.6",    "tokens_weekly": "1.35T" },
+      { "rank": 2,  "model": "DeepSeek V3.2",        "tokens_weekly": "1.32T" },
+      { "rank": 3,  "model": "Kimi K2.6",            "tokens_weekly": "1.08T" },
+      { "rank": 4,  "model": "Gemini 3 Flash",       "tokens_weekly": "1.07T" },
+      { "rank": 5,  "model": "Claude Opus 4.7",      "tokens_weekly": "1.07T" },
+      { "rank": 6,  "model": "MiniMax M2.7",         "tokens_weekly": "809B" },
+      { "rank": 7,  "model": "MiniMax M2.5",         "tokens_weekly": "774B" },
+      { "rank": 8,  "model": "Mimo V2 Pro (Xiaomi)",  "tokens_weekly": "748B" },
+      { "rank": 9,  "model": "Grok 4.1 Fast",        "tokens_weekly": "741B" },
+      { "rank": 10, "model": "Claude Opus 4.6",      "tokens_weekly": "713B" }
+    ],
+    "grok_analysis": {
+      "claim": "Grok is better at logical problems and math",
+      "evidence_for": "Grok 3 scored well on AIME/MATH-500 benchmarks at launch. Grok 4.20 has Intelligence Index 49, reasonable for its price tier.",
+      "evidence_against": "In our governed vendor selection competition: #14 of 15. Compliance score 0.5818 (worst). 28,126 avg tokens per run (33x more than winner). 71,401 tokens on a single compliance task. The multi-agent variant over-generates catastrophically.",
+      "conclusion": "Math benchmark performance does not transfer to structured business reasoning. Grok can solve math puzzles but cannot produce concise, governed, evidence-backed procurement decisions. For this workload class, Gemma 4 31B (Intelligence Index 39) outperforms Grok 4.20 (Intelligence Index 49) by a wide margin."
+    }
+  },
   "winning_basket": {
-    "description": "The competition-validated 3-model provider mix for governed vendor selection",
-    "thesis": "No single model dominates all roles. A governed multi-model routing strategy through Kong/OpenRouter delivers better Pareto balance across capability, cost, latency, and governance.",
+    "description": "The competition-validated 3+1 model provider mix for governed vendor selection",
+    "thesis": "No single model dominates all roles. Generic intelligence benchmarks do NOT predict task-specific performance. A governed multi-model routing strategy delivers better Pareto balance across capability, cost, latency, and governance.",
     "roles": [
       {
         "workload": "Synthesis and decision-making",
         "model": "google/gemma-4-31b-it",
-        "why": "Blowout winner at synthesis (0.9977). Turns multi-agent evidence into actionable recommendations.",
-        "monthly_cost_estimate_usd": "Low — $0.13/$0.38 per 1M tokens"
+        "intelligence_index": 39,
+        "competition_composite": 0.8039,
+        "why": "Blowout synthesis winner (0.9977). Low generic intelligence but dominant on structured business reasoning.",
+        "cost": "$0.13/$0.38 per 1M tokens"
       },
       {
         "workload": "Primary all-rounder (compliance, cost, risk)",
         "model": "mistralai/mistral-small-2603",
-        "why": "Fastest (2.3s), strong everywhere, cheapest effective option at $0.15/$0.60 per 1M tokens.",
-        "monthly_cost_estimate_usd": "Very low"
+        "intelligence_index": 28,
+        "competition_composite": 0.8002,
+        "why": "Fastest (2.3s, 161 t/s), strong everywhere. Lowest Intelligence Index in top 10 but #2 overall.",
+        "cost": "$0.15/$0.60 per 1M tokens"
       },
       {
         "workload": "Efficient secondary and token-optimized tasks",
         "model": "arcee-ai/trinity-large-preview",
-        "why": "Lightest token usage (712 avg), near-identical role scores to Mistral Small. Best cost per quality unit.",
-        "monthly_cost_estimate_usd": "Very low — $0.15/$0.45 per 1M tokens"
+        "intelligence_index": 32,
+        "competition_composite": 0.7972,
+        "why": "Lightest token usage (712 avg). Best cost per quality unit.",
+        "cost": "$0.15/$0.45 per 1M tokens"
       },
       {
         "workload": "Escalation for high-risk or high-ambiguity decisions",
         "model": "anthropic/claude-opus-4.7",
-        "why": "Premium reasoning for edge cases. 33x more expensive — use only when risk or ambiguity warrants it.",
-        "monthly_cost_estimate_usd": "High per call — $5.00/$25.00 per 1M tokens — but rare escalation keeps total low"
+        "intelligence_index": 57,
+        "competition_composite": 0.7437,
+        "why": "Premium reasoning for edge cases. Use only when risk or ambiguity warrants the 33x cost premium.",
+        "cost": "$5.00/$25.00 per 1M tokens"
       }
     ],
     "search_providers": [
@@ -349,7 +439,7 @@
       {
         "workload": "Deep canonical evidence verification",
         "provider": "Tavily Search API",
-        "why": "Focused retrieval, source grounding, good for compliance and risk verification"
+        "why": "Focused retrieval, source grounding, compliance and risk verification"
       }
     ],
     "governance_layer": {
@@ -365,13 +455,20 @@
         "avg_tokens_per_run": 1359,
         "estimated_monthly_usd": 40.77
       },
+      "gpt_5_4_pro": {
+        "model": "openai/gpt-5.4-pro",
+        "avg_tokens_per_run": 1370,
+        "estimated_monthly_usd": 288.30,
+        "note": "Most expensive option, worst performance"
+      },
       "winning_basket": {
         "models": ["gemma-4-31b-it", "mistral-small-2603", "arcee-trinity-large"],
         "avg_tokens_per_run": 823,
         "estimated_monthly_usd": 0.62,
         "with_escalation_5pct": 2.66
       },
-      "savings_ratio": "15x cheaper with the basket (65x without escalation)"
+      "savings_vs_opus": "15x cheaper with the basket (65x without escalation)",
+      "savings_vs_gpt_pro": "108x cheaper with the basket"
     }
   }
 }

@@ -74,11 +74,20 @@ CLEAR_LINE='\033[2K'
 HELM_VERSION="0.1.0"
 AXIOM_VERSION="0.7.0"
 ORGANISM_VERSION="1.4.0"
-CONVERGE_VERSION="3.7.3"
+FERROX_VERSION="0.3.12"
+CONVERGE_VERSION="3.7.4"
 ACCENT_COLOR="$CYAN"
 if [ "$TRACK" = "creative" ]; then
   ACCENT_COLOR="$NEON_GREEN"
 fi
+
+interrupt_demo() {
+  echo ""
+  echo -e "${DIM}Demo interrupted.${RESET}"
+  exit 0
+}
+
+trap interrupt_demo INT
 
 pause() {
   if [ "$NO_PAUSE" = "true" ]; then
@@ -146,7 +155,7 @@ masthead() {
   echo -e "${BOLD}${ACCENT_COLOR}  ██║  ██║██╔════╝██║     ████╗ ████║${RESET}  ${DIM}Axiom    v$AXIOM_VERSION${RESET}"
   echo -e "${BOLD}${ACCENT_COLOR}  ███████║█████╗  ██║     ██╔████╔██║${RESET}  ${DIM}Organism v$ORGANISM_VERSION${RESET}"
   echo -e "${BOLD}${ACCENT_COLOR}  ██╔══██║██╔══╝  ██║     ██║╚██╔╝██║${RESET}  ${DIM}Converge v$CONVERGE_VERSION${RESET}"
-  echo -e "${BOLD}${ACCENT_COLOR}  ██║  ██║███████╗███████╗██║ ╚═╝ ██║${RESET}"
+  echo -e "${BOLD}${ACCENT_COLOR}  ██║  ██║███████╗███████╗██║ ╚═╝ ██║${RESET}  ${DIM}Ferrox   v$FERROX_VERSION${RESET}"
   echo -e "${BOLD}${ACCENT_COLOR}  ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝     ╚═╝${RESET}  ${DIM}$short_pwd${RESET}"
 }
 
@@ -331,7 +340,7 @@ run_with_liveness() {
   local frames='|/-\'
   local started
   started=$(date +%s)
-  trap 'printf "\r${CLEAR_LINE}"; echo -e "${RED}Interrupted processing. Stopping child process...${RESET}" >&2; kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; trap - INT TERM; exit 130' INT TERM
+  trap 'printf "\r${CLEAR_LINE}"; echo -e "${DIM}Demo interrupted. Stopping child process...${RESET}" >&2; kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; trap interrupt_demo INT; exit 0' INT
 
   while kill -0 "$pid" 2>/dev/null; do
     local now elapsed frame verb
@@ -346,7 +355,7 @@ run_with_liveness() {
 
   local status=0
   wait "$pid" || status=$?
-  trap - INT TERM
+  trap interrupt_demo INT
   printf "\r${CLEAR_LINE}"
 
   if [ "$status" -eq 0 ]; then
@@ -504,6 +513,7 @@ step_1() {
   narrate "Converge — correctness-first multi-agent runtime"
   narrate "Organism — intelligence layer (intent, planning, adversarial, simulation, learning)"
   narrate "Axiom   — truth contracts and normative specifications"
+  narrate "Ferrox  — optimization substrate for Pareto and constraint decisions"
   narrate "Helm    — this application (the hackathon governance tool)"
   echo ""
   narrate "The business flow is a Formation."

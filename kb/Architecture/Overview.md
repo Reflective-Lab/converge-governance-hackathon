@@ -78,11 +78,11 @@ Axiom is not another agent layer. Its authority is normative: it says what a val
 
 ## Foundation Baseline
 
-The user-side application currently consumes Converge `v3.7.3`, Organism `v1.4.0`, and Axiom `v0.7.0` by git tag. Keep this repo tag-pinned for participants; local sibling checkouts belong in foundation development, not the hackathon template.
+The user-side application currently consumes Converge `v3.7.4`, Organism `v1.4.0`, Axiom `v0.7.0`, and Ferrox `v0.3.12` by git tag. Keep this repo tag-pinned for participants; local sibling checkouts belong in foundation development, not the hackathon template.
 
-Converge `v3.7.3` strengthened several boundaries this app now follows: typed pack and policy identifiers, `ContextState` for owned runtime context, `&dyn Context` for evaluator reads, and private `ProposedFact` confidence through builder methods. Those constraints are intentional; they make the user-facing examples match the governance model instead of relying on stringly typed shortcuts.
+Converge `v3.7.4` strengthens several boundaries this app follows: typed pack and policy identifiers, `ContextState` for owned runtime context, `&dyn Context` for evaluator reads, and private `ProposedFact` confidence through builder methods. Those constraints are intentional; they make the user-facing examples match the governance model instead of relying on stringly typed shortcuts.
 
-Organism `v1.4.0` and Axiom `v0.7.0` are aligned to Converge `v3.7.3`, so the user-side stack has one governance/provider contract across intent planning, truth validation, runtime execution, and direct suggestor authoring.
+Organism `v1.4.0`, Axiom `v0.7.0`, and Ferrox `v0.3.12` are aligned to Converge `v3.7.4`, so the user-side stack has one governance/provider contract across intent planning, truth validation, runtime execution, optimization, and direct suggestor authoring.
 
 ## Opinionated Implementation
 

@@ -9,7 +9,7 @@ edition = "2024"
 rust-version = "1.94"
 
 [workspace.dependencies]
-# Converge v3.7.3 (local upstream worktree)
+# Converge v3.7.4 (local upstream worktree)
 converge-core = { path = "local/converge/crates/core" }
 converge-pack = { path = "local/converge/crates/pack" }
 converge-kernel = { path = "local/converge/crates/kernel" }
@@ -50,3 +50,13 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Testing
 proptest = "1"
+
+[patch.crates-io]
+converge-core = { path = "local/converge/crates/core" }
+converge-domain = { path = "local/converge/crates/domain" }
+converge-kernel = { path = "local/converge/crates/kernel" }
+converge-model = { path = "local/converge/crates/model" }
+converge-optimization = { path = "local/converge/crates/optimization" }
+converge-pack = { path = "local/converge/crates/pack" }
+converge-provider = { path = "local/converge/crates/provider" }
+converge-provider-api = { path = "local/converge/crates/provider-api" }

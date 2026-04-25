@@ -23,7 +23,8 @@ Converge is the execution model. Agents propose facts. Facts are promoted throug
 | Layer | Technology |
 |---|---|
 | System logic | Rust (edition 2024, 1.94+) |
-| Agent runtime | Converge v3.7.3 (`converge-pack`, `converge-kernel`, `converge-provider`) |
+| Agent runtime | Converge v3.7.4 (`converge-pack`, `converge-kernel`, `converge-provider`) |
+| Optimization | Ferrox v0.3.12 |
 | Intelligence | Organism v1.4.0 (`organism-pack`, `organism-runtime`) |
 | Truth validation | Axiom v0.7.0 |
 | Desktop shell | Tauri 2 + SvelteKit 5 |

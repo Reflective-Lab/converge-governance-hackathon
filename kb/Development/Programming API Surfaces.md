@@ -25,13 +25,13 @@ Use these crates by role:
 
 The participant-facing repo is pinned to these foundation tags:
 
-- Converge `v3.7.3` for runtime, formation substrate, provider contracts, policy, and domain packs.
+- Converge `v3.7.4` for runtime, formation substrate, provider contracts, policy, and domain packs.
 - Organism `v1.4.0` for intent, planning, collaboration, simulation, and learning examples.
 - Axiom `v0.7.0` for truth validation, Gherkin parsing, and policy lens work.
 
 Do not switch this repo to sibling path dependencies for participant work. The hackathon template must remain cloneable without `../converge`, `../organism`, or `../axiom` checkouts.
 
-Foundation dependency chain: Organism `v1.4.0` and Axiom `v0.7.0` are aligned to Converge `v3.7.3`, so participant code should see one Converge governance/provider contract across the user-side stack.
+Foundation dependency chain: Organism `v1.4.0`, Axiom `v0.7.0`, and Ferrox `v0.3.12` are aligned to Converge `v3.7.4`, so participant code should see one Converge governance/provider contract across the user-side stack.
 
 ## Axiom Contract
 
