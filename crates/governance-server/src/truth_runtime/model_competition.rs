@@ -1,12 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::time::Instant;
 
 use chrono::Utc;
-use converge_provider::{
-    ProviderBenchmarkRun, ProviderCallSample, ProviderLeaderboardEntry, ScoredProviderRun,
-    build_provider_overall_leaderboard, build_provider_role_leaderboard, score_provider_runs,
-};
 use governance_kernel::InMemoryStore;
 use governance_telemetry::LlmCallTelemetry;
 use serde::{Deserialize, Serialize};
@@ -128,6 +124,118 @@ pub struct RunResult {
     pub confidence: f64,
     pub error: Option<String>,
     pub llm_calls: Vec<LlmCallTelemetry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct ProviderCallSample {
+    context: String,
+    provider: Option<String>,
+    model: String,
+    elapsed_ms: u64,
+    total_tokens: Option<u64>,
+    fallback: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct ProviderBenchmarkRun {
+    model: String,
+    role: String,
+    success: bool,
+    used_fallback: bool,
+    converged: bool,
+    elapsed_ms: u64,
+    target_latency_ms: u64,
+    target_tokens: u64,
+    confidence: f64,
+    error: Option<String>,
+    calls: Vec<ProviderCallSample>,
+}
+
+impl ProviderBenchmarkRun {
+    fn from_call_samples<P: AsRef<str>>(
+        model: impl Into<String>,
+        role: impl Into<String>,
+        elapsed_ms: u64,
+        converged: bool,
+        confidence: f64,
+        context_prefixes: &[P],
+        calls: Vec<ProviderCallSample>,
+    ) -> Self {
+        let target_calls: Vec<&ProviderCallSample> = calls
+            .iter()
+            .filter(|call| {
+                context_prefixes
+                    .iter()
+                    .any(|prefix| call.context.starts_with(prefix.as_ref()))
+            })
+            .collect();
+
+        let used_fallback = target_calls.iter().any(|call| call.fallback);
+        let real_calls: Vec<&ProviderCallSample> = target_calls
+            .iter()
+            .copied()
+            .filter(|call| !call.fallback)
+            .collect();
+        let target_latency_ms = real_calls.iter().map(|call| call.elapsed_ms).sum();
+        let target_tokens = real_calls.iter().filter_map(|call| call.total_tokens).sum();
+
+        Self {
+            model: model.into(),
+            role: role.into(),
+            success: converged && !used_fallback && !target_calls.is_empty(),
+            used_fallback,
+            converged,
+            elapsed_ms,
+            target_latency_ms,
+            target_tokens,
+            confidence,
+            error: None,
+            calls,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+struct ProviderBenchmarkWeights {
+    success: f64,
+    latency: f64,
+    quality: f64,
+    cost: f64,
+}
+
+impl Default for ProviderBenchmarkWeights {
+    fn default() -> Self {
+        Self {
+            success: 0.40,
+            latency: 0.20,
+            quality: 0.25,
+            cost: 0.15,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct ScoredProviderRun {
+    model: String,
+    role: String,
+    success_score: f64,
+    latency_score: f64,
+    quality_score: f64,
+    cost_score: f64,
+    composite: f64,
+    #[serde(flatten)]
+    raw: ProviderBenchmarkRun,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ProviderLeaderboardEntry {
+    pub rank: usize,
+    pub model: String,
+    pub composite: f64,
+    pub success_rate: f64,
+    pub avg_latency_ms: f64,
+    pub avg_tokens: f64,
+    pub runs: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -343,6 +451,135 @@ fn extract_decision_confidence(details: Option<&serde_json::Value>) -> f64 {
 // ---------------------------------------------------------------------------
 // Scoring
 // ---------------------------------------------------------------------------
+
+fn score_provider_runs(runs: &[ProviderBenchmarkRun]) -> Vec<ScoredProviderRun> {
+    score_provider_runs_with_weights(runs, ProviderBenchmarkWeights::default())
+}
+
+fn score_provider_runs_with_weights(
+    runs: &[ProviderBenchmarkRun],
+    weights: ProviderBenchmarkWeights,
+) -> Vec<ScoredProviderRun> {
+    let max_latency = runs
+        .iter()
+        .map(|run| run.target_latency_ms)
+        .max()
+        .unwrap_or(1)
+        .max(1) as f64;
+    let max_tokens = runs
+        .iter()
+        .map(|run| run.target_tokens)
+        .max()
+        .unwrap_or(1)
+        .max(1) as f64;
+
+    runs.iter()
+        .map(|run| {
+            let success_score = if run.success { 1.0 } else { 0.0 };
+            let latency_score = if run.success {
+                1.0 - (run.target_latency_ms as f64 / max_latency).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            let quality_score = if run.converged {
+                run.confidence
+            } else {
+                run.confidence * 0.5
+            };
+            let cost_score = if run.success {
+                1.0 - (run.target_tokens as f64 / max_tokens).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            let composite = weights.success * success_score
+                + weights.latency * latency_score
+                + weights.quality * quality_score
+                + weights.cost * cost_score;
+
+            ScoredProviderRun {
+                model: run.model.clone(),
+                role: run.role.clone(),
+                success_score,
+                latency_score,
+                quality_score,
+                cost_score,
+                composite,
+                raw: run.clone(),
+            }
+        })
+        .collect()
+}
+
+fn build_provider_role_leaderboard(
+    scored: &[ScoredProviderRun],
+    role: &str,
+) -> Vec<ProviderLeaderboardEntry> {
+    let mut grouped: BTreeMap<String, Vec<&ScoredProviderRun>> = BTreeMap::new();
+    for run in scored.iter().filter(|run| run.role == role) {
+        grouped.entry(run.model.clone()).or_default().push(run);
+    }
+
+    let mut entries: Vec<ProviderLeaderboardEntry> = grouped
+        .into_iter()
+        .map(|(model, runs)| entry_for_model(&model, &runs))
+        .collect();
+    rank_entries(&mut entries);
+    entries
+}
+
+fn build_provider_overall_leaderboard<M: AsRef<str>>(
+    scored: &[ScoredProviderRun],
+    models: &[M],
+) -> Vec<ProviderLeaderboardEntry> {
+    let mut entries: Vec<ProviderLeaderboardEntry> = models
+        .iter()
+        .map(|model| {
+            let model = model.as_ref();
+            let runs: Vec<&ScoredProviderRun> =
+                scored.iter().filter(|run| run.model == model).collect();
+            entry_for_model(model, &runs)
+        })
+        .collect();
+    rank_entries(&mut entries);
+    entries
+}
+
+fn entry_for_model(model: &str, runs: &[&ScoredProviderRun]) -> ProviderLeaderboardEntry {
+    let n = runs.len().max(1) as f64;
+    let avg_composite = runs.iter().map(|run| run.composite).sum::<f64>() / n;
+    let success_rate = runs.iter().filter(|run| run.raw.success).count() as f64 / n;
+    let avg_latency_ms = runs
+        .iter()
+        .map(|run| run.raw.target_latency_ms as f64)
+        .sum::<f64>()
+        / n;
+    let avg_tokens = runs
+        .iter()
+        .map(|run| run.raw.target_tokens as f64)
+        .sum::<f64>()
+        / n;
+
+    ProviderLeaderboardEntry {
+        rank: 0,
+        model: model.to_string(),
+        composite: avg_composite,
+        success_rate,
+        avg_latency_ms,
+        avg_tokens,
+        runs: runs.len(),
+    }
+}
+
+fn rank_entries(entries: &mut [ProviderLeaderboardEntry]) {
+    entries.sort_by(|a, b| {
+        b.composite
+            .partial_cmp(&a.composite)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    for (index, entry) in entries.iter_mut().enumerate() {
+        entry.rank = index + 1;
+    }
+}
 
 fn score_runs(runs: &[RunResult]) -> Vec<ScoredRun> {
     let benchmark_runs: Vec<ProviderBenchmarkRun> =

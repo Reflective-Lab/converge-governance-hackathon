@@ -3,14 +3,14 @@
 
 use std::time::Instant;
 
-use converge_provider::{
-    ChatBackendSelectionConfig, JsonChatResponse, chat_json_lenient, select_healthy_chat_backend,
+use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
+use converge_provider_api::{
+    ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend, LlmError, ResponseFormat,
 };
-use converge_provider_api::{ChatMessage, ChatRequest, ChatRole, ResponseFormat};
 use governance_telemetry::{
     InMemoryLlmCallCollector, LlmCallSink, LlmCallTelemetry, LlmUsageSummary,
 };
-use serde::Serialize;
+use serde::{Serialize, de::DeserializeOwned};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct DdReport {
@@ -49,6 +49,12 @@ pub struct TaggedFact {
 pub struct SearchHit {
     pub title: String,
     pub url: String,
+}
+
+#[derive(Debug, Clone)]
+struct JsonChatResponse<T> {
+    value: T,
+    response: ChatResponse,
 }
 
 pub async fn run_dd(company: &str, product: Option<&str>) -> anyhow::Result<DdReport> {
@@ -249,6 +255,236 @@ async fn call_llm_json(
     });
 
     Ok(value)
+}
+
+async fn chat_json_lenient<T>(
+    backend: &dyn DynChatBackend,
+    mut request: ChatRequest,
+) -> Result<JsonChatResponse<T>, LlmError>
+where
+    T: DeserializeOwned,
+{
+    let max_tokens = request.max_tokens.unwrap_or(4096);
+    request.response_format = ResponseFormat::Text;
+    request.system = Some(with_json_instruction(request.system.as_deref()));
+
+    let mut response = backend.chat(request).await?;
+    let raw = strip_markdown_fences(&response.content);
+    let (value, normalized) = match parse_json_document::<T>(&raw) {
+        Ok(parsed) => parsed,
+        Err(parse_error) if !raw.trim().is_empty() => {
+            let repaired = repair_json_with_backend(backend, &raw, max_tokens).await?;
+            parse_json_document::<T>(&repaired).map_err(|repair_error| {
+                json_mismatch(
+                    format!("failed to parse JSON: {parse_error}; repair failed: {repair_error}"),
+                    &raw,
+                )
+            })?
+        }
+        Err(parse_error) => {
+            return Err(json_mismatch(
+                format!("failed to parse JSON: {parse_error}"),
+                &raw,
+            ));
+        }
+    };
+
+    response.content = normalized;
+    Ok(JsonChatResponse { value, response })
+}
+
+fn with_json_instruction(system: Option<&str>) -> String {
+    let instruction = ResponseFormat::Json
+        .system_instruction()
+        .unwrap_or("You MUST respond with valid JSON only. No other text.");
+    match system.map(str::trim).filter(|value| !value.is_empty()) {
+        Some(system) => format!("{system}\n\n{instruction}"),
+        None => instruction.to_string(),
+    }
+}
+
+async fn repair_json_with_backend(
+    backend: &dyn DynChatBackend,
+    raw: &str,
+    max_tokens: u32,
+) -> Result<String, LlmError> {
+    let prompt = format!(
+        r#"Repair the following malformed JSON so that it becomes valid JSON.
+
+Rules:
+- Preserve the original meaning and content.
+- Do not add explanations.
+- Return JSON only.
+- Remove trailing commas, close arrays/objects, and keep existing keys if present.
+- If a value was cut off before any content was emitted, use an empty string, empty array, or empty object as appropriate.
+
+Malformed JSON:
+{raw}"#
+    );
+
+    let response = backend
+        .chat(ChatRequest {
+            messages: vec![ChatMessage {
+                role: ChatRole::User,
+                content: prompt,
+                tool_calls: Vec::new(),
+                tool_call_id: None,
+            }],
+            system: Some("You repair malformed JSON. Return JSON only.".to_string()),
+            tools: Vec::new(),
+            response_format: ResponseFormat::Text,
+            max_tokens: Some(max_tokens.min(2000)),
+            temperature: Some(0.0),
+            stop_sequences: Vec::new(),
+            model: None,
+        })
+        .await?;
+
+    Ok(strip_markdown_fences(&response.content))
+}
+
+fn parse_json_document<T>(raw: &str) -> Result<(T, String), serde_json::Error>
+where
+    T: DeserializeOwned,
+{
+    let normalized = strip_trailing_commas(raw);
+    if let Ok(parsed) = serde_json::from_str::<T>(&normalized) {
+        return Ok((parsed, normalized));
+    }
+
+    let repaired = repair_truncated_json(&normalized);
+    let parsed = serde_json::from_str::<T>(&repaired)?;
+    Ok((parsed, repaired))
+}
+
+fn json_mismatch(message: String, content: &str) -> LlmError {
+    let preview = preview(content);
+    LlmError::ResponseFormatMismatch {
+        expected: ResponseFormat::Json,
+        message: if preview.is_empty() {
+            message
+        } else {
+            format!("{message}; response preview: {preview}")
+        },
+    }
+}
+
+fn preview(content: &str) -> String {
+    const MAX_PREVIEW_CHARS: usize = 120;
+
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    let mut preview = String::new();
+    for ch in trimmed.chars().take(MAX_PREVIEW_CHARS) {
+        preview.push(ch);
+    }
+    if trimmed.chars().count() > MAX_PREVIEW_CHARS {
+        preview.push_str("...");
+    }
+    preview
+}
+
+fn strip_markdown_fences(value: &str) -> String {
+    let trimmed = value.trim();
+    if let Some(start) = trimmed.find("```") {
+        let after = &trimmed[start + 3..];
+        if let Some(newline) = after.find('\n') {
+            let body = &after[newline + 1..];
+            if let Some(end) = body.rfind("```") {
+                return body[..end].trim().to_string();
+            }
+            return body.trim().to_string();
+        }
+    }
+    trimmed.to_string()
+}
+
+fn repair_truncated_json(value: &str) -> String {
+    let mut result = value.to_string();
+    let mut in_string = false;
+    let mut escape = false;
+    let mut stack = Vec::new();
+
+    for ch in result.chars() {
+        if escape {
+            escape = false;
+            continue;
+        }
+        if ch == '\\' && in_string {
+            escape = true;
+            continue;
+        }
+        if ch == '"' {
+            in_string = !in_string;
+            continue;
+        }
+        if in_string {
+            continue;
+        }
+        match ch {
+            '{' => stack.push('}'),
+            '[' => stack.push(']'),
+            '}' | ']' => {
+                stack.pop();
+            }
+            _ => {}
+        }
+    }
+
+    if in_string {
+        result.push('"');
+    }
+    while let Some(ch) = stack.pop() {
+        result.push(ch);
+    }
+    result
+}
+
+fn strip_trailing_commas(value: &str) -> String {
+    let chars = value.chars().collect::<Vec<_>>();
+    let mut output = String::with_capacity(value.len());
+    let mut in_string = false;
+    let mut escape = false;
+    let mut index = 0;
+
+    while index < chars.len() {
+        let ch = chars[index];
+        if escape {
+            output.push(ch);
+            escape = false;
+            index += 1;
+            continue;
+        }
+        if ch == '\\' && in_string {
+            output.push(ch);
+            escape = true;
+            index += 1;
+            continue;
+        }
+        if ch == '"' {
+            output.push(ch);
+            in_string = !in_string;
+            index += 1;
+            continue;
+        }
+        if !in_string && ch == ',' {
+            let mut lookahead = index + 1;
+            while lookahead < chars.len() && chars[lookahead].is_whitespace() {
+                lookahead += 1;
+            }
+            if lookahead < chars.len() && matches!(chars[lookahead], '}' | ']') {
+                index += 1;
+                continue;
+            }
+        }
+        output.push(ch);
+        index += 1;
+    }
+
+    output
 }
 
 fn fallback_analysis_json(

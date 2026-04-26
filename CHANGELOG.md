@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - Bumped participant-facing Converge crates to v3.7.4, Organism crates to v1.4.0, and Axiom truth tooling to v0.7.0.
+- Switched Converge, Organism, and Axiom dependencies from local path checkouts to published crates.io versions.
 - Migrated truth/runtime examples to Converge's typed `PackId`, typed policy IDs, `ContextState`, and `&dyn Context` evaluator boundary.
 - Provider selection uses `select_healthy_chat_backend()` from Converge
 - Canonical participant-facing API surface: `converge-pack`, `converge-kernel`, `ChatBackend`, Organism types

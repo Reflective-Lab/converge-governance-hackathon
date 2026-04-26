@@ -7,7 +7,10 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
-use converge_provider_api::SelectionCriteria;
+use converge_provider_api::{
+    AgentRequirements, ComplianceLevel, CostClass, CostTier, LatencyClass, RequiredCapabilities,
+    SelectionCriteria, TaskComplexity,
+};
 use governance_kernel::InMemoryStore;
 use governance_truths::{AGENT_MODELS, AgentModelConfig};
 use serde::{Deserialize, Serialize};
@@ -157,9 +160,55 @@ async fn list_available_agent_models() -> Result<Json<Vec<AgentModelOptions>>, (
 }
 
 fn agent_selection_config(agent_config: &AgentModelConfig) -> ChatBackendSelectionConfig {
-    ChatBackendSelectionConfig::default().with_criteria(SelectionCriteria::from_agent_requirements(
-        &agent_config.requirements,
-    ))
+    ChatBackendSelectionConfig::default()
+        .with_criteria(criteria_from_agent_requirements(&agent_config.requirements))
+}
+
+fn criteria_from_agent_requirements(requirements: &AgentRequirements) -> SelectionCriteria {
+    let cost = match requirements.max_cost_class {
+        CostClass::Free | CostClass::VeryLow | CostClass::Low => CostTier::Minimal,
+        CostClass::Medium => CostTier::Standard,
+        CostClass::High | CostClass::VeryHigh => CostTier::Premium,
+    };
+
+    let latency = match requirements.max_latency_ms {
+        0..=100 => LatencyClass::Realtime,
+        101..=2_000 => LatencyClass::Interactive,
+        2_001..=30_000 => LatencyClass::Background,
+        _ => LatencyClass::Batch,
+    };
+
+    let complexity = if requirements.requires_content_generation {
+        TaskComplexity::Generation
+    } else if requirements.requires_reasoning || requirements.min_quality >= 0.8 {
+        TaskComplexity::Reasoning
+    } else {
+        TaskComplexity::Classification
+    };
+
+    let capabilities = RequiredCapabilities {
+        tool_use: requirements.requires_tool_use,
+        vision: requirements.requires_vision,
+        min_context_tokens: requirements.min_context_tokens,
+        structured_output: requirements.requires_structured_output,
+        code: requirements.requires_code,
+        multilingual: requirements.requires_multilingual,
+        web_search: requirements.requires_web_search,
+        content_generation: requirements.requires_content_generation,
+        business_acumen: requirements.requires_business_acumen,
+    };
+
+    let mut criteria = SelectionCriteria::default()
+        .with_cost(cost)
+        .with_latency(latency)
+        .with_complexity(complexity)
+        .with_capabilities(capabilities);
+
+    if requirements.compliance != ComplianceLevel::None {
+        criteria = criteria.with_compliance(requirements.compliance);
+    }
+
+    criteria
 }
 
 #[derive(Deserialize)]
@@ -194,10 +243,7 @@ struct AgentModelOptions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_provider_api::{
-        AgentRequirements, ComplianceLevel, CostClass, CostTier, DataSovereignty, LatencyClass,
-        TaskComplexity,
-    };
+    use converge_provider_api::DataSovereignty;
 
     #[test]
     fn agent_selection_preserves_structured_output_and_context_requirements() {
@@ -211,13 +257,15 @@ mod tests {
             requires_vision: false,
             requires_code: false,
             requires_multilingual: false,
+            requires_content_generation: false,
+            requires_business_acumen: false,
             requires_structured_output: true,
             min_context_tokens: Some(4_000),
             data_sovereignty: DataSovereignty::Any,
             compliance: ComplianceLevel::None,
         };
 
-        let criteria = SelectionCriteria::from_agent_requirements(&requirements);
+        let criteria = criteria_from_agent_requirements(&requirements);
 
         assert_eq!(criteria.cost, CostTier::Minimal);
         assert_eq!(criteria.latency, LatencyClass::Background);
@@ -238,13 +286,15 @@ mod tests {
             requires_vision: false,
             requires_code: false,
             requires_multilingual: false,
+            requires_content_generation: false,
+            requires_business_acumen: false,
             requires_structured_output: true,
             min_context_tokens: Some(8_000),
             data_sovereignty: DataSovereignty::Any,
             compliance: ComplianceLevel::None,
         };
 
-        let criteria = SelectionCriteria::from_agent_requirements(&requirements);
+        let criteria = criteria_from_agent_requirements(&requirements);
 
         assert_eq!(criteria.cost, CostTier::Standard);
         assert_eq!(criteria.latency, LatencyClass::Background);

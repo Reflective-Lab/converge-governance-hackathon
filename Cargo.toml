@@ -1,6 +1,5 @@
 [workspace]
 members = ["crates/*"]
-exclude = ["local/converge"]
 resolver = "2"
 
 [workspace.package]
@@ -9,23 +8,21 @@ edition = "2024"
 rust-version = "1.94"
 
 [workspace.dependencies]
-# Converge v3.7.4 (local upstream worktree)
-converge-core = { path = "local/converge/crates/core" }
-converge-pack = { path = "local/converge/crates/pack" }
-converge-kernel = { path = "local/converge/crates/kernel" }
-converge-model = { path = "local/converge/crates/model" }
-converge-provider-api = { path = "local/converge/crates/provider-api" }
-converge-domain = { path = "local/converge/crates/domain" }
-converge-policy = { path = "local/converge/crates/policy" }
-converge-provider = { path = "local/converge/crates/provider", default-features = false, features = ["anthropic", "gemini", "openai", "openrouter", "mistral", "brave", "tavily", "kong"] }
+# Published stack crates
+converge-core = "3.7.4"
+converge-pack = "3.7.4"
+converge-kernel = "3.7.4"
+converge-model = "3.7.4"
+converge-provider-api = "3.7.4"
+converge-domain = "3.7.4"
+converge-policy = "3.7.4"
+converge-provider = { version = "3.7.4", default-features = false, features = ["anthropic", "gemini", "openai", "openrouter", "mistral", "brave", "tavily", "kong"] }
 
-# Organism v1.4.0 (local checkout)
-organism-pack = { path = "../../work/organism/crates/pack" }
-organism-runtime = { path = "../../work/organism/crates/runtime" }
-organism-planning = { path = "../../work/organism/crates/planning" }
+organism-pack = "1.4.0"
+organism-runtime = "1.4.0"
+organism-planning = "1.4.0"
 
-# Axiom v0.7.0 (local checkout)
-axiom-truth = { path = "../../work/axiom" }
+axiom-truth = "0.7.0"
 
 # Server
 axum = "0.8"
@@ -50,13 +47,3 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Testing
 proptest = "1"
-
-[patch.crates-io]
-converge-core = { path = "local/converge/crates/core" }
-converge-domain = { path = "local/converge/crates/domain" }
-converge-kernel = { path = "local/converge/crates/kernel" }
-converge-model = { path = "local/converge/crates/model" }
-converge-optimization = { path = "local/converge/crates/optimization" }
-converge-pack = { path = "local/converge/crates/pack" }
-converge-provider = { path = "local/converge/crates/provider" }
-converge-provider-api = { path = "local/converge/crates/provider-api" }

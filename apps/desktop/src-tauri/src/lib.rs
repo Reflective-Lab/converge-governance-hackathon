@@ -326,13 +326,13 @@ fn governance_summary(governance: &TruthGovernance) -> GovernanceSummary {
 }
 
 fn generate_cedar_preview(gov: &TruthGovernance) -> String {
-    let mut lines = Vec::new();
-    lines.push("// Generated Cedar policy from Truth governance blocks".into());
-    lines.push(String::new());
-
-    lines.push("// Any authorized agent may propose.".into());
-    lines.push(r#"permit(principal, action == Action::"propose", resource)"#.into());
-    lines.push("when {".into());
+    let mut lines = vec![
+        "// Generated Cedar policy from Truth governance blocks".into(),
+        String::new(),
+        "// Any authorized agent may propose.".into(),
+        r#"permit(principal, action == Action::"propose", resource)"#.into(),
+        "when {".into(),
+    ];
     if let Some(authority) = &gov.authority {
         if let Some(actor) = &authority.actor {
             lines.push(format!(r#"  principal.domains.contains("{actor}")"#));
@@ -345,63 +345,63 @@ fn generate_cedar_preview(gov: &TruthGovernance) -> String {
     lines.push("};".into());
     lines.push(String::new());
 
-    if let Some(evidence) = &gov.evidence {
-        if !evidence.requires.is_empty() {
-            lines.push("// Validation requires evidence gates to be passed.".into());
-            lines.push(r#"permit(principal, action == Action::"validate", resource)"#.into());
-            lines.push("when {".into());
-            for (i, req) in evidence.requires.iter().enumerate() {
-                let sep = if i < evidence.requires.len() - 1 {
-                    " &&"
-                } else {
-                    ""
-                };
-                lines.push(format!(r#"  resource.gates_passed.contains("{req}"){sep}"#));
-            }
-            lines.push("};".into());
-            lines.push(String::new());
+    if let Some(evidence) = &gov.evidence
+        && !evidence.requires.is_empty()
+    {
+        lines.push("// Validation requires evidence gates to be passed.".into());
+        lines.push(r#"permit(principal, action == Action::"validate", resource)"#.into());
+        lines.push("when {".into());
+        for (i, req) in evidence.requires.iter().enumerate() {
+            let sep = if i < evidence.requires.len() - 1 {
+                " &&"
+            } else {
+                ""
+            };
+            lines.push(format!(r#"  resource.gates_passed.contains("{req}"){sep}"#));
         }
+        lines.push("};".into());
+        lines.push(String::new());
     }
 
-    if let Some(authority) = &gov.authority {
-        if !authority.requires_approval.is_empty() {
-            lines.push("// Commit requires human approval.".into());
-            lines.push(r#"permit(principal, action == Action::"commit", resource)"#.into());
-            lines.push("when {".into());
-            lines.push("  context.human_approval_present == true &&".into());
-            lines.push("  context.required_gates_met == true".into());
-            lines.push("};".into());
-            lines.push(String::new());
-            lines.push("// Block commit without human approval.".into());
-            lines.push(r#"forbid(principal, action == Action::"commit", resource)"#.into());
-            lines.push("when {".into());
-            lines.push("  context.human_approval_present == false".into());
-            lines.push("};".into());
-            lines.push(String::new());
-        }
+    if let Some(authority) = &gov.authority
+        && !authority.requires_approval.is_empty()
+    {
+        lines.push("// Commit requires human approval.".into());
+        lines.push(r#"permit(principal, action == Action::"commit", resource)"#.into());
+        lines.push("when {".into());
+        lines.push("  context.human_approval_present == true &&".into());
+        lines.push("  context.required_gates_met == true".into());
+        lines.push("};".into());
+        lines.push(String::new());
+        lines.push("// Block commit without human approval.".into());
+        lines.push(r#"forbid(principal, action == Action::"commit", resource)"#.into());
+        lines.push("when {".into());
+        lines.push("  context.human_approval_present == false".into());
+        lines.push("};".into());
+        lines.push(String::new());
     }
 
-    if let Some(constraint) = &gov.constraint {
-        if !constraint.cost_limit.is_empty() {
-            lines.push("// Enforce spending limits.".into());
-            lines.push(r#"forbid(principal, action == Action::"commit", resource)"#.into());
-            lines.push("when {".into());
-            lines.push("  context.amount > 0 &&".into());
-            lines.push("  context.human_approval_present == false".into());
-            lines.push("};".into());
-            lines.push(String::new());
-        }
+    if let Some(constraint) = &gov.constraint
+        && !constraint.cost_limit.is_empty()
+    {
+        lines.push("// Enforce spending limits.".into());
+        lines.push(r#"forbid(principal, action == Action::"commit", resource)"#.into());
+        lines.push("when {".into());
+        lines.push("  context.amount > 0 &&".into());
+        lines.push("  context.human_approval_present == false".into());
+        lines.push("};".into());
+        lines.push(String::new());
     }
 
-    if let Some(exception) = &gov.exception {
-        if !exception.escalates_to.is_empty() {
-            lines.push(format!(
-                "// Escalation path: {}",
-                exception.escalates_to.join(", ")
-            ));
-            lines.push("// When commit is denied and principal has escalatable authority,".into());
-            lines.push("// the decision escalates rather than rejecting outright.".into());
-        }
+    if let Some(exception) = &gov.exception
+        && !exception.escalates_to.is_empty()
+    {
+        lines.push(format!(
+            "// Escalation path: {}",
+            exception.escalates_to.join(", ")
+        ));
+        lines.push("// When commit is denied and principal has escalatable authority,".into());
+        lines.push("// the decision escalates rather than rejecting outright.".into());
     }
 
     lines.join("\n")
