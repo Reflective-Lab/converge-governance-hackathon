@@ -28,6 +28,11 @@
       "purpose": "Competition-derived candidate set for the breakout optimization."
     },
     {
+      "path": "demo-ai-strategy-candidates.json",
+      "used_in_steps": [],
+      "purpose": "Two-candidate executive comparison: premium single-model strategy versus governed multi-model router strategy."
+    },
+    {
       "path": "competition-matrix.json",
       "used_in_steps": [7],
       "purpose": "Role-level competition evidence for the provider-mix recommendation."
@@ -36,6 +41,11 @@
       "path": "demo-ai-provider-mix.json",
       "used_in_steps": [],
       "purpose": "Compact router/provider-mix scenario retained for alternate runs."
+    },
+    {
+      "path": "demo-ai-strategy-candidates.md",
+      "used_in_steps": [],
+      "purpose": "Business-facing candidate briefing derived from the competition matrix."
     }
   ]
 }

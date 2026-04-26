@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Premium Single-Model Strategy (Claude Opus 4.7)",
+    "score": 86.0,
+    "risk_score": 18.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 4077,
+    "currency_code": "USD"
+  },
+  {
+    "name": "Governed Multi-Model Router Strategy (Gemma + Mistral + Arcee)",
+    "score": 94.0,
+    "risk_score": 8.0,
+    "compliance_status": "compliant",
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "monthly_cost_minor": 266,
+    "currency_code": "USD"
+  }
+]

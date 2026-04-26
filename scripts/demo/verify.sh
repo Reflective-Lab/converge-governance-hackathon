@@ -6,6 +6,7 @@ VENDORS_FILE="$DEMO_DATA_DIR/demo-ai-vendors.json"
 ROUTER_FILE="$DEMO_DATA_DIR/demo-ai-provider-mix.json"
 COMPETITION_VENDORS_FILE="$DEMO_DATA_DIR/demo-competition-vendors.json"
 COMPETITION_MATRIX_FILE="$DEMO_DATA_DIR/competition-matrix.json"
+STRATEGY_CANDIDATES_FILE="$DEMO_DATA_DIR/demo-ai-strategy-candidates.json"
 TMP_DIR="${TMPDIR:-/tmp}/governance-demo-verify-$$"
 EXPERIENCE_PATH="$TMP_DIR/experience.json"
 DEMO_BIN=(cargo run -q -p governance-server --bin vendor-selection-demo --)
@@ -58,6 +59,7 @@ no_approval="$TMP_DIR/no-approval.json"
 advisory="$TMP_DIR/advisory.json"
 breakout="$TMP_DIR/breakout.json"
 competition_breakout="$TMP_DIR/competition-breakout.json"
+strategy_candidates="$TMP_DIR/strategy-candidates.json"
 business="$TMP_DIR/business.txt"
 
 jq empty "$COMPETITION_MATRIX_FILE" \
@@ -67,6 +69,10 @@ jq empty "$COMPETITION_MATRIX_FILE" \
 jq empty "$COMPETITION_VENDORS_FILE" \
   && pass "competition vendor JSON is valid" \
   || fail "competition vendor JSON is valid"
+
+jq empty "$STRATEGY_CANDIDATES_FILE" \
+  && pass "strategy candidate JSON is valid" \
+  || fail "strategy candidate JSON is valid"
 
 run_json "$governed" --mode=governed --min-score=75 --max-risk=30
 assert_jq "$governed" '.converged == true' "governed run converges"
@@ -90,6 +96,10 @@ assert_jq "$breakout" 'any(.projection.details.optimization.rows[]; .pareto_fron
 run_json_with_file "$competition_breakout" "$COMPETITION_VENDORS_FILE" --mode=pareto-breakout --min-score=75 --max-risk=30
 assert_jq "$competition_breakout" '.projection.details.shortlist.shortlist[0].vendor_name == "Gemma 4 31B (Google)"' "competition data ranks Gemma first"
 assert_jq "$competition_breakout" '(.projection.details.context.strategies[] | select(.id == "strategy:vendor-sel:router-hypothesis") | .content.router_fit) == true' "competition data triggers router hypothesis"
+
+run_json_with_file "$strategy_candidates" "$STRATEGY_CANDIDATES_FILE" --mode=governed --min-score=75 --max-risk=30
+assert_jq "$strategy_candidates" '.projection.details.shortlist.shortlist[0].vendor_name == "Governed Multi-Model Router Strategy (Gemma + Mistral + Arcee)"' "strategy candidates rank governed router mix first"
+assert_jq "$strategy_candidates" '.projection.details.policy.selected_vendor == "Governed Multi-Model Router Strategy (Gemma + Mistral + Arcee)"' "strategy candidates promote governed router mix"
 
 "${DEMO_BIN[@]}" \
   --business \

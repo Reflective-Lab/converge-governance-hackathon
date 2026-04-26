@@ -80,6 +80,17 @@ demo-ai-vendors *ARGS:
 demo-competition *ARGS:
     @cargo run -q -p governance-server --bin vendor-selection-demo -- --vendors-json=examples/vendor-selection/demo-competition-vendors.json {{ARGS}}
 
+# Run the two executive strategy candidates
+demo-strategy-candidates *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    experience_path="${TMPDIR:-/tmp}/governance-strategy-candidates-experience.json"
+    rm -f "$experience_path"
+    cargo run -q -p governance-server --bin vendor-selection-demo -- \
+        --vendors-json=examples/vendor-selection/demo-ai-strategy-candidates.json \
+        --experience-path="$experience_path" \
+        {{ARGS}}
+
 # Competition vendors: governed then pareto-breakout side by side
 demo-competition-both:
     @echo "=== GOVERNED ===" && cargo run -q -p governance-server --bin vendor-selection-demo -- --vendors-json=examples/vendor-selection/demo-competition-vendors.json --mode=governed

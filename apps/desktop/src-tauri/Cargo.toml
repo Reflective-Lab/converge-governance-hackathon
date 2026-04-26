@@ -27,3 +27,11 @@ reqwest = { version = "0.12", features = ["json"] }
 
 [features]
 default = []
+
+[patch.crates-io]
+converge-core = { path = "../../../local/converge/crates/core" }
+converge-model = { path = "../../../local/converge/crates/model" }
+converge-optimization = { path = "../../../local/converge/crates/optimization" }
+converge-pack = { path = "../../../local/converge/crates/pack" }
+converge-provider = { path = "../../../local/converge/crates/provider" }
+converge-provider-api = { path = "../../../local/converge/crates/provider-api" }

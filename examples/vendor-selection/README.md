@@ -33,6 +33,8 @@ DEMO_RESULT_PACE=on DEMO_RESULT_LINE_DELAY=0.05 just demo-live
 |---|---|
 | `demo-ai-vendors.json` | The governed Step 3-6 vendor list used for the stable Mistral/Qwen story. |
 | `demo-competition-vendors.json` | The richer Step 7 model/provider candidate list derived from the competition matrix. |
+| `demo-ai-strategy-candidates.json` | Two-candidate strategy comparison: premium single-model vs governed router mix. |
+| `demo-ai-strategy-candidates.md` | Business-facing explanation of the two strategy candidates. |
 | `competition-matrix.json` | Role-level competition evidence used to explain the router/provider-mix breakout. |
 | `demo-ai-provider-mix.json` | Earlier router/provider-mix scenario retained as a compact fallback scenario. |
 | `buyer-brief.md` | Business problem, scope, stakeholders, constraints, and success criteria assumed before Helm starts. |
@@ -51,6 +53,8 @@ Change price sensitivity with `monthly_cost_minor`.
 Change evidence coverage with `certifications`.
 
 Change the future-state/router narrative by editing `competition-matrix.json` and `demo-competition-vendors.json`.
+
+Use `demo-ai-strategy-candidates.json` when you want the shortest possible executive comparison: one premium model everywhere versus a governed multi-model router strategy.
 
 The demo should still converge or honestly stop. If a data edit makes the story incoherent, that is useful feedback: the next step is to improve the source pack or the formation logic, not hide the contradiction.
 
