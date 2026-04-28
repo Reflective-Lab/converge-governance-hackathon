@@ -453,6 +453,7 @@ fn invariant_class_label(class: InvariantClassTag) -> &'static str {
 // ─── Due Diligence (self-contained, copied from Monterro) ───
 
 mod dd;
+mod today;
 
 #[tauri::command]
 async fn run_due_diligence(
@@ -465,6 +466,49 @@ async fn run_due_diligence(
         .map_err(|e| format!("{e:#}"))
 }
 
+#[tauri::command(rename_all = "snake_case")]
+async fn run_today_vendor_selection(
+    stage: String,
+    live: bool,
+) -> Result<today::TodayRunResponse, String> {
+    today::run_stage(&stage, live).await
+}
+
+#[tauri::command]
+async fn record_today_replay_session() -> Result<today::TodayReplaySession, String> {
+    today::record_replay_session().await
+}
+
+#[tauri::command]
+async fn build_today_offline_replay_session() -> Result<today::TodayReplaySession, String> {
+    today::build_offline_replay_session().await
+}
+
+#[tauri::command]
+fn today_replay_session() -> Result<today::TodayReplaySession, String> {
+    today::load_replay_session()
+}
+
+#[tauri::command]
+fn today_replay_status() -> today::TodayReplayStatus {
+    today::replay_status()
+}
+
+#[tauri::command]
+fn clear_today_replay_session() -> Result<(), String> {
+    today::clear_replay_session()
+}
+
+#[tauri::command]
+fn reset_today_demo_experience() -> Result<(), String> {
+    today::reset_experience()
+}
+
+#[tauri::command]
+fn today_demo_experience() -> governance_server::experience::ExperienceSnapshot {
+    today::experience_snapshot()
+}
+
 pub fn run() {
     let _ = dotenv::dotenv();
 
@@ -474,7 +518,15 @@ pub fn run() {
             guide_truth_heading,
             simulate_truth,
             extract_policy,
-            run_due_diligence
+            run_due_diligence,
+            run_today_vendor_selection,
+            record_today_replay_session,
+            build_today_offline_replay_session,
+            today_replay_session,
+            today_replay_status,
+            clear_today_replay_session,
+            reset_today_demo_experience,
+            today_demo_experience
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

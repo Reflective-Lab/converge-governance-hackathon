@@ -191,6 +191,12 @@ pub struct RunSummary {
     pub converged: bool,
     pub confidence: f64,
     pub recommended_vendor: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_document_path: Option<String>,
+    #[serde(default)]
+    pub static_fact_count: usize,
+    #[serde(default)]
+    pub static_fact_paths: Vec<String>,
     pub timestamp: String,
 }
 
@@ -202,9 +208,12 @@ pub struct RunSummaryInput<'a> {
     pub converged: bool,
     pub confidence: f64,
     pub recommended_vendor: &'a str,
+    pub source_document_path: Option<&'a str>,
+    pub static_fact_count: usize,
+    pub static_fact_paths: Vec<String>,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ExperienceSnapshot {
     pub truth_key: String,
     pub run_count: usize,
@@ -212,7 +221,7 @@ pub struct ExperienceSnapshot {
     pub aggregate: ExperienceAggregate,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ExperienceAggregate {
     pub convergence_rate: f64,
     pub avg_cycles: f64,
@@ -221,7 +230,7 @@ pub struct ExperienceAggregate {
     pub recommendation_frequencies: Vec<RecommendationFrequency>,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RecommendationFrequency {
     pub recommendation: String,
     pub count: usize,
@@ -328,6 +337,9 @@ impl ExperienceRegistry {
             converged: input.converged,
             confidence: input.confidence,
             recommended_vendor: input.recommended_vendor.to_string(),
+            source_document_path: input.source_document_path.map(ToString::to_string),
+            static_fact_count: input.static_fact_count,
+            static_fact_paths: input.static_fact_paths,
             timestamp: Utc::now().to_rfc3339(),
         };
         let mut summaries = self.run_summaries.lock().unwrap_or_else(|e| e.into_inner());
@@ -418,13 +430,15 @@ impl ExperienceRegistry {
         let mut lines = vec![format!("Prior runs: {}", runs.len())];
         for (i, run) in runs.iter().rev().take(5).enumerate() {
             lines.push(format!(
-                "  Run -{}: recommended={}, confidence={:.2}, cycles={}, converged={}, elapsed={}ms",
+                "  Run -{}: recommended={}, confidence={:.2}, cycles={}, converged={}, elapsed={}ms, source={}, static_facts={}",
                 i + 1,
                 run.recommended_vendor,
                 run.confidence,
                 run.cycles,
                 run.converged,
                 run.elapsed_ms,
+                run.source_document_path.as_deref().unwrap_or("none"),
+                run.static_fact_count,
             ));
         }
         lines.join("\n")
@@ -506,6 +520,17 @@ impl ExperienceRegistry {
                     "vendor": vendor,
                     "count": count,
                     "total_prior_runs": prior_count,
+                }),
+            );
+        }
+
+        if let Some(last_prior) = prior_runs.last() {
+            result.as_object_mut().unwrap().insert(
+                "latest_prior_source".to_string(),
+                serde_json::json!({
+                    "source_document_path": last_prior.source_document_path.as_deref(),
+                    "static_fact_count": last_prior.static_fact_count,
+                    "static_fact_paths": &last_prior.static_fact_paths,
                 }),
             );
         }

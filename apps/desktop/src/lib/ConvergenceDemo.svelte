@@ -78,6 +78,7 @@
       terminal_facts?: string[];
     };
     learning?: Record<string, any>;
+    stack_pressure?: StackPressure[];
   }
 
   interface TruthResult {
@@ -130,6 +131,14 @@
         share: number;
       }>;
     };
+  }
+
+  interface StackPressure {
+    layer: string;
+    version: string;
+    contract: string;
+    demo_signal: string;
+    pressure: string;
   }
 
   interface Stage {
@@ -413,6 +422,7 @@
   $: selectedAgents = agents.filter((agent) => selectedStage.agentIds.includes(agent.id));
   $: candidateVendors = vendorsForPattern(selectedPattern);
   $: optimizationRows = rowsForDisplay();
+  $: foundationPressure = foundationPressureRows();
   $: contextCounts = {
     strategies: context.strategies?.length ?? 0,
     seeds: context.seeds?.length ?? 0,
@@ -567,6 +577,48 @@
     const rows = details?.optimization?.rows;
     if (Array.isArray(rows) && rows.length > 0) return rows;
     return localOptimizationRows(candidateVendors);
+  }
+
+  function foundationPressureRows(): StackPressure[] {
+    const rows = details?.stack_pressure;
+    if (Array.isArray(rows) && rows.length > 0) return rows;
+    return [
+      {
+        layer: "Helm",
+        version: "0.1.0",
+        contract: "Operator workbench for truth execution and evidence inspection.",
+        demo_signal: "Waiting for a run.",
+        pressure: "Run a loop pattern to see which product surfaces the demo stresses.",
+      },
+      {
+        layer: "Axiom",
+        version: "0.7.0",
+        contract: "Normative truth contract, invariants, examples, and policy lens.",
+        demo_signal: "Planned invariants are score, risk, compliance, HITL, and provenance.",
+        pressure: "Editable truth artifacts should compile into visible diagnostics.",
+      },
+      {
+        layer: "Organism",
+        version: "1.4.0",
+        contract: "Intent, planning seed, formation assembly, and topology choice.",
+        demo_signal: selectedPattern.topology,
+        pressure: "Topology labels should become typed plan bundles.",
+      },
+      {
+        layer: "Converge",
+        version: "3.7.4",
+        contract: "Engine cycles, context partitions, promotion, policy, and fixed points.",
+        demo_signal: "Context partitions will populate after execution.",
+        pressure: "Participants need richer criterion evidence and promotion traces.",
+      },
+      {
+        layer: "Ferrox",
+        version: "0.3.12",
+        contract: "Optimization substrate for feasible sets and Pareto frontier decisions.",
+        demo_signal: `${candidateVendors.length} candidate rows previewed locally.`,
+        pressure: "The local optimizer should graduate into a Ferrox-backed suggestor.",
+      },
+    ];
   }
 
   function localOptimizationRows(vendors: VendorInput[]): OptimizationRow[] {
@@ -1129,24 +1181,25 @@
         </section>
 
         <section class="rounded-2xl border border-border bg-deep p-4">
-          <span class="card-label mb-3 block">Intelligence Stack</span>
+          <div class="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <span class="card-label">Foundation Pressure</span>
+              <h3 class="mt-1 font-display text-xl font-semibold text-bright">What this run asks from the stack</h3>
+            </div>
+            <span class="pill pill-info">{result ? "Observed" : "Planned"}</span>
+          </div>
           <div class="space-y-2">
-            <div class="rounded-xl border border-border bg-raised px-3 py-2">
-              <strong class="text-sm text-bright">LLMs</strong>
-              <p class="mt-1 text-xs text-subtle">Extract evidence, explain trade-offs, and synthesize decisions.</p>
-            </div>
-            <div class="rounded-xl border border-border bg-raised px-3 py-2">
-              <strong class="text-sm text-bright">Statistics and ML</strong>
-              <p class="mt-1 text-xs text-subtle">Calibrate confidence, compare prior runs, and detect unstable recommendations.</p>
-            </div>
-            <div class="rounded-xl border border-border bg-raised px-3 py-2">
-              <strong class="text-sm text-bright">CP/SAT and OR</strong>
-              <p class="mt-1 text-xs text-subtle">Separate hard feasibility constraints from weighted objective optimization.</p>
-            </div>
-            <div class="rounded-xl border border-border bg-raised px-3 py-2">
-              <strong class="text-sm text-bright">Cedar Policy</strong>
-              <p class="mt-1 text-xs text-subtle">Turns a recommendation into Promote, Escalate, or Reject.</p>
-            </div>
+            {#each foundationPressure as row}
+              <article class="rounded-xl border border-border bg-raised px-3 py-2">
+                <div class="flex items-center justify-between gap-3">
+                  <strong class="text-sm text-bright">{row.layer}</strong>
+                  <span class="font-mono text-[0.68rem] text-muted">{row.version}</span>
+                </div>
+                <p class="mt-1 text-xs leading-relaxed text-subtle">{row.contract}</p>
+                <p class="mt-2 rounded-lg border border-border bg-deep px-2 py-2 text-xs text-text">{row.demo_signal}</p>
+                <p class="mt-2 text-xs leading-relaxed text-lime">{row.pressure}</p>
+              </article>
+            {/each}
           </div>
         </section>
       </aside>

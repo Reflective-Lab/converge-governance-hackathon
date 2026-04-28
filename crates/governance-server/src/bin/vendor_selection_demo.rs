@@ -25,6 +25,8 @@ struct CliOptions {
     demo_mode: String,
     human_approval_present: Option<String>,
     vendors_json_path: Option<PathBuf>,
+    source_doc_path: Option<PathBuf>,
+    static_facts_paths: Vec<PathBuf>,
     experience_path: PathBuf,
     model_overrides: ModelOverrides,
 }
@@ -43,6 +45,8 @@ impl Default for CliOptions {
             demo_mode: "governed".to_string(),
             human_approval_present: None,
             vendors_json_path: None,
+            source_doc_path: None,
+            static_facts_paths: Vec::new(),
             experience_path: PathBuf::from(DEFAULT_EXPERIENCE_PATH),
             model_overrides: ModelOverrides::default(),
         }
@@ -76,6 +80,7 @@ async fn main() -> anyhow::Result<()> {
         ),
         ("demo_mode".to_string(), options.demo_mode.clone()),
     ]);
+    load_source_material(&mut inputs, &options)?;
     if options.live {
         inputs.insert("live_mode".to_string(), "true".to_string());
     }
@@ -153,6 +158,17 @@ fn parse_args() -> anyhow::Result<CliOptions> {
             _ if arg.starts_with("--vendors-json=") => {
                 options.vendors_json_path = Some(PathBuf::from(value_after_equals(&arg)));
             }
+            _ if arg.starts_with("--source-doc=")
+                || arg.starts_with("--doc=")
+                || arg.starts_with("--document=") =>
+            {
+                options.source_doc_path = Some(PathBuf::from(value_after_equals(&arg)));
+            }
+            _ if arg.starts_with("--static-facts=") => {
+                options
+                    .static_facts_paths
+                    .push(PathBuf::from(value_after_equals(&arg)));
+            }
             _ if arg.starts_with("--experience-path=") => {
                 options.experience_path = PathBuf::from(value_after_equals(&arg));
             }
@@ -199,6 +215,48 @@ fn load_vendors_json(options: &CliOptions) -> anyhow::Result<String> {
     }
 }
 
+fn load_source_material(
+    inputs: &mut HashMap<String, String>,
+    options: &CliOptions,
+) -> anyhow::Result<()> {
+    if let Some(path) = &options.source_doc_path {
+        let source_document = std::fs::read_to_string(path)
+            .map_err(|error| anyhow::anyhow!("failed to read {}: {error}", path.display()))?;
+        inputs.insert(
+            "source_document_path".to_string(),
+            path.display().to_string(),
+        );
+        inputs.insert("source_document".to_string(), source_document);
+    }
+
+    if options.static_facts_paths.is_empty() {
+        return Ok(());
+    }
+
+    let mut facts = Vec::new();
+    let mut paths = Vec::new();
+    for path in &options.static_facts_paths {
+        let raw = std::fs::read_to_string(path)
+            .map_err(|error| anyhow::anyhow!("failed to read {}: {error}", path.display()))?;
+        let content = serde_json::from_str::<Value>(&raw).unwrap_or(Value::String(raw));
+        paths.push(path.display().to_string());
+        facts.push(serde_json::json!({
+            "path": path.display().to_string(),
+            "content": content,
+        }));
+    }
+
+    inputs.insert(
+        "static_facts_paths_json".to_string(),
+        serde_json::to_string(&paths)?,
+    );
+    inputs.insert(
+        "static_facts_json".to_string(),
+        serde_json::to_string(&facts)?,
+    );
+    Ok(())
+}
+
 fn print_help() {
     println!(
         r#"Headless vendor-selection demo
@@ -212,6 +270,9 @@ Options:
   --json                         Print raw TruthExecutionResult JSON
   --business                     Print concise business-facing demo output
   --vendors-json=PATH            Vendor input JSON file
+  --source-doc=PATH              Buyer/source document used for the run
+  --doc=PATH                     Alias for --source-doc
+  --static-facts=PATH            Static facts JSON/text file; may be repeated
   --min-score=N                  Minimum vendor score for shortlist (default: 75)
   --max-risk=N                   Maximum risk score for shortlist (default: 30)
   --max-vendors=N                Maximum shortlist size (default: 3)
@@ -273,6 +334,7 @@ fn print_business_demo(result: &TruthExecutionResult, options: &CliOptions) {
     print_business_policy(details);
     print_business_learning(details);
     print_business_router(details);
+    print_business_stack_pressure(details);
     print_business_provider_telemetry(result);
 }
 
@@ -479,6 +541,29 @@ fn print_business_router(details: &Value) {
                 str_at(route, "/route").unwrap_or("route")
             );
         }
+    }
+}
+
+fn print_business_stack_pressure(details: &Value) {
+    let Some(rows) = details
+        .get("stack_pressure")
+        .and_then(serde_json::Value::as_array)
+    else {
+        return;
+    };
+
+    println!("Foundation pressure:");
+    for row in rows {
+        println!(
+            "  - {} {}: {}",
+            str_at(row, "/layer").unwrap_or("layer"),
+            str_at(row, "/version").unwrap_or(""),
+            str_at(row, "/demo_signal").unwrap_or("no signal")
+        );
+        println!(
+            "    Next: {}",
+            str_at(row, "/pressure").unwrap_or("no pressure recorded")
+        );
     }
 }
 
@@ -929,6 +1014,20 @@ fn print_consensus(result: &TruthExecutionResult, details: Option<&Value>) {
             number_at(learning, "/prior_runs").unwrap_or_default(),
             str_at(learning, "/status").unwrap_or("updated")
         );
+    }
+
+    if let Some(rows) = details
+        .and_then(|details| details.get("stack_pressure"))
+        .and_then(Value::as_array)
+    {
+        println!("Foundation pressure:");
+        for row in rows {
+            println!(
+                "  - {}: {}",
+                str_at(row, "/layer").unwrap_or("layer"),
+                str_at(row, "/demo_signal").unwrap_or("no signal")
+            );
+        }
     }
 }
 

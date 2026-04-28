@@ -48,21 +48,29 @@ demo-flow-governed:
 demo-flow-breakout:
     @cargo run -q -p governance-server --bin vendor-selection-demo -- --mode=pareto-breakout
 
-# Run the full presentation demo (offline deterministic)
-demo:
-    @./scripts/demo/presentation.sh
+# Run the full Helm AI vendor-selection demo (mock by default; pass -l/--live for real Providers, -v/--verbose for diagnostics)
+demo *ARGS:
+    @./scripts/demo/presentation.sh {{ARGS}}
 
-# Run the full presentation demo with live LLM/search providers
-demo-live:
-    @./scripts/demo/presentation.sh --live
+# Run the governed Helm AI vendor-selection track with live Providers
+demo-live *ARGS:
+    @./scripts/demo/today.sh --live {{ARGS}}
 
-# Run the live governed-selection demo only
-demo-today:
-    @./scripts/demo/today.sh
+# Run the governed Helm AI vendor-selection track with mock Providers
+demo-today *ARGS:
+    @./scripts/demo/today.sh {{ARGS}}
 
-# Run the live creative/Pareto-breakout demo only
-demo-creative:
-    @./scripts/demo/creative.sh
+# Run the governed Helm AI vendor-selection track with live Providers
+demo-today-live *ARGS:
+    @./scripts/demo/today.sh --live {{ARGS}}
+
+# Run the creative Helm AI vendor-selection Pareto track with mock Providers
+demo-creative *ARGS:
+    @./scripts/demo/creative.sh {{ARGS}}
+
+# Run the creative Helm AI vendor-selection Pareto track with live Providers
+demo-creative-live *ARGS:
+    @./scripts/demo/creative.sh --live {{ARGS}}
 
 # Run a single presentation step (1-7)
 demo-step STEP:

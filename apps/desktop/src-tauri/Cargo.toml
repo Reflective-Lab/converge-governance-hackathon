@@ -13,6 +13,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+governance-kernel = { path = "../../../crates/governance-kernel" }
+governance-server = { path = "../../../crates/governance-server" }
 governance-telemetry = { path = "../../../crates/governance-telemetry" }
 converge-provider-api = "3.7.4"
 converge-provider = { version = "3.7.4", default-features = false, features = ["anthropic", "gemini", "openai", "openrouter", "mistral", "kong"] }

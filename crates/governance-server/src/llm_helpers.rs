@@ -3,9 +3,13 @@ use std::sync::OnceLock;
 use std::time::Instant;
 
 use anyhow::anyhow;
-use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
+use converge_provider::{
+    AnthropicBackend, ChatBackendSelectionConfig, GeminiBackend, MistralBackend, OpenAiBackend,
+    OpenRouterBackend, select_healthy_chat_backend,
+};
 use converge_provider_api::{
-    ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat, SelectionCriteria,
+    ChatMessage, ChatRequest, ChatRole, DynChatBackend, LlmError, ResponseFormat,
+    SelectionCriteria,
 };
 use governance_telemetry::{LlmCallSink, LlmCallTelemetry, LlmUsageSummary};
 use serde::Deserialize;
@@ -23,15 +27,22 @@ pub async fn select_llm(
     provider_override: Option<&str>,
     model_override: Option<&str>,
 ) -> anyhow::Result<SelectedLlm> {
-    let mut config = ChatBackendSelectionConfig::from_env().unwrap_or_default();
-    config.criteria = SelectionCriteria::analysis();
-    if config.provider_override.is_none()
-        && provider_override.is_none()
+    if provider_override.is_none()
+        && let Some(model) = model_override
+        && let Some(provider) = infer_direct_provider(model)
+    {
+        return select_direct_model(provider, model).await;
+    }
+
+    if provider_override.is_none()
         && model_override.is_some_and(|model| model.contains('/'))
         && std::env::var_os("OPENROUTER_API_KEY").is_some()
     {
-        config = config.with_provider_override("openrouter");
+        return select_openrouter_model(model_override.unwrap()).await;
     }
+
+    let mut config = ChatBackendSelectionConfig::from_env().unwrap_or_default();
+    config.criteria = SelectionCriteria::analysis();
     if let Some(provider) = provider_override {
         config = config.with_provider_override(provider.to_string());
     }
@@ -48,6 +59,100 @@ pub async fn select_llm(
 
 pub async fn select_llm_for_model(model: &str) -> anyhow::Result<SelectedLlm> {
     select_llm(None, Some(model)).await
+}
+
+async fn select_openrouter_model(model: &str) -> anyhow::Result<SelectedLlm> {
+    let backend: Arc<dyn DynChatBackend> = Arc::new(
+        OpenRouterBackend::from_env()
+            .map_err(|error| anyhow!("failed to configure OpenRouter: {error}"))?
+            .with_model(model),
+    );
+    probe_model(&backend, model)
+        .await
+        .map_err(|error| anyhow!("OpenRouter model probe failed for {model}: {error}"))?;
+
+    Ok(SelectedLlm {
+        provider: "openrouter".to_string(),
+        model: model.to_string(),
+        model_override: Some(model.to_string()),
+        backend,
+    })
+}
+
+async fn select_direct_model(provider: &str, model: &str) -> anyhow::Result<SelectedLlm> {
+    let backend: Arc<dyn DynChatBackend> = match provider {
+        "openai" => Arc::new(
+            OpenAiBackend::from_env()
+                .map_err(|error| anyhow!("failed to configure OpenAI: {error}"))?
+                .with_model(model),
+        ),
+        "anthropic" => Arc::new(
+            AnthropicBackend::from_env()
+                .map_err(|error| anyhow!("failed to configure Anthropic: {error}"))?
+                .with_model(model),
+        ),
+        "gemini" => Arc::new(
+            GeminiBackend::from_env()
+                .map_err(|error| anyhow!("failed to configure Gemini: {error}"))?
+                .with_model(model),
+        ),
+        "mistral" => Arc::new(
+            MistralBackend::from_env()
+                .map_err(|error| anyhow!("failed to configure Mistral: {error}"))?
+                .with_model(model),
+        ),
+        _ => return Err(anyhow!("unsupported direct provider for model {model}: {provider}")),
+    };
+    probe_model(&backend, model)
+        .await
+        .map_err(|error| anyhow!("{provider} model probe failed for {model}: {error}"))?;
+
+    Ok(SelectedLlm {
+        provider: provider.to_string(),
+        model: model.to_string(),
+        model_override: Some(model.to_string()),
+        backend,
+    })
+}
+
+fn infer_direct_provider(model: &str) -> Option<&'static str> {
+    if model.starts_with("gpt-") || model.starts_with("o1") || model.starts_with("o3") || model.starts_with("o4") {
+        return std::env::var_os("OPENAI_API_KEY").map(|_| "openai");
+    }
+    if model.starts_with("claude-") {
+        return std::env::var_os("ANTHROPIC_API_KEY").map(|_| "anthropic");
+    }
+    if model.starts_with("gemini-") {
+        return std::env::var_os("GEMINI_API_KEY").map(|_| "gemini");
+    }
+    if model.starts_with("mistral-")
+        || model.starts_with("ministral-")
+        || model.starts_with("open-mistral")
+    {
+        return std::env::var_os("MISTRAL_API_KEY").map(|_| "mistral");
+    }
+    None
+}
+
+async fn probe_model(backend: &Arc<dyn DynChatBackend>, model: &str) -> Result<(), LlmError> {
+    backend
+        .chat(ChatRequest {
+            messages: vec![ChatMessage {
+                role: ChatRole::User,
+                content: "Return ok.".to_string(),
+                tool_calls: Vec::new(),
+                tool_call_id: None,
+            }],
+            system: None,
+            tools: Vec::new(),
+            response_format: ResponseFormat::Text,
+            max_tokens: Some(2),
+            temperature: Some(0.0),
+            stop_sequences: Vec::new(),
+            model: Some(model.to_string()),
+        })
+        .await
+        .map(|_| ())
 }
 
 pub async fn call_llm_text(

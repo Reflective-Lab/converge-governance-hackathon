@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
+  import { invokeTauri } from "./tauri";
   import { randomVerb } from "./spinner";
 
   let {
@@ -14,7 +15,8 @@
 
   type BootstrapMode = "upload" | "sample";
   type EvaluationMode = "today" | "creative";
-  type RunState = "bootstrap" | "running" | "hitl" | "finished";
+  type DemoRunMode = "mock" | "replay" | "live";
+  type RunState = "bootstrap" | "running" | "gate-review" | "hitl" | "commit-review" | "finished";
 
   interface EvaluationDoc {
     name: string;
@@ -45,6 +47,90 @@
     source: string;
   }
 
+  interface VendorInput {
+    name: string;
+    score: number;
+    risk_score: number;
+    compliance_status: string;
+    certifications: string[];
+    monthly_cost_minor: number;
+    currency_code: string;
+  }
+
+  interface TruthResult {
+    converged: boolean;
+    cycles: number;
+    stop_reason: string;
+    criteria_outcomes: { criterion: string; result: string }[];
+    projection: {
+      events_emitted: number;
+      details: Record<string, any> | null;
+    } | null;
+    llm_calls?: Array<Record<string, any>> | null;
+  }
+
+  interface RunSummary {
+    run_id: string;
+    cycles: number;
+    elapsed_ms: number;
+    vendor_count: number;
+    converged: boolean;
+    confidence: number;
+    recommended_vendor: string;
+    timestamp: string;
+  }
+
+  interface ExperienceSnapshot {
+    truth_key: string;
+    run_count: number;
+    summaries: RunSummary[];
+    aggregate: {
+      convergence_rate: number;
+      avg_cycles: number;
+      avg_confidence: number;
+      avg_elapsed_ms: number;
+      recommendation_frequencies: Array<{
+        recommendation: string;
+        count: number;
+        share: number;
+      }>;
+    };
+  }
+
+  interface TodayRunResponse {
+    stage: string;
+    result: TruthResult;
+    experience: ExperienceSnapshot;
+  }
+
+  interface TodayRecordedRun {
+    stage: string;
+    result: TruthResult;
+    experience: ExperienceSnapshot;
+    compressed_delay_ms: number;
+    original_elapsed_ms?: number | null;
+  }
+
+  interface TodayReplaySession {
+    schema_version: number;
+    recorded_at: string;
+    source_hash: string;
+    mode: string;
+    runs: TodayRecordedRun[];
+  }
+
+  interface TodayReplayStatus {
+    available: boolean;
+    path: string;
+    mode?: string | null;
+    recorded_at?: string | null;
+    source_hash?: string | null;
+    source_matches: boolean;
+    run_count: number;
+    model_summary: string[];
+    error?: string | null;
+  }
+
   let runState = $state<RunState>("bootstrap");
   let bootstrapMode = $state<BootstrapMode>("upload");
   let evaluationMode = $state<EvaluationMode>("today");
@@ -52,13 +138,74 @@
   let executableReady = $state(false);
   let steps = $state<EvaluationStep[]>([]);
   let spinnerVerb = $state(randomVerb());
+  let runMode = $state<DemoRunMode>("mock");
+  let replayStatus = $state<TodayReplayStatus | null>(null);
+  let replaySession = $state<TodayReplaySession | null>(null);
+  let replayCursor = $state<Record<string, number>>({});
+  let recordingReplay = $state(false);
+  let buildingOfflineReplay = $state(false);
+  let replayStatusLoaded = $state(false);
   let delegateToCedar = $state(true);
   let approver = $state("procurement.review@buyer.example");
   let approvalNote = $state("Evidence package is sufficient for the demo threshold.");
   let installedCedar = $state(false);
   let expectedDocsOpen = $state(false);
+  let flowError = $state("");
+  let analysisRun = $state<TodayRunResponse | null>(null);
+  let approvedRun = $state<TodayRunResponse | null>(null);
+  let negativeControlRun = $state<TodayRunResponse | null>(null);
+  let learningRuns = $state<TodayRunResponse[]>([]);
+  let experience = $state<ExperienceSnapshot | null>(null);
   let timers: ReturnType<typeof setTimeout>[] = [];
   let spinnerInterval: ReturnType<typeof setInterval> | null = null;
+
+  const todayVendors: VendorInput[] = [
+    {
+      name: "Anthropic",
+      score: 92,
+      risk_score: 12,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "ISO27001", "GDPR"],
+      monthly_cost_minor: 4800000,
+      currency_code: "USD",
+    },
+    {
+      name: "OpenAI",
+      score: 90,
+      risk_score: 18,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "ISO27001", "GDPR"],
+      monthly_cost_minor: 5200000,
+      currency_code: "USD",
+    },
+    {
+      name: "Google DeepMind",
+      score: 88,
+      risk_score: 15,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "ISO27001", "GDPR", "FedRAMP"],
+      monthly_cost_minor: 4500000,
+      currency_code: "USD",
+    },
+    {
+      name: "Mistral",
+      score: 82,
+      risk_score: 22,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "GDPR"],
+      monthly_cost_minor: 2200000,
+      currency_code: "USD",
+    },
+    {
+      name: "Qwen (Alibaba Cloud)",
+      score: 79,
+      risk_score: 35,
+      compliance_status: "pending",
+      certifications: ["ISO27001"],
+      monthly_cost_minor: 1800000,
+      currency_code: "USD",
+    },
+  ];
 
   const expectedDocs: ExpectedDoc[] = [
     {
@@ -197,22 +344,22 @@
       purpose: "Express needs at the top level and let lower layers pick the right combo.",
     },
     {
-      step: "Wide Search",
-      detail: "Use Brave to discover providers, incidents, pricing pages, and integration signals.",
-      agent: "Wide Evidence Agent",
-      purpose: "Avoid local-minimum evidence by getting broad coverage first.",
+      step: "Compliance Screen",
+      detail: "Screen declared compliance and certifications before ranking.",
+      agent: "Compliance Agent",
+      purpose: "Block pending or missing evidence before it can become a commitment.",
     },
     {
-      step: "Deep Search",
-      detail: "Use Tavily to verify the strongest claims and source specific numbers.",
-      agent: "Deep Evidence Agent",
-      purpose: "Ground the candidate facts before they become shared evidence.",
+      step: "Price And Risk",
+      detail: "Compare cost efficiency, operational risk, and certification coverage.",
+      agent: "Price Optimizer + Risk Skeptic",
+      purpose: "Make the trade-off explicit instead of hiding it in a scorecard.",
     },
     {
-      step: "Role Analysis",
-      detail: "Score the workload against discussion, synthesis, polishing, escalation, and gateway needs.",
-      agent: "Compliance Agent + Price Optimizer + Risk Skeptic",
-      purpose: "Compare model mix and router architecture against the buyer constraints.",
+      step: "Shortlist And Synthesis",
+      detail: "Rank feasible candidates and synthesize the recommendation.",
+      agent: "Consensus Promoter",
+      purpose: "Promote the recommendation only from facts that survived the gates.",
     },
     {
       step: "HITL Gate",
@@ -221,21 +368,48 @@
       purpose: "Capture authority now and optionally delegate the same pattern next time.",
     },
     {
+      step: "Promote Commitment",
+      detail: "Rerun with human approval present and let Cedar authorize the action.",
+      agent: "Cedar Gate",
+      purpose: "Separate recommendation from commitment.",
+    },
+    {
+      step: "Negative Control",
+      detail: "Rerun the same evidence with advisory authority.",
+      agent: "Cedar Gate",
+      purpose: "Prove policy can reject a good recommendation when authority is wrong.",
+    },
+    {
+      step: "Learning Run 1",
+      detail: "Replay the accepted pattern and expose prior context.",
+      agent: "Experience Store",
+      purpose: "Show that learning changes context, not hard policy boundaries.",
+    },
+    {
+      step: "Learning Run 2",
+      detail: "Add another governed run to the experience registry.",
+      agent: "Experience Store",
+      purpose: "Measure consistency without weakening compliance or risk gates.",
+    },
+    {
+      step: "Learning Run 3",
+      detail: "Confirm the recommendation stays stable under repeated execution.",
+      agent: "Experience Store",
+      purpose: "Make future delegation evidence-backed.",
+    },
+    {
       step: "Fixed Point",
       detail: "No new promotable facts remain under the current context, budget, and policy.",
       agent: "Consensus Promoter",
       purpose: "Stop when the governed record is stable, not when a model feels done.",
     },
-    {
-      step: "Result",
-      detail: "Present the evaluated provider setup and governance rationale.",
-      agent: "Decision Projection",
-      purpose: "Show the final recommendation from promoted evidence only.",
-    },
   ];
 
   let documentPackageReady = $derived(documents.length >= 3);
   let canStart = $derived(documentPackageReady && executableReady);
+  let canRunToday = $derived(
+    canStart && (runMode === "mock" || runMode === "live" || replayStatus?.available === true),
+  );
   let bootstrapLabel = $derived(
     bootstrapMode === "sample"
       ? "Fast track package loaded"
@@ -260,6 +434,35 @@
     Math.max(8, (steps.filter((step) => !step.active).length / pipelineSteps.length) * 100),
   );
   let activeAgent = $derived(steps.find((step) => step.active)?.agent ?? "");
+  let finalRun = $derived(approvedRun ?? analysisRun);
+  let finalDetails = $derived(detailsFor(finalRun));
+  let finalPolicy = $derived(policyFor(finalRun));
+  let beforeHitlPolicy = $derived(policyFor(analysisRun));
+  let selectedVendorName = $derived(stringAt(finalPolicy, "selected_vendor") || topShortlistName(finalRun));
+  let rejectedRows = $derived(rejectedFor(finalRun));
+  let shortlistRows = $derived(shortlistFor(finalRun));
+  let liveCallCount = $derived(totalLlmCalls());
+  let learningStatus = $derived(learningFor(learningRuns[learningRuns.length - 1] ?? finalRun));
+  let replayIsLive = $derived(replayStatus?.mode === "recorded-live");
+  let runModeLabel = $derived(
+    runMode === "mock"
+      ? "Mocked presentation flow"
+      : runMode === "replay"
+      ? replayIsLive
+        ? "Recorded live replay"
+        : "Offline presentation replay"
+      : "Live provider run",
+  );
+  let runModeDetail = $derived(
+    runMode === "mock"
+      ? "Runs the governed Today path locally with deterministic agents and presenter-paced timing."
+      : runMode === "replay"
+      ? replayIsLive
+        ? "Uses a previously captured session with real LLM telemetry and compressed thinking delays."
+        : "Uses deterministic governed outputs with compressed thinking delays because provider quotas are exhausted."
+      : "Calls configured providers now and fails if any model role falls back.",
+  );
+  let runModeVerb = $derived(runMode === "replay" ? "replayed" : "ran");
 
   const cedarPreview = $derived(`permit(
   principal in Group::"procurement_review",
@@ -346,53 +549,154 @@
     ];
   }
 
-  function startEvaluation() {
-    if (!canStart || evaluationMode !== "today") return;
-    clearRunTimers();
-    runState = "running";
-    steps = [];
-    installedCedar = false;
+  function completeThrough(index: number) {
+    steps = pipelineSteps.slice(0, index + 1).map((step) => ({ ...step, active: false }));
+  }
+
+  function startSpinner() {
+    if (spinnerInterval) {
+      clearInterval(spinnerInterval);
+    }
     spinnerVerb = randomVerb();
     spinnerInterval = setInterval(() => {
       spinnerVerb = randomVerb();
     }, 1800);
+  }
 
+  function stopSpinner() {
+    if (spinnerInterval) {
+      clearInterval(spinnerInterval);
+      spinnerInterval = null;
+    }
+  }
+
+  function scheduleAnalysisSteps() {
     for (let index = 0; index <= 5; index += 1) {
       const timer = setTimeout(() => {
         if (runState !== "running") return;
         pushStep(index);
-        if (index === 5) {
-          runState = "hitl";
-          if (spinnerInterval) {
-            clearInterval(spinnerInterval);
-            spinnerInterval = null;
-          }
-        }
-      }, index * 1300);
+      }, index * 1650);
       timers.push(timer);
     }
   }
 
-  function approveHitl() {
+  async function startEvaluation() {
+    if (!canRunToday || evaluationMode !== "today") return;
+    clearRunTimers();
+    runState = "running";
+    steps = [];
+    installedCedar = false;
+    flowError = "";
+    replayCursor = {};
+    analysisRun = null;
+    approvedRun = null;
+    negativeControlRun = null;
+    learningRuns = [];
+    experience = null;
+    startSpinner();
+    scheduleAnalysisSteps();
+
+    try {
+      if (runMode === "mock") {
+        await resetTodayExperience();
+      } else if (runMode === "replay") {
+        await ensureReplaySession();
+      } else {
+        await resetTodayExperience();
+      }
+      const [response] = await Promise.all([
+        runTodayStage("analysis"),
+        wait(9_200),
+      ]);
+      analysisRun = response;
+      experience = analysisRun.experience;
+      await pauseForReview(1_800);
+      completeThrough(5);
+      runState = "gate-review";
+    } catch (cause) {
+      flowError = describeRunError(cause);
+      runState = "bootstrap";
+    } finally {
+      clearRunTimers();
+    }
+  }
+
+  function openHitlDecision() {
+    runState = "hitl";
+  }
+
+  async function approveHitl() {
     installedCedar = delegateToCedar;
     runState = "running";
-    spinnerVerb = randomVerb();
-    spinnerInterval = setInterval(() => {
-      spinnerVerb = randomVerb();
-    }, 1800);
+    flowError = "";
+    startSpinner();
 
-    [6, 7].forEach((index, offset) => {
-      const timer = setTimeout(() => {
-        if (runState !== "running") return;
-        pushStep(index);
-        if (index === 7) {
-          steps = steps.map((step) => ({ ...step, active: false }));
-          runState = "finished";
-          clearRunTimers();
-        }
-      }, (offset + 1) * 1300);
-      timers.push(timer);
-    });
+    try {
+      pushStep(6);
+      const [approved] = await Promise.all([
+        runTodayStage("approved"),
+        wait(2_400),
+      ]);
+      approvedRun = approved;
+      experience = approvedRun.experience;
+      completeThrough(6);
+
+      pushStep(7);
+      const [negative] = await Promise.all([
+        runTodayStage("negative-control"),
+        wait(2_400),
+      ]);
+      negativeControlRun = negative;
+      experience = negativeControlRun.experience;
+
+      for (let index = 0; index < 3; index += 1) {
+        pushStep(8 + index);
+        const [learningRun] = await Promise.all([
+          runTodayStage("learning"),
+          wait(1_650),
+        ]);
+        learningRuns = [...learningRuns, learningRun];
+        experience = learningRun.experience;
+      }
+
+      pushStep(11);
+      await pauseForReview(1_300);
+      completeThrough(11);
+      runState = "finished";
+    } catch (cause) {
+      flowError = describeRunError(cause);
+      runState = "hitl";
+    } finally {
+      clearRunTimers();
+    }
+  }
+
+  async function continueAfterCommitReview() {
+    runState = "running";
+    flowError = "";
+    startSpinner();
+
+    try {
+      pushStep(7);
+      negativeControlRun = await runTodayStage("negative-control");
+      experience = negativeControlRun.experience;
+
+      for (let index = 0; index < 3; index += 1) {
+        pushStep(8 + index);
+        const learningRun = await runTodayStage("learning");
+        learningRuns = [...learningRuns, learningRun];
+        experience = learningRun.experience;
+      }
+
+      pushStep(11);
+      completeThrough(11);
+      runState = "finished";
+    } catch (cause) {
+      flowError = describeRunError(cause);
+      runState = "commit-review";
+    } finally {
+      clearRunTimers();
+    }
   }
 
   function resetEvaluation() {
@@ -400,9 +704,408 @@
     runState = "bootstrap";
     steps = [];
     installedCedar = false;
+    flowError = "";
+    replayCursor = {};
+    analysisRun = null;
+    approvedRun = null;
+    negativeControlRun = null;
+    learningRuns = [];
     approvalNote = "Evidence package is sufficient for the demo threshold.";
   }
 
+  function isTauriRuntime() {
+    return Boolean((window as any).__TAURI_INTERNALS__);
+  }
+
+  async function loadReplayStatus() {
+    try {
+      if (isTauriRuntime()) {
+        replayStatus = await invokeTauri<TodayReplayStatus>("today_replay_status");
+      } else {
+        const response = await fetch("/demo/today-live-session.json", { cache: "no-store" });
+        if (response.ok) {
+          const session = await response.json() as TodayReplaySession;
+          replaySession = session;
+          replayStatus = statusFromReplaySession(session);
+        } else {
+          replayStatus = emptyReplayStatus();
+        }
+      }
+
+      runMode = "mock";
+    } catch (cause) {
+      replayStatus = {
+        ...emptyReplayStatus(),
+        error: describeRunError(cause),
+      };
+      runMode = "mock";
+    } finally {
+      replayStatusLoaded = true;
+    }
+  }
+
+  function emptyReplayStatus(): TodayReplayStatus {
+    return {
+      available: false,
+      path: "/demo/today-live-session.json",
+      mode: null,
+      recorded_at: null,
+      source_hash: null,
+      source_matches: false,
+      run_count: 0,
+      model_summary: [],
+    };
+  }
+
+  function statusFromReplaySession(session: TodayReplaySession): TodayReplayStatus {
+    return {
+      available: true,
+      path: "/demo/today-live-session.json",
+      mode: session.mode,
+      recorded_at: session.recorded_at,
+      source_hash: session.source_hash,
+      source_matches: true,
+      run_count: session.runs.length,
+      model_summary: modelSummary(session),
+    };
+  }
+
+  function modelSummary(session: TodayReplaySession) {
+    const seen = new Set<string>();
+    const summary: string[] = [];
+    for (const run of session.runs) {
+      for (const call of run.result.llm_calls ?? []) {
+        const label = `${String(call.context ?? "llm-call")} -> ${String(call.model ?? "unknown")}`;
+        if (!seen.has(label)) {
+          seen.add(label);
+          summary.push(label);
+        }
+        if (summary.length >= 8) return summary;
+      }
+    }
+    return summary;
+  }
+
+  async function recordReplaySession() {
+    if (!isTauriRuntime()) {
+      flowError = "Recording is only available in the Tauri desktop app.";
+      return;
+    }
+
+    recordingReplay = true;
+    flowError = "";
+    try {
+      const session = await invokeTauri<TodayReplaySession>("record_today_replay_session");
+      replaySession = session;
+      replayStatus = statusFromReplaySession(session);
+      runMode = "replay";
+    } catch (cause) {
+      flowError = describeRunError(cause);
+    } finally {
+      recordingReplay = false;
+      replayStatusLoaded = true;
+    }
+  }
+
+  async function buildOfflineReplaySession() {
+    if (!isTauriRuntime()) {
+      flowError = "Offline backup creation is only available in the Tauri desktop app.";
+      return;
+    }
+
+    buildingOfflineReplay = true;
+    flowError = "";
+    try {
+      const session = await invokeTauri<TodayReplaySession>("build_today_offline_replay_session");
+      replaySession = session;
+      replayStatus = statusFromReplaySession(session);
+      runMode = "replay";
+    } catch (cause) {
+      flowError = describeRunError(cause);
+    } finally {
+      buildingOfflineReplay = false;
+      replayStatusLoaded = true;
+    }
+  }
+
+  async function clearReplaySession() {
+    if (isTauriRuntime()) {
+      await invokeTauri("clear_today_replay_session");
+    }
+    replaySession = null;
+    replayStatus = emptyReplayStatus();
+    runMode = "mock";
+  }
+
+  async function resetTodayExperience() {
+    if (isTauriRuntime()) {
+      await invokeTauri("reset_today_demo_experience");
+    }
+  }
+
+  async function runTodayStage(stage: string): Promise<TodayRunResponse> {
+    if (runMode === "mock") {
+      if (isTauriRuntime()) {
+        return await invokeTauri<TodayRunResponse>("run_today_vendor_selection", {
+          stage,
+          live: false,
+        });
+      }
+
+      const response = await fetch("http://127.0.0.1:8080/v1/truths/vendor-selection/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inputs: inputsForStage(stage, false),
+          persist_projection: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(body || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      const experienceResponse = await fetch("http://127.0.0.1:8080/v1/experience/vendor-selection");
+      const nextExperience = experienceResponse.ok ? await experienceResponse.json() : emptyExperience();
+      return { stage, result, experience: nextExperience };
+    }
+
+    if (runMode === "replay") {
+      const session = await ensureReplaySession();
+      const recorded = takeRecordedRun(session, stage);
+      await replayThinkingDelay(recorded);
+      const response = {
+        stage: recorded.stage,
+        result: recorded.result,
+        experience: recorded.experience,
+      };
+      if (session.mode === "recorded-live") {
+        assertRealLlmCalls(response, "Recorded replay");
+      }
+      return response;
+    }
+
+    if (isTauriRuntime()) {
+      const response = await invokeTauri<TodayRunResponse>("run_today_vendor_selection", {
+        stage,
+        live: true,
+      });
+      assertRealLlmCalls(response, "Live mode");
+      return response;
+    }
+
+    const response = await fetch("http://127.0.0.1:8080/v1/truths/vendor-selection/execute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        inputs: inputsForStage(stage),
+        persist_projection: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(body || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    const experienceResponse = await fetch("http://127.0.0.1:8080/v1/experience/vendor-selection");
+    const nextExperience = experienceResponse.ok ? await experienceResponse.json() : emptyExperience();
+    const todayResponse: TodayRunResponse = { stage, result, experience: nextExperience };
+    assertRealLlmCalls(todayResponse, "Live mode");
+    return todayResponse;
+  }
+
+  async function ensureReplaySession() {
+    if (replaySession) return replaySession;
+
+    if (isTauriRuntime()) {
+      const session = await invokeTauri<TodayReplaySession>("today_replay_session");
+      replaySession = session;
+      replayStatus = statusFromReplaySession(session);
+      return session;
+    } else {
+      const response = await fetch("/demo/today-live-session.json", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("No recorded live session is available. Record one from the Tauri app or switch to live mode.");
+      }
+      const session = await response.json() as TodayReplaySession;
+      replaySession = session;
+      replayStatus = statusFromReplaySession(session);
+      return session;
+    }
+  }
+
+  function takeRecordedRun(session: TodayReplaySession, stage: string) {
+    const normalized = normalizeStage(stage);
+    const offset = replayCursor[normalized] ?? 0;
+    const matches = session.runs.filter((run) => normalizeStage(run.stage) === normalized);
+    const recorded = matches[offset];
+    if (!recorded) {
+      throw new Error(`Recorded live session does not include stage '${stage}' at position ${offset + 1}. Record a fresh session before presenting.`);
+    }
+    replayCursor = { ...replayCursor, [normalized]: offset + 1 };
+    return recorded;
+  }
+
+  function normalizeStage(stage: string) {
+    if (stage === "before-hitl") return "analysis";
+    if (stage === "promote" || stage === "after-hitl") return "approved";
+    if (stage === "advisory") return "negative-control";
+    if (stage === "learning-loop") return "learning";
+    return stage;
+  }
+
+  function replayThinkingDelay(recorded: TodayRecordedRun) {
+    const delay = Math.max(900, Math.min(6500, recorded.compressed_delay_ms || 1800));
+    return new Promise<void>((resolve) => {
+      setTimeout(resolve, delay);
+    });
+  }
+
+  function inputsForStage(stage: string, live = true) {
+    const inputs: Record<string, string> = {
+      vendors_json: JSON.stringify(todayVendors),
+      min_score: "75",
+      max_risk: "30",
+      max_vendors: "3",
+      demo_mode: "governed",
+      principal_authority: "supervisory",
+    };
+    if (live) inputs.live_mode = "true";
+    if (stage === "analysis") inputs.human_approval_present = "false";
+    if (stage === "approved") inputs.human_approval_present = "true";
+    if (stage === "negative-control") inputs.principal_authority = "advisory";
+    return inputs;
+  }
+
+  function emptyExperience(): ExperienceSnapshot {
+    return {
+      truth_key: "vendor-selection",
+      run_count: 0,
+      summaries: [],
+      aggregate: {
+        convergence_rate: 0,
+        avg_cycles: 0,
+        avg_confidence: 0,
+        avg_elapsed_ms: 0,
+        recommendation_frequencies: [],
+      },
+    };
+  }
+
+  function describeRunError(cause: unknown) {
+    if (cause instanceof Error) return cause.message;
+    if (typeof cause === "string") return cause;
+    try {
+      return JSON.stringify(cause);
+    } catch {
+      return "Today demo failed.";
+    }
+  }
+
+  function assertRealLlmCalls(response: TodayRunResponse, label: string) {
+    const calls = response.result.llm_calls ?? [];
+    if (calls.length === 0) {
+      throw new Error(`${label} did not include any LLM calls. Check the recording or provider credentials.`);
+    }
+
+    const fallbacks = calls.filter((call) => {
+      const metadata = call.metadata ?? {};
+      return call.provider === "none" || call.model === "deterministic-fallback" || metadata.fallback === "true";
+    });
+
+    if (fallbacks.length > 0) {
+      throw new Error(
+        `${label} fell back instead of using real LLM calls: ${fallbacks
+          .map((call) => call.context)
+          .join(", ")}. Check provider credentials and model availability.`
+      );
+    }
+  }
+
+  function wait(ms: number) {
+    return new Promise<void>((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }
+
+  function pauseForReview(ms = 1_100) {
+    return wait(ms);
+  }
+
+  function detailsFor(run: TodayRunResponse | null | undefined) {
+    return run?.result.projection?.details ?? {};
+  }
+
+  function policyFor(run: TodayRunResponse | null | undefined) {
+    return detailsFor(run).policy ?? {};
+  }
+
+  function recommendationFor(run: TodayRunResponse | null | undefined) {
+    return detailsFor(run).recommendation ?? {};
+  }
+
+  function learningFor(run: TodayRunResponse | null | undefined) {
+    return detailsFor(run).learning ?? {};
+  }
+
+  function shortlistFor(run: TodayRunResponse | null | undefined): Array<Record<string, any>> {
+    const shortlist = detailsFor(run).shortlist?.shortlist;
+    return Array.isArray(shortlist) ? shortlist : [];
+  }
+
+  function rejectedFor(run: TodayRunResponse | null | undefined): Array<Record<string, any>> {
+    const rejected = detailsFor(run).shortlist?.rejected;
+    return Array.isArray(rejected) ? rejected : [];
+  }
+
+  function topShortlistName(run: TodayRunResponse | null | undefined) {
+    return String(shortlistFor(run)[0]?.vendor_name ?? "");
+  }
+
+  function stringAt(value: Record<string, any> | null | undefined, key: string) {
+    const item = value?.[key];
+    return typeof item === "string" ? item : "";
+  }
+
+  function numberAt(value: Record<string, any> | null | undefined, key: string) {
+    const item = value?.[key];
+    return typeof item === "number" ? item : null;
+  }
+
+  function money(value: unknown) {
+    if (typeof value !== "number") return "-";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+
+  function percent(value: unknown) {
+    if (typeof value !== "number") return "-";
+    return `${Math.round(value * 100)}%`;
+  }
+
+  function policyPillClass(outcome: unknown) {
+    if (outcome === "Promote") return "pill-ok";
+    if (outcome === "Reject") return "pill-err";
+    return "pill-warn";
+  }
+
+  function totalLlmCalls() {
+    const runs = [analysisRun, approvedRun, negativeControlRun, ...learningRuns].filter(Boolean) as TodayRunResponse[];
+    return runs.reduce((total, run) => total + (run.result.llm_calls?.length ?? 0), 0);
+  }
+
+  function latestRunSummaries() {
+    return [...(experience?.summaries ?? [])].reverse().slice(0, 5);
+  }
+
+  onMount(loadReplayStatus);
   onDestroy(clearRunTimers);
 </script>
 
@@ -419,7 +1122,7 @@
   </header>
 
   {#if runState === "bootstrap"}
-    <div class="mx-auto grid max-w-6xl gap-8 px-8 py-10 lg:grid-cols-[0.95fr_1.05fr]">
+    <div class="mx-auto max-w-5xl px-8 py-10">
       <section>
         <p class="slide-eyebrow mb-3">Bootstrapping</p>
         <h1 class="slide-headline mb-5 text-4xl!">Start with the decision package.</h1>
@@ -454,7 +1157,7 @@
         </div>
         <div class="mb-6 rounded-b-2xl rounded-tr-2xl border border-t-0 border-border bg-raised p-4">
           {#if evaluationMode === "today"}
-            <p class="text-sm text-subtle">Governed selection inside the current RFI/RFP frame.</p>
+            <p class="text-sm text-subtle">Governed selection inside the current RFI/RFP frame, using the same source pack and policy path as <code class="font-mono text-lime">just demo-today-live</code>.</p>
           {:else}
             <p class="text-sm text-subtle">Preview: challenge the premise and explore Pareto breakouts.</p>
           {/if}
@@ -503,15 +1206,17 @@
             </div>
 
             <div class="mt-5 grid gap-3 md:grid-cols-2">
-              <label class="flex items-center gap-3 rounded-xl border border-border bg-deep px-3 py-2">
-                <input
-                  class="accent-lime"
-                  type="checkbox"
-                  checked={bootstrapMode === "sample"}
-                  onchange={(event) => toggleFastLoad((event.currentTarget as HTMLInputElement).checked)}
-                />
-                <span class="text-sm text-text">Fast load</span>
-              </label>
+              <button
+                class="flex items-center justify-between gap-3 rounded-xl border border-border bg-deep px-3 py-2 text-left transition hover:border-lime/50"
+                type="button"
+                onclick={() => toggleFastLoad(bootstrapMode !== "sample")}
+              >
+                <span>
+                  <span class="block text-sm text-text">Fast load</span>
+                  <span class="block text-xs text-muted">Load the Today package.</span>
+                </span>
+                <span class="h-2.5 w-2.5 rounded-full" class:bg-ok={bootstrapMode === "sample"} class:bg-muted={bootstrapMode !== "sample"}></span>
+              </button>
 
               <label class="flex items-start gap-3 rounded-xl border border-border bg-deep px-3 py-2">
                 <input class="mt-1 accent-lime" type="checkbox" bind:checked={executableReady} />
@@ -569,12 +1274,45 @@
           {/if}
         </div>
 
-        <button class="btn-lime mt-5 w-full justify-center py-3" type="button" disabled={!canStart || evaluationMode !== "today"} onclick={startEvaluation}>
-          Create Formation
+        {#if bootstrapMode === "sample"}
+          <div class="mt-5 rounded-2xl border border-border bg-deep p-4">
+            <div class="mb-3 flex items-center justify-between gap-4">
+              <span class="card-label">As Of Today</span>
+              <span class="pill pill-info">Mocked flow</span>
+            </div>
+            <div class="grid gap-2 md:grid-cols-2">
+              {#each todayVendors as vendor}
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-raised px-3 py-2">
+                  <div class="min-w-0">
+                    <p class="truncate text-sm text-bright">{vendor.name}</p>
+                    <p class="text-xs text-muted">score {vendor.score} / risk {vendor.risk_score}</p>
+                  </div>
+                  <span
+                    class="pill"
+                    class:pill-ok={vendor.compliance_status === "compliant"}
+                    class:pill-warn={vendor.compliance_status !== "compliant"}
+                  >
+                    {vendor.compliance_status}
+                  </span>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        <button class="btn-lime mt-5 w-full justify-center py-3" type="button" disabled={!canRunToday || evaluationMode !== "today"} onclick={startEvaluation}>
+          Run
         </button>
+
+        {#if flowError}
+          <div class="callout callout-error mt-4">
+            <strong>Run failed</strong>
+            <p>{flowError}</p>
+          </div>
+        {/if}
       </section>
 
-      <section class="rounded-[28px] border border-border bg-panel p-5">
+      <section class="hidden rounded-[28px] border border-border bg-panel p-5">
         <span class="card-label">Readiness</span>
         <h2 class="mt-1 font-display text-2xl font-semibold text-bright">Bootstrap status</h2>
         <div class="mt-5 rounded-2xl border border-border bg-raised p-5">
@@ -594,12 +1332,114 @@
         </div>
 
         <div class="mt-4 rounded-2xl border border-border bg-raised p-5">
-          <div class="flex items-start gap-3">
-            <input class="mt-1 accent-lime" type="checkbox" bind:checked={executableReady} />
+          <div class="flex items-start justify-between gap-4">
             <div>
-              <p class="font-display text-xl font-semibold text-bright">{executableReadinessLabel}</p>
-              <p class="mt-1 text-sm text-subtle">{executableReadinessDetail}</p>
+              <span class="card-label">Demo Run Mode</span>
+              <p class="mt-1 font-display text-xl font-semibold text-bright">{runModeLabel}</p>
+              <p class="mt-1 text-sm text-subtle">{runModeDetail}</p>
             </div>
+            <span
+              class="pill"
+              class:pill-ok={runMode === "replay" && replayStatus?.available}
+              class:pill-info={runMode === "live"}
+              class:pill-warn={runMode === "replay" && !replayStatus?.available}
+            >
+              {runMode === "replay" ? "Replay" : "Live"}
+            </span>
+          </div>
+
+          <div class="mt-4 grid gap-2 md:grid-cols-2">
+            <button
+              type="button"
+              class="rounded-xl border px-3 py-2 text-left transition"
+              class:border-lime={runMode === "replay"}
+              class:bg-lime-glow={runMode === "replay"}
+              class:border-border={runMode !== "replay"}
+              class:bg-deep={runMode !== "replay"}
+              class:opacity-50={!replayStatus?.available}
+              disabled={!replayStatus?.available}
+              onclick={() => (runMode = "replay")}
+            >
+              <span class="block text-sm font-semibold text-bright">Use replay</span>
+              <span class="block text-xs text-muted">{replayStatus?.available ? `${replayStatus.run_count} recorded stages` : "No recording found"}</span>
+            </button>
+            <button
+              type="button"
+              class="rounded-xl border px-3 py-2 text-left transition"
+              class:border-lime={runMode === "live"}
+              class:bg-lime-glow={runMode === "live"}
+              class:border-border={runMode !== "live"}
+              class:bg-deep={runMode !== "live"}
+              onclick={() => (runMode = "live")}
+            >
+              <span class="block text-sm font-semibold text-bright">Run live</span>
+              <span class="block text-xs text-muted">Uses provider credentials now</span>
+            </button>
+          </div>
+
+          <div class="mt-4 rounded-xl border border-border bg-deep p-3">
+            {#if !replayStatusLoaded}
+              <p class="text-sm text-subtle">Checking for a recorded live session...</p>
+            {:else if replayStatus?.available}
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-sm text-bright">
+                    {replayStatus.mode === "recorded-live" ? "Recording ready" : "Offline backup ready"}
+                  </p>
+                  <p class="mt-1 font-mono text-xs text-muted">{replayStatus.recorded_at} / {replayStatus.source_hash}</p>
+                </div>
+                <span class="pill" class:pill-ok={replayStatus.source_matches} class:pill-warn={!replayStatus.source_matches}>
+                  {replayStatus.source_matches ? "Source match" : "Source changed"}
+                </span>
+              </div>
+              {#if replayStatus.model_summary.length > 0}
+                <div class="mt-3 space-y-1">
+                  {#each replayStatus.model_summary.slice(0, 4) as model}
+                    <p class="truncate font-mono text-[0.68rem] text-muted">{model}</p>
+                  {/each}
+                </div>
+              {/if}
+            {:else}
+              <p class="text-sm text-subtle">No recording is available yet. Record once with credentials, then present from replay mode.</p>
+              {#if replayStatus?.error}
+                <p class="mt-1 text-xs text-warn">{replayStatus.error}</p>
+              {/if}
+            {/if}
+          </div>
+
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button class="btn-ghost text-sm" type="button" disabled={recordingReplay} onclick={recordReplaySession}>
+              {recordingReplay ? "Recording..." : "Record New Live Session"}
+            </button>
+            <button class="btn-ghost text-sm" type="button" disabled={buildingOfflineReplay || recordingReplay} onclick={buildOfflineReplaySession}>
+              {buildingOfflineReplay ? "Building..." : "Build Offline Backup"}
+            </button>
+            {#if replayStatus?.available}
+              <button class="btn-ghost text-sm" type="button" disabled={recordingReplay} onclick={clearReplaySession}>
+                Clear Recording
+              </button>
+            {/if}
+          </div>
+        </div>
+
+        <div class="mt-4 rounded-2xl border border-border bg-raised p-5">
+          <span class="card-label">Today Candidates</span>
+          <div class="mt-3 space-y-2">
+            {#each todayVendors as vendor}
+              <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-deep px-3 py-2">
+                <div class="min-w-0">
+                  <p class="truncate text-sm text-bright">{vendor.name}</p>
+                  <p class="text-xs text-muted">score {vendor.score} / risk {vendor.risk_score}</p>
+                </div>
+                <span
+                  class="pill"
+                  class:pill-ok={vendor.compliance_status === "compliant"}
+                  class:pill-warn={vendor.compliance_status !== "compliant"}
+                >
+                  {vendor.compliance_status}
+                </span>
+              </div>
+            {/each}
           </div>
         </div>
       </section>
@@ -609,12 +1449,24 @@
       <section class="rounded-[28px] border border-border bg-panel p-5">
         <div class="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p class="slide-eyebrow mb-2">{runState === "finished" ? "Fixed Point" : runState === "hitl" ? "Human Gate" : "Formation In Work"}</p>
+            <p class="slide-eyebrow mb-2">
+              {runState === "finished"
+                ? "Fixed Point"
+                : runState === "commit-review"
+                  ? "Commitment Review"
+                  : runState === "gate-review" || runState === "hitl"
+                    ? "Human Gate"
+                    : "Formation In Work"}
+            </p>
             <h1 class="slide-headline text-3xl!">AI Provider Evaluation</h1>
             <p class="mt-2 text-sm text-subtle">{bootstrapLabel}</p>
           </div>
           {#if runState === "finished"}
             <span class="pill pill-ok">Converged</span>
+          {:else if runState === "commit-review"}
+            <span class="pill pill-ok">Authorized</span>
+          {:else if runState === "gate-review"}
+            <span class="pill pill-warn">Review Gate</span>
           {:else if runState === "hitl"}
             <span class="pill pill-warn">Approval Needed</span>
           {:else}
@@ -655,7 +1507,61 @@
           <div class="h-1 overflow-hidden rounded-full bg-border">
             <div class="h-full rounded-full bg-lime transition-all duration-1000" style="width: {progressPercent}%"></div>
           </div>
-          <p class="mt-4 text-center text-sm text-muted">{spinnerVerb}...</p>
+          <p class="mt-4 text-center text-sm text-muted">
+            {spinnerVerb}... {runMode === "mock" ? "mocked governed agents" : runMode === "replay" ? "recorded live LLM thinking" : "live provider path"}
+          </p>
+        {/if}
+
+        {#if flowError && runState !== "bootstrap"}
+          <div class="callout callout-error mt-5">
+            <strong>Run failed</strong>
+            <p>{flowError}</p>
+          </div>
+        {/if}
+
+        {#if runState === "gate-review"}
+          <section class="mt-5 rounded-2xl border border-warn/30 bg-warn/5 p-4">
+            <span class="card-label text-warn!">Pause Before HITL</span>
+            <h2 class="mt-1 font-display text-xl font-semibold text-bright">The recommendation is not a commitment yet.</h2>
+            <p class="mt-2 text-sm text-subtle">
+              The {runMode === "mock" ? "mocked agents" : runMode === "replay" ? "recorded live agents" : "live agents"} selected a candidate and Cedar escalated because approval is missing. Review the evidence before opening the human decision form.
+            </p>
+
+            <div class="mt-4 grid gap-3 md:grid-cols-3">
+              <div class="rounded-xl border border-border bg-deep p-3">
+                <span class="card-label">Candidate</span>
+                <p class="mt-1 text-sm text-bright">{stringAt(beforeHitlPolicy, "selected_vendor")}</p>
+                <p class="mt-1 text-xs text-muted">{money(numberAt(beforeHitlPolicy, "selected_amount_major"))} / mo</p>
+              </div>
+              <div class="rounded-xl border border-border bg-deep p-3">
+                <span class="card-label">Cedar Says</span>
+                <p class="mt-1 text-sm text-bright">{stringAt(beforeHitlPolicy, "outcome")}</p>
+                <p class="mt-1 text-xs text-muted">{stringAt(beforeHitlPolicy, "reason") || "Human approval is missing."}</p>
+              </div>
+              <div class="rounded-xl border border-border bg-deep p-3">
+                <span class="card-label">{runMode === "mock" ? "Mode" : "LLM Calls"}</span>
+                <p class="mt-1 text-sm text-bright">{runMode === "mock" ? "Mocked" : analysisRun?.result.llm_calls?.length ?? 0}</p>
+                <p class="mt-1 text-xs text-muted">{runMode === "mock" ? "deterministic stage output" : "provider calls recorded for this stage"}</p>
+              </div>
+            </div>
+
+            {#if rejectedRows.length > 0}
+              <div class="mt-4 rounded-xl border border-border bg-deep p-3">
+                <span class="card-label">Blocked Inputs</span>
+                <div class="mt-2 space-y-2">
+                  {#each rejectedRows as vendor}
+                    <p class="text-xs text-subtle">
+                      <span class="text-bright">{String(vendor.vendor_name)}</span>: {Array.isArray(vendor.reasons) ? vendor.reasons.join("; ") : ""}
+                    </p>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+
+            <button class="btn-lime mt-4 w-full justify-center" type="button" onclick={openHitlDecision}>
+              Open HITL Decision
+            </button>
+          </section>
         {/if}
 
         {#if runState === "hitl"}
@@ -665,6 +1571,25 @@
             <p class="mt-2 text-sm text-subtle">
               The system has enough evidence for a demo-threshold recommendation, but authority still requires review.
             </p>
+
+            {#if analysisRun}
+              <div class="mt-4 grid gap-3 md:grid-cols-3">
+                <div class="rounded-xl border border-border bg-deep p-3">
+                  <span class="card-label">Recommendation</span>
+                  <p class="mt-1 text-sm text-bright">{stringAt(recommendationFor(analysisRun), "recommendation")}</p>
+                </div>
+                <div class="rounded-xl border border-border bg-deep p-3">
+                  <span class="card-label">Gate Before HITL</span>
+                  <p class="mt-1 text-sm text-bright">{stringAt(beforeHitlPolicy, "outcome")}</p>
+                  <p class="mt-1 text-xs text-muted">{stringAt(beforeHitlPolicy, "reason") || "Human approval is missing."}</p>
+                </div>
+                <div class="rounded-xl border border-border bg-deep p-3">
+                  <span class="card-label">Selected Amount</span>
+                  <p class="mt-1 text-sm text-bright">{money(numberAt(beforeHitlPolicy, "selected_amount_major"))}</p>
+                  <p class="mt-1 text-xs text-muted">threshold {money(numberAt(beforeHitlPolicy, "hitl_threshold_major"))}</p>
+                </div>
+              </div>
+            {/if}
 
             <div class="mt-4 grid gap-3">
               <label class="block">
@@ -688,8 +1613,40 @@
               <pre class="mt-4 overflow-auto rounded-xl border border-border bg-deep p-3 font-mono text-xs leading-relaxed text-subtle">{cedarPreview}</pre>
             {/if}
 
-            <button class="btn-lime mt-4 w-full justify-center" type="submit">Approve And Continue</button>
+            <button class="btn-lime mt-4 w-full justify-center" type="submit">Approve And Promote</button>
           </form>
+        {/if}
+
+        {#if runState === "commit-review"}
+          <section class="mt-5 rounded-2xl border border-lime/30 bg-lime-glow p-4">
+            <span class="card-label text-lime!">Pause After HITL</span>
+            <h2 class="mt-1 font-display text-xl font-semibold text-bright">Human approval changed the policy outcome.</h2>
+            <p class="mt-2 text-sm text-subtle">
+              Cedar can now promote the commitment. The next step intentionally reruns controls to prove authority still matters, then grows the experience store.
+            </p>
+
+            <div class="mt-4 grid gap-3 md:grid-cols-3">
+              <div class="rounded-xl border border-border bg-deep p-3">
+                <span class="card-label">Cedar Outcome</span>
+                <p class="mt-1 text-sm text-bright">{stringAt(finalPolicy, "outcome")}</p>
+                <p class="mt-1 text-xs text-muted">approval {finalPolicy.human_approval_present ? "present" : "missing"}</p>
+              </div>
+              <div class="rounded-xl border border-border bg-deep p-3">
+                <span class="card-label">Commitment</span>
+                <p class="mt-1 text-sm text-bright">{stringAt(finalPolicy, "selected_vendor")}</p>
+                <p class="mt-1 text-xs text-muted">{money(numberAt(finalPolicy, "selected_amount_major"))} / mo</p>
+              </div>
+              <div class="rounded-xl border border-border bg-deep p-3">
+                <span class="card-label">Next Check</span>
+                <p class="mt-1 text-sm text-bright">Advisory authority</p>
+                <p class="mt-1 text-xs text-muted">should reject the same candidate</p>
+              </div>
+            </div>
+
+            <button class="btn-lime mt-4 w-full justify-center" type="button" onclick={continueAfterCommitReview}>
+              Run Negative Control And Learning
+            </button>
+          </section>
         {/if}
 
         {#if runState === "finished"}
@@ -718,46 +1675,115 @@
               {/each}
             </div>
           </section>
+
+          {#if analysisRun}
+            <section class="rounded-[28px] border border-border bg-panel p-5">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <span class="card-label">Observed Run</span>
+                  <h2 class="mt-1 font-display text-2xl font-semibold text-bright">Decision package before approval</h2>
+                </div>
+                <span class="pill {policyPillClass(stringAt(beforeHitlPolicy, "outcome"))}">{stringAt(beforeHitlPolicy, "outcome")}</span>
+              </div>
+
+              <div class="mt-4 grid gap-3 md:grid-cols-2">
+                <div class="rounded-2xl border border-border bg-raised p-4">
+                  <span class="card-label">Selected Vendor</span>
+                  <p class="mt-2 font-display text-2xl text-bright">{stringAt(beforeHitlPolicy, "selected_vendor")}</p>
+                  <p class="mt-1 text-xs text-muted">{analysisRun.result.cycles} cycles, {analysisRun.result.converged ? "converged" : "stopped"}</p>
+                </div>
+                <div class="rounded-2xl border border-border bg-raised p-4">
+                  <span class="card-label">Experience</span>
+                  <p class="mt-2 font-display text-2xl text-bright">{analysisRun.experience.run_count}</p>
+                  <p class="mt-1 text-xs text-muted">run summaries in this desktop session</p>
+                </div>
+              </div>
+
+              {#if rejectedRows.length > 0}
+                <div class="mt-4 rounded-2xl border border-border bg-raised p-4">
+                  <span class="card-label">Rejected Or Blocked</span>
+                  <div class="mt-3 space-y-2">
+                    {#each rejectedRows as vendor}
+                      <div class="rounded-xl border border-border bg-deep px-3 py-2">
+                        <p class="text-sm text-bright">{String(vendor.vendor_name)}</p>
+                        <p class="mt-1 text-xs text-muted">{Array.isArray(vendor.reasons) ? vendor.reasons.join("; ") : ""}</p>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+            </section>
+          {/if}
         {:else}
           <section class="rounded-[28px] border border-lime/30 bg-lime-glow p-5">
             <span class="card-label text-lime!">Result</span>
-            <h2 class="mt-1 font-display text-3xl font-semibold text-bright">Governed provider mix behind a router.</h2>
+            <h2 class="mt-1 font-display text-3xl font-semibold text-bright">{selectedVendorName || "Recommendation"} promoted through governance.</h2>
             <p class="mt-3 text-sm text-subtle">
-              The evaluation did not choose one model to do everything. It promoted a mixed setup because different roles want different latency, cost, and reasoning profiles.
+              The desktop {runModeVerb} the governed Today path: first it stopped at HITL, then it promoted the same recommendation after approval, rejected the advisory-authority negative control, and grew the learning context.
             </p>
 
             <div class="mt-5 grid gap-3 md:grid-cols-2">
               <div class="rounded-2xl border border-border bg-deep p-4">
-                <span class="card-label">Primary</span>
-                <p class="mt-2 text-sm text-bright">Arcee Trinity or Mistral Small</p>
-                <p class="mt-1 text-xs text-subtle">Discussion, extraction, and synthesis for most runs.</p>
+                <span class="card-label">Cedar Outcome</span>
+                <p class="mt-2 text-sm text-bright">{stringAt(finalPolicy, "outcome")}</p>
+                <p class="mt-1 text-xs text-subtle">{stringAt(finalPolicy, "principal_authority")} authority, approval {finalPolicy.human_approval_present ? "present" : "missing"}.</p>
               </div>
               <div class="rounded-2xl border border-border bg-deep p-4">
-                <span class="card-label">Polishing</span>
-                <p class="mt-2 text-sm text-bright">Writer Palmyra</p>
-                <p class="mt-1 text-xs text-subtle">Stakeholder-ready language and executive summaries.</p>
+                <span class="card-label">Commitment</span>
+                <p class="mt-2 text-sm text-bright">{money(numberAt(finalPolicy, "selected_amount_major"))} / mo</p>
+                <p class="mt-1 text-xs text-subtle">HITL threshold {money(numberAt(finalPolicy, "hitl_threshold_major"))}.</p>
               </div>
               <div class="rounded-2xl border border-border bg-deep p-4">
-                <span class="card-label">Escalation</span>
-                <p class="mt-2 text-sm text-bright">Claude or GPT Pro</p>
-                <p class="mt-1 text-xs text-subtle">Reserved for high-risk or high-ambiguity decisions.</p>
+                <span class="card-label">Negative Control</span>
+                <p class="mt-2 text-sm text-bright">{stringAt(policyFor(negativeControlRun), "outcome") || "not run"}</p>
+                <p class="mt-1 text-xs text-subtle">{stringAt(policyFor(negativeControlRun), "reason") || "Advisory authority should not commit."}</p>
               </div>
               <div class="rounded-2xl border border-border bg-deep p-4">
-                <span class="card-label">Gateway</span>
-                <p class="mt-2 text-sm text-bright">Kong or OpenRouter</p>
-                <p class="mt-1 text-xs text-subtle">Routing, audit, rate limits, cost control, and provider flexibility.</p>
+                <span class="card-label">Learning Context</span>
+                <p class="mt-2 text-sm text-bright">{String(learningStatus.prior_runs ?? experience?.run_count ?? 0)} prior runs</p>
+                <p class="mt-1 text-xs text-subtle">{String(learningStatus.status ?? "updated")}</p>
+              </div>
+            </div>
+
+            <div class="mt-5 rounded-2xl border border-border bg-deep p-4">
+              <span class="card-label">Shortlist</span>
+              <div class="mt-3 space-y-2">
+                {#each shortlistRows as vendor}
+                  <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-raised px-3 py-2">
+                    <div class="min-w-0">
+                      <p class="truncate text-sm text-bright">#{String(vendor.rank)} {String(vendor.vendor_name)}</p>
+                      <p class="text-xs text-muted">capability {String(vendor.score)} / risk {String(vendor.risk_score)}</p>
+                    </div>
+                    <span class="font-mono text-xs text-lime">{String(vendor.composite_score)}</span>
+                  </div>
+                {/each}
               </div>
             </div>
 
             <div class="mt-5 rounded-2xl border border-border bg-deep p-4">
               <span class="card-label">Governance Record</span>
               <div class="mt-3 grid gap-2">
-                <p class="text-sm text-text">Formation selected 8 acting agents.</p>
+                <p class="text-sm text-text">Formation selected {finalDetails.formation?.assignments?.length ?? 0} role assignments.</p>
                 <p class="text-sm text-text">HITL approval captured from {approver}.</p>
-                <p class="text-sm text-text">{installedCedar ? "Cedar delegation installed for the next matching run." : "Human approval remains required for the next run."}</p>
-                <p class="text-sm text-text">Fixed point reached after promoted evidence stopped changing.</p>
+                <p class="text-sm text-text">{installedCedar ? "Cedar delegation candidate recorded for the next matching run." : "Human approval remains required for the next run."}</p>
+                <p class="text-sm text-text">Fixed point reached after {approvedRun?.result.cycles ?? "-"} cycles.</p>
+                <p class="text-sm text-text">LLM telemetry entries: {liveCallCount}</p>
               </div>
             </div>
+
+            {#if latestRunSummaries().length > 0}
+              <div class="mt-5 rounded-2xl border border-border bg-deep p-4">
+                <span class="card-label">Experience Store</span>
+                <div class="mt-3 space-y-2">
+                  {#each latestRunSummaries() as run}
+                    <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-raised px-3 py-2">
+                      <span class="truncate text-sm text-bright">{run.recommended_vendor}</span>
+                      <span class="font-mono text-xs text-muted">{run.cycles} cycles</span>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </section>
         {/if}
       </aside>

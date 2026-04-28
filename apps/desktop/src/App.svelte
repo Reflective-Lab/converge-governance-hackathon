@@ -17,6 +17,20 @@
     headline: string;
     body: string;
     image: string;
+    layout?: "stack" | "flow" | "gateway";
+    stackLayers?: {
+      name: string;
+      role: string;
+      detail: string;
+    }[];
+    flowSteps?: {
+      name: string;
+      detail: string;
+    }[];
+    gatewayPoints?: {
+      name: string;
+      detail: string;
+    }[];
   }
 
   const allSlides: Slide[] = [
@@ -195,9 +209,159 @@
       body: "We formed a team: Brave for breadth, Tavily for depth, specialized models for each role, and Converge to decide which evidence becomes part of the record.",
       image: "/images/slides/participants.jpg",
     },
+    {
+      number: 26,
+      eyebrow: "Technology Stack",
+      headline: "The governed\nAI stack.",
+      body: "Helm gives operators a control surface. Axiom defines truth. Organism does the reasoning work. Converge decides what may be promoted. Providers stay behind capability boundaries.",
+      image: "/images/slides/stack.jpg",
+      layout: "stack",
+      stackLayers: [
+        {
+          name: "Helm",
+          role: "Control surface",
+          detail: "Desktop and web UX; what operators see.",
+        },
+        {
+          name: "Axiom",
+          role: "Truth layer",
+          detail: "Truth definitions, projections, validation, domain state.",
+        },
+        {
+          name: "Organism",
+          role: "Intelligence",
+          detail: "Intent to huddle to debate to suggestors; reasoning, research, gap chasing.",
+        },
+        {
+          name: "Converge",
+          role: "Governance",
+          detail: "Engine, promotion gates, Cedar policy, budget, audit, authority, trust, stop rules.",
+        },
+        {
+          name: "Providers",
+          role: "Capability",
+          detail: "OpenRouter, Anthropic, OpenAI, Gemini, Brave, Tavily.",
+        },
+      ],
+    },
+    {
+      number: 27,
+      eyebrow: "Technology Flow",
+      headline: "Truth becomes\noperator state.",
+      body: "A governed run is not a prompt chain. It is a typed execution path from declared truth to promoted facts to projected product state.",
+      image: "/images/slides/flow.jpg",
+      layout: "flow",
+      flowSteps: [
+        {
+          name: "Axiom defines the run",
+          detail: "Truth, projections, and run configuration are declared before execution.",
+        },
+        {
+          name: "Axiom invokes Engine.run()",
+          detail: "The governance runtime receives context, budget, criteria, and hooks.",
+        },
+        {
+          name: "Organism emits proposals",
+          detail: "It decomposes, plans, debates, researches, and proposes facts.",
+        },
+        {
+          name: "Converge promotes or stops",
+          detail: "Policy, budget, convergence, authority, and promotion gates are evaluated.",
+        },
+        {
+          name: "Providers supply capability",
+          detail: "Models, search, and tools are called through adapter boundaries.",
+        },
+        {
+          name: "Axiom projects facts",
+          detail: "Converged facts become durable product state for Helm.",
+        },
+        {
+          name: "Helm shows the result",
+          detail: "Operators see the decision, rationale, evidence, and next action.",
+        },
+      ],
+    },
+    {
+      number: 28,
+      eyebrow: "Business Architecture",
+      headline: "Governed process.\nGateway control.",
+      body: "The business value is not just a better answer. It is a governed vendor-selection process that improves as Kong becomes the AI Gateway for policy, access, cost, and audit.",
+      image: "/images/slides/circuit.jpg",
+      layout: "gateway",
+      gatewayPoints: [
+        {
+          name: "Converge governs decisions",
+          detail: "Inside the runtime, facts advance only when authority, evidence, policy, budget, and stop rules agree.",
+        },
+        {
+          name: "Kong governs access",
+          detail: "At the AI Gateway, model calls can inherit rate limits, prompt guardrails, PII handling, routing, cost tracking, and audit logs.",
+        },
+        {
+          name: "The process learns",
+          detail: "Gateway telemetry and governed outcomes feed the next run, turning vendor selection into an auditable improvement loop.",
+        },
+      ],
+    },
+    {
+      number: 29,
+      eyebrow: "Kong AI Gateway",
+      headline: "Responsible AI\nbecomes enforceable.",
+      body: "With Kong as the AI Gateway, governed AI moves from hoping teams use models responsibly to an enforceable control plane for every model call.",
+      image: "/images/slides/circuit.jpg",
+      layout: "gateway",
+      gatewayPoints: [
+        {
+          name: "One path to every model",
+          detail: "PII handling, prompt management, provider routing, token limits, cost controls, and audit telemetry happen before calls reach OpenAI, Anthropic, Gemini, or any other backend.",
+        },
+        {
+          name: "Output enters governance",
+          detail: "In the Converge stack, AI output is budgeted, policy-aware, traceable, and tied back to an actor, intent, proposal, and promotion path.",
+        },
+        {
+          name: "Speed without loss of control",
+          detail: "Enterprises get AI velocity while keeping control of privacy, spend, compliance, and decision accountability.",
+        },
+      ],
+    },
+    {
+      number: 30,
+      eyebrow: "This Demo",
+      headline: "AI extends\nhuman capability.",
+      body: "We bring in more vendors, more requirement dimensions, and more evidence than a human team can comfortably hold in working memory. Converge turns that complexity into an understandable governed decision.",
+      image: "/images/slides/grid.jpg",
+      layout: "flow",
+      flowSteps: [
+        {
+          name: "More vendors, more dimensions",
+          detail: "AI expands the competition from a small manual shortlist into a broader vendor field scored across many requirement dimensions.",
+        },
+        {
+          name: "LLMs plus mathematical solvers",
+          detail: "Language models research, critique, and propose; mathematical solvers make the trade-offs explicit instead of hiding them in prose.",
+        },
+        {
+          name: "Convergence to a fixed point",
+          detail: "Converge keeps promoting only governed facts until the system has no new promotable evidence under the current policy, budget, and authority.",
+        },
+        {
+          name: "Obvious 3D understanding",
+          detail: "The 3D visualization makes the result legible: operators can see the shape of the decision instead of reading another spreadsheet.",
+        },
+        {
+          name: "Kong controls AI access",
+          detail: "Kong keeps AI use controlled and secure with gateway policy, routing, limits, telemetry, and audit before calls reach model providers.",
+        },
+      ],
+    },
   ];
 
   let slides = $state(allSlides);
+  const microDeckSelection = "1,26,29,30";
+  const shortDeckSelection = "1,7,19,26,29,30";
+  const longerDeckSelection = "1,7,15,18,19,24,26,27,28,29,30";
 
   function parseSlideNumbers(raw: string): number[] {
     const seen = new Set<number>();
@@ -249,6 +413,11 @@
   function showAllSlides() {
     slideSelectionInput = "";
     applySlideSelectionFrom("");
+  }
+
+  function applySlideShortcut(selection: string) {
+    slideSelectionInput = selection;
+    applySlideSelectionFrom(selection);
   }
 
   function nextSlide() {
@@ -1016,6 +1185,15 @@ Scenario: Parse should fail early
             <button class="btn-ghost px-3! py-2! text-xs!" onclick={showAllSlides}>
               All
             </button>
+            <button class="btn-ghost px-3! py-2! text-xs!" onclick={() => applySlideShortcut(microDeckSelection)}>
+              Micro
+            </button>
+            <button class="btn-ghost px-3! py-2! text-xs!" onclick={() => applySlideShortcut(shortDeckSelection)}>
+              Short
+            </button>
+            <button class="btn-ghost px-3! py-2! text-xs!" onclick={() => applySlideShortcut(longerDeckSelection)}>
+              Longer
+            </button>
             {#if slideSelectionStatus}
               <span class="font-mono text-[0.68rem] text-muted">{slideSelectionStatus}</span>
             {/if}
@@ -1028,24 +1206,84 @@ Scenario: Parse should fail early
 
       <!-- Main content -->
       {#key currentSlide}
-        <div class="fade-in max-w-3xl">
-          <p class="slide-eyebrow mb-4">
-            <span class="mr-3 text-subtle">#{slides[currentSlide].number}</span>{slides[currentSlide].eyebrow}
-          </p>
-          <h1 class="slide-headline mb-6 whitespace-pre-line">{slides[currentSlide].headline}</h1>
-          <p class="slide-body">{slides[currentSlide].body}</p>
+        {#if slides[currentSlide].layout}
+          <div class="fade-in max-w-[min(92vw,86rem)]">
+            <div class="grid items-end gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(30rem,1fr)]">
+              <div class="max-w-3xl">
+                <p class="slide-eyebrow mb-4">
+                  <span class="mr-3 text-subtle">#{slides[currentSlide].number}</span>{slides[currentSlide].eyebrow}
+                </p>
+                <h1 class="slide-headline mb-6 whitespace-pre-line">{slides[currentSlide].headline}</h1>
+                <p class="slide-body">{slides[currentSlide].body}</p>
 
-          {#if currentSlide === slides.length - 1}
-            <div class="mt-10 flex gap-4">
-              <button class="btn-lime" onclick={goToConvergence}>
-                Launch Demo
-              </button>
-              <button class="btn-ghost" onclick={goToDemo}>
-                Spec Studio
-              </button>
+                {#if currentSlide === slides.length - 1}
+                  <div class="mt-10 flex gap-4">
+                    <button class="btn-lime" onclick={goToConvergence}>
+                      Launch Demo
+                    </button>
+                    <button class="btn-ghost" onclick={goToDemo}>
+                      Spec Studio
+                    </button>
+                  </div>
+                {/if}
+              </div>
+
+              {#if slides[currentSlide].layout === "stack"}
+                <div class="stack-diagram">
+                  {#each slides[currentSlide].stackLayers ?? [] as layer}
+                    <div class="stack-layer">
+                      <div>
+                        <span class="stack-layer-name">{layer.name}</span>
+                        <span class="stack-layer-role">{layer.role}</span>
+                      </div>
+                      <p>{layer.detail}</p>
+                    </div>
+                  {/each}
+                </div>
+              {:else if slides[currentSlide].layout === "flow"}
+                <div class="flow-diagram">
+                  {#each slides[currentSlide].flowSteps ?? [] as step, i}
+                    <div class="flow-step">
+                      <span class="flow-step-index">{String(i + 1).padStart(2, "0")}</span>
+                      <div>
+                        <strong>{step.name}</strong>
+                        <p>{step.detail}</p>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              {:else if slides[currentSlide].layout === "gateway"}
+                <div class="gateway-diagram">
+                  {#each slides[currentSlide].gatewayPoints ?? [] as point}
+                    <div class="gateway-point">
+                      <span>{point.name}</span>
+                      <p>{point.detail}</p>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
             </div>
-          {/if}
-        </div>
+          </div>
+        {:else}
+          <div class="fade-in max-w-3xl">
+            <p class="slide-eyebrow mb-4">
+              <span class="mr-3 text-subtle">#{slides[currentSlide].number}</span>{slides[currentSlide].eyebrow}
+            </p>
+            <h1 class="slide-headline mb-6 whitespace-pre-line">{slides[currentSlide].headline}</h1>
+            <p class="slide-body">{slides[currentSlide].body}</p>
+
+            {#if currentSlide === slides.length - 1}
+              <div class="mt-10 flex gap-4">
+                <button class="btn-lime" onclick={goToConvergence}>
+                  Launch Demo
+                </button>
+                <button class="btn-ghost" onclick={goToDemo}>
+                  Spec Studio
+                </button>
+              </div>
+            {/if}
+          </div>
+        {/if}
       {/key}
 
       <!-- Bottom nav -->

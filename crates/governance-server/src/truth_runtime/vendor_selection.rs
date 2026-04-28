@@ -1523,6 +1523,7 @@ async fn execute_inner(
         .map_err(|e| format!("convergence failed: {e}"))?;
     let elapsed_ms = started_at.elapsed().as_millis() as u64;
 
+    let source_material = source_material_payload(inputs);
     let projection_details = vendor_selection_projection_details(
         &result.context,
         &vendors,
@@ -1533,6 +1534,7 @@ async fn execute_inner(
             principal_authority: &principal_authority_label,
             human_approval_present,
             demo_mode,
+            source_material: source_material.clone(),
         },
     );
 
@@ -1571,6 +1573,24 @@ async fn execute_inner(
                 converged: result.converged,
                 confidence,
                 recommended_vendor: &recommended_vendor,
+                source_document_path: source_material
+                    .pointer("/source_document/path")
+                    .and_then(serde_json::Value::as_str),
+                static_fact_count: source_material
+                    .pointer("/static_facts/fact_count")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or_default() as usize,
+                static_fact_paths: source_material
+                    .pointer("/static_facts/paths")
+                    .and_then(serde_json::Value::as_array)
+                    .map(|paths| {
+                        paths
+                            .iter()
+                            .filter_map(serde_json::Value::as_str)
+                            .map(ToString::to_string)
+                            .collect()
+                    })
+                    .unwrap_or_default(),
             },
         );
     }
@@ -1725,6 +1745,7 @@ struct ProjectionOptions<'a> {
     principal_authority: &'a str,
     human_approval_present: Option<bool>,
     demo_mode: DemoMode,
+    source_material: serde_json::Value,
 }
 
 fn vendor_selection_projection_details(
@@ -1767,6 +1788,7 @@ fn vendor_selection_projection_details(
             options.demo_mode,
         ),
         "resources": resource_payload(vendors, options.human_approval_present),
+        "source_material": options.source_material.clone(),
         "invariants": invariant_payload(vendors, options.min_score, options.max_risk),
         "optimization": optimization_payload(
             vendors,
@@ -1775,6 +1797,7 @@ fn vendor_selection_projection_details(
             options.max_vendors,
         ),
         "fixed_point": fixed_point_payload(ctx),
+        "stack_pressure": stack_pressure_payload(ctx, vendors, &options),
         "context": {
             "strategies": fact_views(ctx, ContextKey::Strategies),
             "seeds": fact_views(ctx, ContextKey::Seeds),
@@ -1839,6 +1862,67 @@ fn resource_payload(
         },
         "human_approval_present": human_approval_present,
     })
+}
+
+fn source_material_payload(inputs: &HashMap<String, String>) -> serde_json::Value {
+    let source_document_path = super::common::optional_input(inputs, "source_document_path");
+    let source_document = super::common::optional_input(inputs, "source_document");
+    let source_document_lines = source_document
+        .as_deref()
+        .map(|value| value.lines().count())
+        .unwrap_or_default();
+    let source_document_bytes = source_document
+        .as_ref()
+        .map(String::len)
+        .unwrap_or_default();
+    let static_fact_paths = super::common::optional_input(inputs, "static_facts_paths_json")
+        .and_then(|raw| serde_json::from_str::<Vec<String>>(&raw).ok())
+        .unwrap_or_default();
+    let static_facts = super::common::optional_input(inputs, "static_facts_json")
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        .unwrap_or(serde_json::Value::Null);
+    let static_fact_count = static_fact_count(&static_facts);
+
+    serde_json::json!({
+        "source_document": {
+            "present": source_document_path.is_some() || source_document.is_some(),
+            "path": source_document_path,
+            "line_count": source_document_lines,
+            "byte_count": source_document_bytes,
+        },
+        "static_facts": {
+            "present": static_fact_count > 0,
+            "paths": static_fact_paths,
+            "fact_count": static_fact_count,
+        },
+    })
+}
+
+fn static_fact_count(value: &serde_json::Value) -> usize {
+    match value {
+        serde_json::Value::Array(files) => files
+            .iter()
+            .map(|file| {
+                file.get("content")
+                    .map(count_fact_value)
+                    .unwrap_or_else(|| count_fact_value(file))
+            })
+            .sum(),
+        other => count_fact_value(other),
+    }
+}
+
+fn count_fact_value(value: &serde_json::Value) -> usize {
+    match value {
+        serde_json::Value::Null => 0,
+        serde_json::Value::Array(items) => items.len(),
+        serde_json::Value::Object(map) => map
+            .get("facts")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len)
+            .unwrap_or(1),
+        _ => 1,
+    }
 }
 
 fn invariant_payload(vendors: &[VendorInput], min_score: f64, max_risk: f64) -> serde_json::Value {
@@ -1966,6 +2050,89 @@ fn fixed_point_payload(ctx: &ContextState) -> serde_json::Value {
             "policy:decision:vendor-selection"
         ],
     })
+}
+
+fn stack_pressure_payload(
+    ctx: &ContextState,
+    vendors: &[VendorInput],
+    options: &ProjectionOptions<'_>,
+) -> serde_json::Value {
+    let feasible_count = vendors
+        .iter()
+        .filter(|vendor| {
+            vendor.compliance_status == "compliant"
+                && vendor.score >= options.min_score
+                && vendor.risk_score <= options.max_risk
+        })
+        .count();
+    let frontier_count = vendors
+        .iter()
+        .filter(|vendor| is_pareto_frontier_vendor(vendor, vendors))
+        .count();
+    let promoted_fact_count = ctx.get(ContextKey::Strategies).len()
+        + ctx.get(ContextKey::Seeds).len()
+        + ctx.get(ContextKey::Evaluations).len()
+        + ctx.get(ContextKey::Proposals).len();
+    let policy_outcome = ctx
+        .get(ContextKey::Evaluations)
+        .iter()
+        .find(|fact| fact.id == "policy:decision:vendor-selection")
+        .and_then(|fact| serde_json::from_str::<serde_json::Value>(&fact.content).ok())
+        .and_then(|payload| {
+            payload
+                .get("outcome")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "pending".to_string());
+
+    serde_json::json!([
+        {
+            "layer": "Helm",
+            "version": "0.1.0",
+            "contract": "Operator workbench for source packs, truth execution, evidence inspection, and participant editing.",
+            "demo_signal": format!("{} candidates, {} promoted facts, policy outcome {}.", vendors.len(), promoted_fact_count, policy_outcome),
+            "pressure": "Make source-pack edits, timeline playback, and what-happened-why inspection first-class in the desktop lab.",
+        },
+        {
+            "layer": "Axiom",
+            "version": "0.7.0",
+            "contract": "Normative truth contract: invariants, acceptance criteria, examples, and policy lens before execution.",
+            "demo_signal": "Score floor, risk ceiling, compliance, HITL, and provenance invariants are projected for the run.",
+            "pressure": "Compile the visible invariants and Cedar clauses from editable truth artifacts, then return structured diagnostics.",
+        },
+        {
+            "layer": "Organism",
+            "version": "1.4.0",
+            "contract": "Intent, planning seed, formation assembly, topology choice, and strategy proposals.",
+            "demo_signal": format!("{} formation roles assigned with mode {}.", formation_role_count(ctx), options.demo_mode.as_str()),
+            "pressure": "Promote panel, huddle, adversarial, and self-organizing topologies from demo labels into typed plan bundles.",
+        },
+        {
+            "layer": "Converge",
+            "version": "3.7.4",
+            "contract": "Engine cycles, context partitions, promoted facts, criteria, policy decisions, and fixed-point stop reasons.",
+            "demo_signal": format!("{} strategies, {} seeds, {} evaluations, {} proposal fact(s).", ctx.get(ContextKey::Strategies).len(), ctx.get(ContextKey::Seeds).len(), ctx.get(ContextKey::Evaluations).len(), ctx.get(ContextKey::Proposals).len()),
+            "pressure": "Expose richer criterion evidence, promotion traces, and stop reasons so participants can debug governance runs quickly.",
+        },
+        {
+            "layer": "Ferrox",
+            "version": "0.3.12",
+            "contract": "Optimization substrate for feasible sets, Pareto frontier analysis, and MIP/CP-SAT style decisions.",
+            "demo_signal": format!("{} feasible candidates, {} Pareto frontier candidates, shortlist cap {}.", feasible_count, frontier_count, options.max_vendors),
+            "pressure": "Replace local weighted ranking with a Ferrox MIP/Pareto suggestor once the participant dependency stays fast to build.",
+        },
+    ])
+}
+
+fn formation_role_count(ctx: &ContextState) -> usize {
+    formation_plan_payload(ctx)
+        .and_then(|plan| {
+            plan.get("assignments")
+                .and_then(serde_json::Value::as_array)
+                .map(Vec::len)
+        })
+        .unwrap_or_default()
 }
 
 fn formation_plan_payload(ctx: &ContextState) -> Option<serde_json::Value> {
@@ -2122,6 +2289,101 @@ mod tests {
         let result = execute(&store, &inputs, false).await.unwrap();
         assert!(!result.criteria_outcomes.is_empty());
         assert_eq!(result.criteria_outcomes.len(), 5);
+    }
+
+    #[tokio::test]
+    async fn vendor_selection_projection_exposes_foundation_pressure() {
+        let store = InMemoryStore::new();
+        let inputs = HashMap::from([("vendors".into(), "Acme AI, Beta ML".into())]);
+
+        let result = execute(&store, &inputs, false).await.unwrap();
+        let details = result
+            .projection
+            .and_then(|projection| projection.details)
+            .expect("projection details");
+        let rows = details
+            .get("stack_pressure")
+            .and_then(serde_json::Value::as_array)
+            .expect("stack pressure rows");
+        let layers: Vec<_> = rows
+            .iter()
+            .filter_map(|row| row.get("layer").and_then(serde_json::Value::as_str))
+            .collect();
+
+        for expected in ["Helm", "Axiom", "Organism", "Converge", "Ferrox"] {
+            assert!(
+                layers.contains(&expected),
+                "expected stack pressure for {expected}"
+            );
+        }
+        assert!(
+            rows.iter().any(|row| {
+                row.get("pressure")
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|pressure| pressure.contains("Ferrox MIP/Pareto suggestor"))
+            }),
+            "Ferrox pressure should name the missing optimizer handoff"
+        );
+    }
+
+    #[tokio::test]
+    async fn vendor_selection_projection_exposes_source_material() {
+        let store = InMemoryStore::new();
+        let inputs = HashMap::from([
+            ("vendors".into(), "Acme AI, Beta ML".into()),
+            (
+                "source_document_path".into(),
+                "examples/vendor-selection/buyer-brief.md".into(),
+            ),
+            (
+                "source_document".into(),
+                "Line one\nLine two\nLine three".into(),
+            ),
+            (
+                "static_facts_paths_json".into(),
+                serde_json::json!(["examples/vendor-selection/static-facts.json"]).to_string(),
+            ),
+            (
+                "static_facts_json".into(),
+                serde_json::json!([
+                    {
+                        "path": "examples/vendor-selection/static-facts.json",
+                        "content": {
+                            "facts": [
+                                {"id": "fact:one", "statement": "One"},
+                                {"id": "fact:two", "statement": "Two"}
+                            ]
+                        }
+                    }
+                ])
+                .to_string(),
+            ),
+        ]);
+
+        let result = execute(&store, &inputs, false).await.unwrap();
+        let details = result
+            .projection
+            .and_then(|projection| projection.details)
+            .expect("projection details");
+
+        assert_eq!(
+            details
+                .pointer("/source_material/source_document/path")
+                .and_then(serde_json::Value::as_str),
+            Some("examples/vendor-selection/buyer-brief.md")
+        );
+        assert_eq!(
+            details
+                .pointer("/source_material/source_document/line_count")
+                .and_then(serde_json::Value::as_u64),
+            Some(3)
+        );
+        assert_eq!(
+            details
+                .pointer("/source_material/static_facts/fact_count")
+                .and_then(serde_json::Value::as_u64),
+            Some(2)
+        );
     }
 
     #[tokio::test]

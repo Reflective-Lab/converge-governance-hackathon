@@ -6,11 +6,17 @@ set -euo pipefail
 # ============================================================================
 #
 # Usage:
-#   ./scripts/demo/presentation.sh           # Full walkthrough
+#   ./scripts/demo/presentation.sh           # Full walkthrough, mock Providers, default HITL reply
 #   ./scripts/demo/presentation.sh step N    # Jump to step N (1-7)
-#   ./scripts/demo/presentation.sh --live    # Use real LLM/search providers
+#   ./scripts/demo/presentation.sh -l        # Use real LLM/search Providers
+#   ./scripts/demo/presentation.sh --live    # Use real LLM/search Providers
+#   ./scripts/demo/presentation.sh -v        # Show demo diagnostics
+#   ./scripts/demo/presentation.sh --verbose # Show demo diagnostics
+#   ./scripts/demo/presentation.sh --hitl    # Ask for a real HITL reply
+#   ./scripts/demo/presentation.sh --nohitl  # Use default HITL reply
 #   ./scripts/demo/presentation.sh --today   # Today's governed-selection track
 #   ./scripts/demo/presentation.sh --creative # Creative Pareto-breakout track
+#   ./scripts/demo/presentation.sh --doc PATH --static-facts PATH
 #   ./scripts/demo/presentation.sh --no-pause
 #
 # Prerequisites:
@@ -21,6 +27,8 @@ LIVE_FLAG=""
 STEP=""
 TRACK="full"
 NO_PAUSE="false"
+VERBOSE="false"
+HITL_MODE="nohitl"
 DEMO_DATA_DIR="${DEMO_DATA_DIR:-examples/vendor-selection}"
 VENDORS_FILE="${VENDORS_FILE:-$DEMO_DATA_DIR/demo-ai-vendors.json}"
 ROUTER_FILE="${ROUTER_FILE:-$DEMO_DATA_DIR/demo-ai-provider-mix.json}"
@@ -45,20 +53,123 @@ STEP3_APPROVED_JSON="$WORK_DIR/step3-approved.json"
 HITL_CHOICE="promote"
 STOP_AFTER_HITL="false"
 SPINNER_VERBS=("Thinking" "Processing" "Synthesizing" "Converging")
+STATIC_FACTS_FILES=()
 
-for arg in "$@"; do
+usage() {
+  cat <<'EOF'
+Helm AI vendor-selection demo
+
+Core variants:
+  just demo-today                  Today flow, mock Providers, default HITL reply
+  just demo-today-live             Today flow, live Providers, default HITL reply
+  just demo-creative               Creative flow, mock Providers, default HITL reply
+  just demo-creative-live          Creative flow, live Providers, default HITL reply
+
+Flags:
+  --today                          Run the governed today flow
+  --creative                       Run the creative Pareto flow
+  -l, --live                       Use live remote Providers
+  --mock                           Use deterministic Provider mocks
+  --hitl                           Ask for a human HITL reply
+  --nohitl, --no-hitl              Use the default HITL reply
+  -v, --verbose, --verbode         Show diagnostics and source-pack details
+  --doc PATH                       Buyer/source document to display and pass through
+  --vendors PATH                   Governed vendor JSON
+  --creative-vendors PATH          Creative/competition vendor JSON
+  --criteria PATH                  Evaluation model document
+  --static-facts PATH              Static facts file; may be repeated
+  --data-dir PATH                  Source pack directory
+  --no-pause                       Disable pacing pauses
+  step N                           Run only one step
+EOF
+}
+
+args=("$@")
+index=0
+while [ "$index" -lt "${#args[@]}" ]; do
+  arg="${args[$index]}"
   case "$arg" in
-    --live) LIVE_FLAG="--live" ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -l|--live) LIVE_FLAG="--live" ;;
+    --mock) LIVE_FLAG="" ;;
+    -v|--verbose|--verbode) VERBOSE="true" ;;
+    --hitl) HITL_MODE="hitl" ;;
+    --nohitl|--no-hitl) HITL_MODE="nohitl" ;;
     --today|--today-only) TRACK="today" ;;
     --creative|--creative-only) TRACK="creative" ;;
     --track=today) TRACK="today" ;;
     --track=creative) TRACK="creative" ;;
     --track=full) TRACK="full" ;;
+    --data-dir=*)
+      DEMO_DATA_DIR="${arg#*=}"
+      VENDORS_FILE="$DEMO_DATA_DIR/demo-ai-vendors.json"
+      ROUTER_FILE="$DEMO_DATA_DIR/demo-ai-provider-mix.json"
+      COMPETITION_VENDORS_FILE="$DEMO_DATA_DIR/demo-competition-vendors.json"
+      COMPETITION_MATRIX_FILE="$DEMO_DATA_DIR/competition-matrix.json"
+      SOURCE_PACK_FILE="$DEMO_DATA_DIR/demo-source-pack.json"
+      BUYER_BRIEF_FILE="$DEMO_DATA_DIR/buyer-brief.md"
+      EVALUATION_MODEL_FILE="$DEMO_DATA_DIR/evaluation-model.md"
+      DOWNSTREAM_ACTIONS_FILE="$DEMO_DATA_DIR/downstream-actions.md"
+      ;;
+    --data-dir)
+      index=$((index + 1))
+      DEMO_DATA_DIR="${args[$index]}"
+      VENDORS_FILE="$DEMO_DATA_DIR/demo-ai-vendors.json"
+      ROUTER_FILE="$DEMO_DATA_DIR/demo-ai-provider-mix.json"
+      COMPETITION_VENDORS_FILE="$DEMO_DATA_DIR/demo-competition-vendors.json"
+      COMPETITION_MATRIX_FILE="$DEMO_DATA_DIR/competition-matrix.json"
+      SOURCE_PACK_FILE="$DEMO_DATA_DIR/demo-source-pack.json"
+      BUYER_BRIEF_FILE="$DEMO_DATA_DIR/buyer-brief.md"
+      EVALUATION_MODEL_FILE="$DEMO_DATA_DIR/evaluation-model.md"
+      DOWNSTREAM_ACTIONS_FILE="$DEMO_DATA_DIR/downstream-actions.md"
+      ;;
+    --doc=*|--document=*|--input-doc=*) BUYER_BRIEF_FILE="${arg#*=}" ;;
+    --doc|--document|--input-doc)
+      index=$((index + 1))
+      BUYER_BRIEF_FILE="${args[$index]}"
+      ;;
+    --criteria=*|--evaluation-model=*) EVALUATION_MODEL_FILE="${arg#*=}" ;;
+    --criteria|--evaluation-model)
+      index=$((index + 1))
+      EVALUATION_MODEL_FILE="${args[$index]}"
+      ;;
+    --vendors=*|--vendors-json=*) VENDORS_FILE="${arg#*=}" ;;
+    --vendors|--vendors-json)
+      index=$((index + 1))
+      VENDORS_FILE="${args[$index]}"
+      ;;
+    --creative-vendors=*|--competition-vendors=*) COMPETITION_VENDORS_FILE="${arg#*=}" ;;
+    --creative-vendors|--competition-vendors)
+      index=$((index + 1))
+      COMPETITION_VENDORS_FILE="${args[$index]}"
+      ;;
+    --static-facts=*) STATIC_FACTS_FILES+=("${arg#*=}") ;;
+    --static-facts)
+      index=$((index + 1))
+      STATIC_FACTS_FILES+=("${args[$index]}")
+      ;;
     --no-pause) NO_PAUSE="true" ;;
-    step) : ;;
+    --) : ;;
+    step)
+      index=$((index + 1))
+      STEP="${args[$index]}"
+      ;;
     [0-9]*) STEP="$arg" ;;
+    *)
+      echo "Unknown argument: $arg" >&2
+      usage >&2
+      exit 1
+      ;;
   esac
+  index=$((index + 1))
 done
+
+if [ "${#STATIC_FACTS_FILES[@]}" -eq 0 ] && [ -f "$DEMO_DATA_DIR/static-facts.json" ]; then
+  STATIC_FACTS_FILES+=("$DEMO_DATA_DIR/static-facts.json")
+fi
 
 DEMO_BIN="cargo run -q -p governance-server --bin vendor-selection-demo --"
 
@@ -214,6 +325,12 @@ require_demo_data() {
       missing=1
     fi
   done
+  for file in "${STATIC_FACTS_FILES[@]}"; do
+    if [ ! -s "$file" ]; then
+      echo -e "${RED}Missing static facts file: $file${RESET}" >&2
+      missing=1
+    fi
+  done
 
   return "$missing"
 }
@@ -237,12 +354,33 @@ This is intentionally editable. Changing the JSON data should change the governe
   fi
 }
 
-live_provider_plan() {
-  if [ -z "$LIVE_FLAG" ]; then
+static_facts_summary() {
+  if [ "${#STATIC_FACTS_FILES[@]}" -eq 0 ]; then
+    box_text "Static facts" "No static facts file was provided.
+Run with --static-facts PATH to add buyer constraints, standing policies, or known organizational facts to this demo run."
     return
   fi
 
-  box_text "Live provider plan" "Model routing is forced through OpenRouter model IDs when OPENROUTER_API_KEY is available:
+  for file in "${STATIC_FACTS_FILES[@]}"; do
+    if jq empty "$file" >/dev/null 2>&1; then
+      box_cmd "Static facts: $file" jq -r '
+        if type == "array" then
+          .[] | "• \(.id // .fact_id // "fact"): \(.statement // .value // .description // tostring)"
+        elif has("facts") and (.facts | type == "array") then
+          .facts[] | "• \(.id // .fact_id // "fact"): \(.statement // .value // .description // tostring)"
+        else
+          tostring
+        end
+      ' "$file"
+    else
+      box_file_excerpt "Static facts: $file" "$file" 36
+    fi
+  done
+}
+
+provider_plan() {
+  if [ -n "$LIVE_FLAG" ]; then
+    box_text "Real Provider plan" "Model routing is forced through OpenRouter model IDs when OPENROUTER_API_KEY is available:
 • Compliance screening: $COMPLIANCE_MODEL — fast governance checks
 • Cost / price analysis: $COST_MODEL — efficient value analysis
 • Vendor risk: $RISK_MODEL — fast governance risk calls
@@ -251,6 +389,91 @@ live_provider_plan() {
 Web evidence:
 • Brave Search — broad market and compliance discovery
 • Tavily Search — deeper canonical evidence and regulatory follow-up"
+    return
+  fi
+
+  box_text "Mock Provider plan" "This run uses deterministic local Provider mocks.
+No external API keys, search calls, or model calls are required.
+
+The same truth runtime still executes:
+• Compliance screening from declared vendor evidence
+• Cost/value analysis from structured prices
+• Risk scoring from configured inputs
+• Multi-criteria optimization over capability, risk, cost, and certification coverage
+• Synthesis and Cedar/HITL commitment gating"
+}
+
+demo_problem_statement() {
+  box_text "User problem: complex AI vendor evaluation" "The user is not asking for a simple scorecard.
+They need to evaluate AI vendors against criteria that pull in different directions:
+• capability and business fit
+• compliance posture and certifications
+• operational, lock-in, and regulatory risk
+• monthly cost and value
+• authority, budget, HITL, and Cedar policy gates
+
+Helm's job in this demo is to make that weighting explicit, combine the evidence through governed execution, and show why the decision converged or honestly stopped."
+}
+
+demo_options_summary() {
+  box_text "Demo variants" "Same script, four common variants:
+1. Today + Mock:      just demo-today
+2. Today + Live:      just demo-today-live
+3. Creative + Mock:   just demo-creative
+4. Creative + Live:   just demo-creative-live
+
+Modifiers:
+• -v / --verbose / --verbode for diagnostics
+• --hitl for interactive human approval, --nohitl for default approval
+• --doc PATH, --vendors PATH, --criteria PATH, --static-facts PATH to test another source pack"
+}
+
+data_moat_principle() {
+  box_text "Data moat principle" "The agent is not the moat.
+The data around the agent is the moat.
+Teams that understand this do not just move faster; they get better with every cycle.
+
+In this demo, that data is explicit:
+• source documents and static facts
+• promoted context facts with provenance
+• policy and HITL outcomes
+• ExperienceStore run summaries that influence the next decision"
+}
+
+verbose_diagnostics() {
+  if [ "$VERBOSE" != "true" ]; then
+    return
+  fi
+
+  local provider_mode="mock"
+  if [ -n "$LIVE_FLAG" ]; then
+    provider_mode="live"
+  fi
+
+  box_text "Verbose diagnostics" "Track: $TRACK
+Step filter: ${STEP:-all}
+Provider mode: $provider_mode
+HITL mode: $HITL_MODE
+Pacing: $RESULT_PACE
+No pause: $NO_PAUSE
+Work directory: $WORK_DIR
+Experience store: $EXPERIENCE_PATH
+Demo binary: $DEMO_BIN
+
+Data files:
+• source document: $BUYER_BRIEF_FILE
+• governed vendors: $VENDORS_FILE
+• competition vendors: $COMPETITION_VENDORS_FILE
+• competition matrix: $COMPETITION_MATRIX_FILE
+• evaluation model: $EVALUATION_MODEL_FILE
+• source manifest: $SOURCE_PACK_FILE
+• static facts: ${STATIC_FACTS_FILES[*]:-none}
+
+Models when live:
+• compliance: $COMPLIANCE_MODEL
+• cost: $COST_MODEL
+• risk: $RISK_MODEL
+• synthesis: $SYNTHESIS_MODEL"
 }
 
 upstream_assumptions() {
@@ -367,6 +590,13 @@ run_with_liveness() {
   return "$status"
 }
 
+build_source_args() {
+  SOURCE_ARGS=("--source-doc=$BUYER_BRIEF_FILE")
+  for file in "${STATIC_FACTS_FILES[@]}"; do
+    SOURCE_ARGS+=("--static-facts=$file")
+  done
+}
+
 run_json() {
   local output_file="$1"
   local vendors_file="$2"
@@ -374,10 +604,12 @@ run_json() {
   local err_file="$output_file.err"
   shift 2
   rm -f "$tmp_file" "$err_file"
+  build_source_args
 
   if ! $DEMO_BIN \
     --json \
     --vendors-json="$vendors_file" \
+    "${SOURCE_ARGS[@]}" \
     --experience-path="$EXPERIENCE_PATH" \
     --model-compliance="$COMPLIANCE_MODEL" \
     --model-cost="$COST_MODEL" \
@@ -413,9 +645,11 @@ run_business_capture() {
   local output_file="$1"
   local vendors_file="$2"
   shift 2
+  build_source_args
   $DEMO_BIN \
     --business \
     --vendors-json="$vendors_file" \
+    "${SOURCE_ARGS[@]}" \
     --experience-path="$EXPERIENCE_PATH" \
     --model-compliance="$COMPLIANCE_MODEL" \
     --model-cost="$COST_MODEL" \
@@ -446,8 +680,11 @@ require_json_file() {
 }
 
 hitl_decision() {
-  if [ "$NO_PAUSE" = "true" ]; then
+  if [ "$HITL_MODE" != "hitl" ]; then
     HITL_CHOICE="promote"
+    box_text "HITL default reply" "HITL mode is disabled for this run.
+The demo uses the default reply: promote.
+Run with --hitl if you want to choose promote, escalate, or reject interactively."
     return
   fi
 
@@ -477,7 +714,7 @@ when {
   context.prior_pattern == \"accepted-ai-provider-selection\"
 };"
 
-  if [ "$NO_PAUSE" = "true" ]; then
+  if [ "$HITL_MODE" != "hitl" ]; then
     box_text "Delegation answer" "Auto demo mode: yes, record this as a delegation candidate for the next matching decision."
     return
   fi
@@ -505,11 +742,140 @@ run_step() {
   "step_$1"
 }
 
+formation_trace() {
+  local result_file="$1"
+  box_cmd "Formation selected suggestors" jq -r '
+    "Coverage: " + (((.projection.details.formation.coverage_ratio // 0) * 100) | round | tostring) + "%",
+    "",
+    ((.projection.details.formation.assignments // [])[]
+      | "• role=\(.role) -> suggestor=\(.suggestor)"),
+    "",
+    "Roles and outputs:",
+    ((.projection.details.agents // [])[]
+      | "• \(.id): \(.role) | pack=\(.pack) | output=\(.output)")
+  ' "$result_file"
+}
+
+source_material_trace() {
+  local result_file="$1"
+  box_cmd "Source material used by this run" jq -r '
+    (.projection.details.source_material // {}) as $s
+    | "Document: \($s.source_document.path // "none")",
+      "Document lines: \($s.source_document.line_count // 0)",
+      "Document bytes: \($s.source_document.byte_count // 0)",
+      "",
+      "Static facts: \($s.static_facts.fact_count // 0)",
+      ((($s.static_facts.paths // [])[])
+        | "• " + .)
+  ' "$result_file"
+}
+
+formation_success_discussion() {
+  local result_file="$1"
+  box_cmd "Why this formation can succeed" jq -r '
+    ((.projection.details.context.strategies // [])[] | select(.id=="strategy:vendor-sel:tactic") | .content) as $t
+    | "Selected tactic: \($t.name)",
+      "Reason: \($t.why)",
+      "",
+      "Resources:",
+      "• candidates=\(.projection.details.resources.candidate_count)",
+      "• evidence channels=\((.projection.details.resources.evidence_channels // []) | join(", "))",
+      "• compute budget cycles=\(.projection.details.resources.compute_budget.max_cycles)",
+      "",
+      "Invariants:",
+      ((.projection.details.invariants // [])[] | "• \(.id): \(.statement)")
+  ' "$result_file"
+}
+
+suggestor_trigger_trace() {
+  local result_file="$1"
+  box_cmd "Suggestor trigger seeds and context writes" jq -r '
+    "• planning-seed",
+    "  trigger: no strategy facts exist for this run",
+    "  writes: " + (([(.projection.details.context.strategies // [])[].id] | join(", "))),
+    "",
+    "• compliance-screener",
+    "  trigger: strategy:vendor-sel:compliance",
+    "  writes: " + (([(.projection.details.context.seeds // [])[] | select(.id | startswith("compliance:screen:")) | .id] | join(", "))),
+    "",
+    "• cost-analysis",
+    "  trigger: compliance screen facts + strategy:vendor-sel:cost",
+    "  writes: " + (([(.projection.details.context.evaluations // [])[] | select(.id | startswith("cost:estimate:")) | .id] | join(", "))),
+    "",
+    "• vendor-risk",
+    "  trigger: cost facts + compliance facts + strategy:vendor-sel:risk",
+    "  writes: " + (([(.projection.details.context.evaluations // [])[] | select(.id | startswith("risk:score:")) | .id] | join(", "))),
+    "",
+    "• vendor-shortlist",
+    "  trigger: risk score facts + strategy:vendor-sel:shortlist",
+    "  writes: vendor:shortlist",
+    "",
+    "• decision-synthesis",
+    "  trigger: vendor:shortlist + strategy:vendor-sel:decision",
+    "  writes: decision:recommendation",
+    "",
+    "• policy-gate",
+    "  trigger: decision:recommendation + selected amount + authority/HITL context",
+    "  writes: policy:decision:vendor-selection"
+  ' "$result_file"
+}
+
+final_result_trace() {
+  local result_file="$1"
+  box_cmd "Final result" jq -r '
+    "Converged: \(.converged)",
+    "Cycles: \(.cycles)",
+    "Stop reason: \(.stop_reason)",
+    "",
+    "Recommendation: \(.projection.details.recommendation.recommendation)",
+    "Policy outcome: \(.projection.details.policy.outcome)",
+    "Selected vendor: \(.projection.details.policy.selected_vendor)",
+    "Selected amount: $\(.projection.details.policy.selected_amount_major)/mo",
+    "",
+    "Top shortlist:",
+    ((.projection.details.shortlist.shortlist // [])[]
+      | "#\(.rank) \(.vendor_name): composite=\(.composite_score), capability=\(.score), risk=\(.risk_score), cost=$\(.cost_major)/mo")
+  ' "$result_file"
+}
+
+experience_store_trace() {
+  local result_file="$1"
+  box_cmd "ExperienceStore write" jq -r '
+    (.projection.details.learning // {"status":"first_run","prior_runs":0}) as $l
+    | (.projection.details.source_material // {}) as $s
+    | "Run summary stored for truth_key=vendor-selection",
+      "• cycles=\(.cycles)",
+      "• converged=\(.converged)",
+      "• confidence=\(.projection.details.recommendation.confidence)",
+      "• recommended_vendor=\(.projection.details.policy.selected_vendor)",
+      "• source_document=\($s.source_document.path // "none")",
+      "• static_facts=\($s.static_facts.fact_count // 0)",
+      "• prior_runs_available_to_this_run=\($l.prior_runs)",
+      "• learning_status=\($l.status // "prior_context_available")",
+      (if $l.consistent_recommendation then "• consistent_recommendation=\($l.consistent_recommendation.vendor) (\($l.consistent_recommendation.count)/\($l.consistent_recommendation.total_prior_runs))" else empty end),
+      (if $l.latest_prior_source then "• latest_prior_source=\($l.latest_prior_source.source_document_path // "none") static_facts=\($l.latest_prior_source.static_fact_count // 0)" else empty end)
+  ' "$result_file"
+}
+
+creative_alternative_formations() {
+  box_text "Alternative formations compared" "1. Single-winner panel
+   Good when criteria are stable and one vendor can satisfy the whole job.
+   Weakness here: no single provider dominates coding, synthesis, search, governance, cost, and EU posture.
+
+2. Strict policy huddle
+   Good when authority and HITL risk are the main uncertainty.
+   Weakness here: it can approve or stop, but it does not search the provider-mix frontier.
+
+3. Self-organizing Pareto/router formation
+   Selected for the creative run.
+   It compares non-dominated alternatives, lets Ferrox-style optimization expose the feasible frontier, and lets Converge keep policy and provenance gates intact."
+}
+
 # ============================================================================
 # STEP 1: The Stack
 # ============================================================================
 step_1() {
-  banner "Step 1: The Stack"
+  banner "Step 1: Helm Stack For AI Vendor Selection"
   narrate "Converge — correctness-first multi-agent runtime"
   narrate "Organism — intelligence layer (intent, planning, adversarial, simulation, learning)"
   narrate "Axiom   — truth contracts and normative specifications"
@@ -526,7 +892,7 @@ step_1() {
 # STEP 2: The Buyer's Document Pack
 # ============================================================================
 step_2() {
-  banner "Step 2: The Buyer's Document Pack"
+  banner "Step 2: AI Vendor Criteria Pack"
   narrate "A buyer submits a document pack describing what they need."
   narrate "Today this is normalized into structured vendor JSON."
   narrate "Tomorrow: raw documents, gap detection, contradiction flagging."
@@ -539,6 +905,8 @@ step_2() {
 
   data_pack_summary
   box_file_excerpt "Buyer brief from source pack" "$BUYER_BRIEF_FILE" 34
+  box_file_excerpt "Evaluation model from source pack" "$EVALUATION_MODEL_FILE" 44
+  static_facts_summary
 
   box_text "Demo boundary: what we cover" "We are focusing on the RFP evaluation and recommendation slice:
 1. A structured buyer document pack exists.
@@ -572,6 +940,11 @@ step_3() {
     --no-human-approval \
     $LIVE_FLAG
   require_json_file "$STEP3_ANALYSIS_JSON" "governed selection without HITL approval"
+
+  source_material_trace "$STEP3_ANALYSIS_JSON"
+  formation_trace "$STEP3_ANALYSIS_JSON"
+  formation_success_discussion "$STEP3_ANALYSIS_JSON"
+  suggestor_trigger_trace "$STEP3_ANALYSIS_JSON"
 
   box_text "Where we are in the process" "1. Intake: normalize the buyer document pack
 2. Formation: decide which agent roles are needed
@@ -650,12 +1023,16 @@ step_3() {
         .projection.details.policy
         | "Your decision: promote\nCedar outcome: \(.outcome)\nCommitment: \(.selected_vendor) at $\(.selected_amount_major)/mo"
       ' "$STEP3_APPROVED_JSON"
+      final_result_trace "$STEP3_APPROVED_JSON"
+      experience_store_trace "$STEP3_APPROVED_JSON"
       ask_cedar_delegation "$decision"
       ;;
     escalate)
       box_text "Gate after your HITL decision" "Your decision: escalate
 Cedar outcome: Escalate
 Commitment: not promoted yet; the decision remains in human review."
+      final_result_trace "$STEP3_ANALYSIS_JSON"
+      experience_store_trace "$STEP3_ANALYSIS_JSON"
       box_text "Demo stopped at HITL" "This is honest stopping.
 The evidence and recommendation are preserved, but the process does not promote a commitment.
 In a real RFI/RFP process, the next action would be clarification, stakeholder review, or a revised decision package."
@@ -665,6 +1042,8 @@ In a real RFI/RFP process, the next action would be clarification, stakeholder r
       box_text "Gate after your HITL decision" "Your decision: reject
 Cedar outcome: Reject
 Commitment: stopped by the human gate; no vendor commitment is promoted."
+      final_result_trace "$STEP3_ANALYSIS_JSON"
+      experience_store_trace "$STEP3_ANALYSIS_JSON"
       box_text "Demo stopped at HITL" "This is honest stopping.
 The system keeps the audit trail, but the selected commitment is not allowed to proceed.
 In a real RFI/RFP process, the next action would be to revise the requirement, change the vendor set, or close the process."
@@ -766,13 +1145,14 @@ It means the next synthesis has more experience context, and a future Cedar dele
 # ============================================================================
 step_7() {
   if [ "$TRACK" = "creative" ]; then
-    banner "Creative Demo: Pareto Breakout"
+    banner "Creative Demo: Complex Criteria Pareto Breakout"
   else
     banner "Step 7: Pareto Breakout — Real Optimization Case"
   fi
-  box_text "Richer buyer request" "The buyer is not really asking for one model.
-They need: agentic coding, structured synthesis, broad search, deep evidence, EU posture, low-risk operations, and gateway governance.
-That is a multi-objective optimization problem, not a simple winner-takes-all vendor choice."
+  box_text "Richer AI vendor request" "The same user problem has grown more realistic.
+The buyer needs to evaluate AI vendors across agentic coding, structured synthesis, broad search, deep evidence, EU posture, low-risk operations, gateway governance, and cost.
+Those criteria are complex to weight and combine, so a simple winner-takes-all scorecard is too weak."
+  creative_alternative_formations
 
   box_cmd "Competition matrix read from data directory" jq -r '
     "Source: \(.meta.source)",
@@ -790,7 +1170,11 @@ That is a multi-objective optimization problem, not a simple winner-takes-all ve
     | "• \(.name): score=\(.score) risk=\(.risk_score) cost=$\(.monthly_cost_minor / 100)/mo compliance=\(.compliance_status) certs=\((.certifications // []) | join("/"))"
   ' "$COMPETITION_VENDORS_FILE"
   echo ""
-  narrate "Next: run the creative optimization with live model routing and web evidence."
+  if [ -n "$LIVE_FLAG" ]; then
+    narrate "Next: run the creative optimization with real Provider routing and web evidence."
+  else
+    narrate "Next: run the creative optimization with deterministic Provider mocks."
+  fi
   pause
 
   breakout_json="$WORK_DIR/step7-breakout.json"
@@ -803,6 +1187,11 @@ That is a multi-objective optimization problem, not a simple winner-takes-all ve
     --max-risk=30 \
     $LIVE_FLAG
   require_json_file "$breakout_json" "Pareto breakout optimization"
+
+  source_material_trace "$breakout_json"
+  formation_trace "$breakout_json"
+  formation_success_discussion "$breakout_json"
+  suggestor_trigger_trace "$breakout_json"
 
   box_cmd "Governed Pareto frontier from the optimizer" jq -r '
     .projection.details.optimization.rows[]
@@ -825,6 +1214,8 @@ That is a multi-objective optimization problem, not a simple winner-takes-all ve
   box_text "Why this is more trustworthy" "The breakout is now grounded in a richer input set and a visible Pareto frontier.
 The system still produces the best single-candidate shortlist, but it also identifies that several non-dominated options serve different needs.
 That is the moment where the formation can say: the better answer is not one vendor; it is a governed router strategy."
+  final_result_trace "$breakout_json"
+  experience_store_trace "$breakout_json"
   pause
 }
 
@@ -844,14 +1235,21 @@ esac
 narrate "Presenter: Kenneth Pernyer / Reflective Labs"
 narrate "Date: $(date +%Y-%m-%d)"
 if [ -n "$LIVE_FLAG" ]; then
-  narrate "Mode: LIVE (real LLM and search providers)"
+  narrate "Mode: LIVE (real Providers)"
 else
-  narrate "Mode: OFFLINE (deterministic, no API keys needed)"
+  narrate "Mode: MOCK (deterministic Provider mocks, no API keys needed)"
+fi
+if [ "$VERBOSE" = "true" ]; then
+  narrate "Verbose: enabled"
 fi
 narrate "Track: $TRACK"
 narrate "Data: $DEMO_DATA_DIR"
 echo ""
-live_provider_plan
+provider_plan
+demo_options_summary
+demo_problem_statement
+data_moat_principle
+verbose_diagnostics
 
 # Clean experience store for a fresh demo
 mkdir -p "$WORK_DIR"
@@ -871,7 +1269,9 @@ case "$TRACK" in
     fi
     ;;
   creative)
-    step_7
+    run_step 1
+    run_step 2
+    run_step 7
     ;;
   full)
     run_step 1

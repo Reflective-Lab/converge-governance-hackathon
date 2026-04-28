@@ -1,0 +1,28 @@
+{
+  "facts": [
+    {
+      "id": "fact:buyer:eu-data-residency",
+      "statement": "Customer data must remain in EU or EEA processing regions unless legal grants an explicit exception.",
+      "category": "policy",
+      "source": "standing procurement policy"
+    },
+    {
+      "id": "fact:buyer:supervisory-approval",
+      "statement": "AI vendor commitments above 50000 USD per month require supervisory approval before execution.",
+      "category": "authority",
+      "source": "delegation matrix"
+    },
+    {
+      "id": "fact:buyer:certification-floor",
+      "statement": "Preferred vendors should provide SOC2, ISO27001, and GDPR evidence before production use.",
+      "category": "compliance",
+      "source": "security baseline"
+    },
+    {
+      "id": "fact:buyer:router-open",
+      "statement": "A governed provider router is acceptable when it reduces lock-in and preserves policy enforcement.",
+      "category": "architecture",
+      "source": "platform strategy"
+    }
+  ]
+}

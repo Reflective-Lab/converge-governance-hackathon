@@ -14,6 +14,10 @@
     {
       "path": "downstream-actions.md",
       "purpose": "Post-decision procurement actions and open team questions."
+    },
+    {
+      "path": "static-facts.json",
+      "purpose": "Standing buyer facts, policies, and architectural constraints used across demo runs."
     }
   ],
   "data": [
@@ -36,6 +40,11 @@
       "path": "competition-matrix.json",
       "used_in_steps": [7],
       "purpose": "Role-level competition evidence for the provider-mix recommendation."
+    },
+    {
+      "path": "static-facts.json",
+      "used_in_steps": [2, 3, 4, 5, 6, 7],
+      "purpose": "Static facts that can be swapped to test different standing constraints."
     },
     {
       "path": "demo-ai-provider-mix.json",

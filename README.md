@@ -132,6 +132,13 @@ Every run terminates honestly. Converged, budget exhausted, invariant violated, 
 just hit-the-ground-running   # first time — build, test, lint
 just server                   # start local harness (localhost:8080)
 just desktop                  # launch Tauri desktop app
+just demo-today               # Helm AI vendor-selection today flow, mock Providers
+just demo-today-live          # Helm AI vendor-selection today flow, live Providers
+just demo-creative            # Pareto AI vendor-selection creative flow, mock Providers
+just demo-creative-live       # Pareto AI vendor-selection creative flow, live Providers
+just demo-today -- -v         # diagnostics; --verbode is accepted as a typo alias
+just demo-today -- --hitl     # ask for human approval; default is --nohitl
+just demo-today -- --doc path/to/brief.md --static-facts path/to/facts.json
 just test                     # run all tests
 just test-coverage            # tests with coverage report
 just lint                     # clippy + format check

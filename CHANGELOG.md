@@ -30,11 +30,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Migrated truth/runtime examples to Converge's typed `PackId`, typed policy IDs, `ContextState`, and `&dyn Context` evaluator boundary.
 - Provider selection uses `select_healthy_chat_backend()` from Converge
 - Canonical participant-facing API surface: `converge-pack`, `converge-kernel`, `ChatBackend`, Organism types
+- Helm demos now expose four AI vendor-selection variants: today/creative crossed with mock/live Providers.
+- Demo scripts accept `-l` / `--live`, `-v` / `--verbose` / `--verbode`, `--hitl` / `--nohitl`, and source-pack overrides for documents, criteria, vendors, and static facts.
 
 ### Added
 - Policy-based vendor commitment truth
 - Audit-vendor-decision truth
 - KongGateway integration and desktop guidance
+- Vendor-selection `stack_pressure` projection and Helm panel showing how demo runs drive Helm, Axiom, Organism, Converge, and Ferrox development.
+- Vendor-selection source material projection showing the input document and static facts used by a run.
 
 ## 2026-04-01
 
