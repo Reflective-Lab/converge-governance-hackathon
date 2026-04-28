@@ -39,13 +39,55 @@
   // Vendor-selection-specific run state (extends Helm's RunState with 'commit-review')
   type RunState = HelmRunState | "commit-review";
 
-  let runState = $state<RunState>("bootstrap");
+  // Flow orchestration (Helm-owned)
+  const flowPlayer = new FlowPlayer({
+    phases: [
+      {
+        name: "Analysis",
+        steps: pipelineSteps.slice(0, 6).map((s, i) => ({
+          id: `step-${i}`,
+          label: s.step,
+          detail: s.detail,
+          agent: s.agent,
+          purpose: s.purpose,
+        })),
+      },
+      {
+        name: "HITL Gate",
+        steps: [
+          {
+            id: "step-6",
+            label: pipelineSteps[6].step,
+            detail: pipelineSteps[6].detail,
+            agent: pipelineSteps[6].agent,
+            purpose: pipelineSteps[6].purpose,
+          },
+        ],
+        gateName: "hitl",
+      },
+      {
+        name: "Promotion",
+        steps: pipelineSteps.slice(7).map((s, i) => ({
+          id: `step-${7 + i}`,
+          label: s.step,
+          detail: s.detail,
+          agent: s.agent,
+          purpose: s.purpose,
+        })),
+      },
+    ],
+    stepDelayMs: 1650,
+    reviewPauseMs: 1100,
+  });
+
+  let flowState = $state(flowPlayer.getState());
+  let spinnerVerb = $state(randomVerb());
+
+  // Domain state
   let bootstrapMode = $state<BootstrapMode>("upload");
   let evaluationMode = $state<EvaluationMode>("today");
   let documents = $state<EvaluationDoc[]>([]);
   let executableReady = $state(false);
-  let steps = $state<EvaluationStep[]>([]);
-  let spinnerVerb = $state(randomVerb());
   let runMode = $state<DemoRunMode>("mock");
   let replayStatus = $state<TodayReplayStatus | null>(null);
   let replaySession = $state<TodayReplaySession | null>(null);
@@ -64,8 +106,10 @@
   let negativeControlRun = $state<TodayRunResponse | null>(null);
   let learningRuns = $state<TodayRunResponse[]>([]);
   let experience = $state<ExperienceSnapshot | null>(null);
-  let timers: ReturnType<typeof setTimeout>[] = [];
   let spinnerInterval: ReturnType<typeof setInterval> | null = null;
+
+  // Convenience aliases
+  let runState = $derived(flowState.runState as RunState);
 
   const todayVendors: VendorInput[] = [
     {
@@ -440,27 +484,7 @@
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  function clearRunTimers() {
-    timers.forEach(clearTimeout);
-    timers = [];
-    if (spinnerInterval) {
-      clearInterval(spinnerInterval);
-      spinnerInterval = null;
-    }
-  }
-
-  function pushStep(index: number) {
-    const step = pipelineSteps[index];
-    steps = [
-      ...steps.map((item) => ({ ...item, active: false })),
-      { ...step, active: true },
-    ];
-  }
-
-  function completeThrough(index: number) {
-    steps = pipelineSteps.slice(0, index + 1).map((step) => ({ ...step, active: false }));
-  }
-
+  // Spinner helper (vendor-selection-specific)
   function startSpinner() {
     if (spinnerInterval) {
       clearInterval(spinnerInterval);
@@ -478,21 +502,17 @@
     }
   }
 
-  function scheduleAnalysisSteps() {
-    for (let index = 0; index <= 5; index += 1) {
-      const timer = setTimeout(() => {
-        if (runState !== "running") return;
-        pushStep(index);
-      }, index * 1650);
-      timers.push(timer);
-    }
+  // Sync flowState when FlowPlayer updates
+  function updateFlowState() {
+    flowState = flowPlayer.getState();
   }
 
   async function startEvaluation() {
     if (!canRunToday || evaluationMode !== "today") return;
-    clearRunTimers();
-    runState = "running";
-    steps = [];
+
+    // Initialize flow
+    flowPlayer.start();
+    updateFlowState();
     installedCedar = false;
     flowError = "";
     replayCursor = {};
@@ -502,9 +522,13 @@
     learningRuns = [];
     experience = null;
     startSpinner();
-    scheduleAnalysisSteps();
 
     try {
+      // Schedule first 6 steps (Bootstrapping → Compliance Screen)
+      flowPlayer.scheduleSteps(6, (index) => {
+        updateFlowState();
+      });
+
       if (runMode === "mock") {
         await resetTodayExperience();
       } else if (runMode === "replay") {
@@ -512,6 +536,8 @@
       } else {
         await resetTodayExperience();
       }
+
+      // Run analysis while steps progress
       const [response] = await Promise.all([
         runTodayStage("analysis"),
         wait(9_200),
@@ -519,37 +545,43 @@
       analysisRun = response;
       experience = analysisRun.experience;
       await pauseForReview(1_800);
-      completeThrough(5);
-      runState = "gate-review";
+
+      // Transition to gate review
+      flowPlayer.pauseAtGate("hitl", () => {
+        updateFlowState();
+      });
     } catch (cause) {
       flowError = describeRunError(cause);
-      runState = "bootstrap";
+      flowPlayer.reset();
+      updateFlowState();
     } finally {
-      clearRunTimers();
+      stopSpinner();
     }
   }
 
   function openHitlDecision() {
-    runState = "hitl";
+    flowState = { ...flowState, runState: "hitl" as RunState };
   }
 
   async function approveHitl() {
     installedCedar = delegateToCedar;
-    runState = "running";
+    flowPlayer.approveGate();
+    updateFlowState();
     flowError = "";
     startSpinner();
 
     try {
-      pushStep(6);
+      // Step 6: Promote Commitment
+      flowPlayer.scheduleSteps(1, () => updateFlowState());
       const [approved] = await Promise.all([
         runTodayStage("approved"),
         wait(2_400),
       ]);
       approvedRun = approved;
       experience = approvedRun.experience;
-      completeThrough(6);
 
-      pushStep(7);
+      // Step 7: Negative Control
+      flowPlayer.scheduleSteps(1, () => updateFlowState());
       const [negative] = await Promise.all([
         runTodayStage("negative-control"),
         wait(2_400),
@@ -557,8 +589,9 @@
       negativeControlRun = negative;
       experience = negativeControlRun.experience;
 
+      // Steps 8-10: Learning Runs
       for (let index = 0; index < 3; index += 1) {
-        pushStep(8 + index);
+        flowPlayer.scheduleSteps(1, () => updateFlowState());
         const [learningRun] = await Promise.all([
           runTodayStage("learning"),
           wait(1_650),
@@ -567,50 +600,46 @@
         experience = learningRun.experience;
       }
 
-      pushStep(11);
+      // Step 11: Fixed Point
       await pauseForReview(1_300);
-      completeThrough(11);
-      runState = "finished";
+      flowPlayer.finish();
+      updateFlowState();
     } catch (cause) {
       flowError = describeRunError(cause);
-      runState = "hitl";
+      flowState = { ...flowState, runState: "hitl" as RunState };
     } finally {
-      clearRunTimers();
+      stopSpinner();
     }
   }
 
   async function continueAfterCommitReview() {
-    runState = "running";
+    flowState = { ...flowState, runState: "running" };
     flowError = "";
     startSpinner();
 
     try {
-      pushStep(7);
       negativeControlRun = await runTodayStage("negative-control");
       experience = negativeControlRun.experience;
 
       for (let index = 0; index < 3; index += 1) {
-        pushStep(8 + index);
         const learningRun = await runTodayStage("learning");
         learningRuns = [...learningRuns, learningRun];
         experience = learningRun.experience;
       }
 
-      pushStep(11);
-      completeThrough(11);
-      runState = "finished";
+      flowPlayer.finish();
+      updateFlowState();
     } catch (cause) {
       flowError = describeRunError(cause);
-      runState = "commit-review";
+      flowState = { ...flowState, runState: "commit-review" };
     } finally {
-      clearRunTimers();
+      stopSpinner();
     }
   }
 
   function resetEvaluation() {
-    clearRunTimers();
-    runState = "bootstrap";
-    steps = [];
+    flowPlayer.reset();
+    updateFlowState();
     installedCedar = false;
     flowError = "";
     replayCursor = {};
@@ -1014,7 +1043,10 @@
   }
 
   onMount(loadReplayStatus);
-  onDestroy(clearRunTimers);
+  onDestroy(() => {
+    stopSpinner();
+    flowPlayer.reset();
+  });
 </script>
 
 <section class="min-h-screen bg-void">
