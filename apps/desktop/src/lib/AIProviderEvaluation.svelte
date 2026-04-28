@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { FlowPlayer, HitlGate, DocumentIntake } from "@reflective/helm-flow";
+  import { FlowPlayer } from "@reflective/helm-flow";
+  import HitlGate from "@reflective/helm-flow/src/HitlGate.svelte";
+  import DocumentIntake from "@reflective/helm-flow/src/DocumentIntake.svelte";
   import type { RunState as HelmRunState, FlowPhase, FlowStep } from "@reflective/helm-flow";
   import { invokeTauri } from "./tauri";
   import { randomVerb } from "./spinner";
