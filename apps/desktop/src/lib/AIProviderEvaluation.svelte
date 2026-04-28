@@ -1056,6 +1056,9 @@
     stopSpinner();
     flowPlayer.reset();
   });
+
+  // For now, DocumentIntake fastLoadEnabled is not bindable
+  // Keep using the local handlers (toggleFastLoad, handleFiles)
 </script>
 
 <section class="min-h-screen bg-void">
@@ -1123,76 +1126,30 @@
         {/if}
 
         <div class="grid gap-3">
-          <div
-            role="region"
-            aria-label="Document dropbox"
-            class="rounded-2xl border border-dashed border-border bg-raised p-5 transition hover:border-subtle"
-            ondrop={handleDrop}
-            ondragover={(event) => event.preventDefault()}
-          >
-            <div class="flex items-start justify-between gap-4">
-              <label class="block flex-1 cursor-pointer">
-                <input
-                  type="file"
-                  class="hidden"
-                  multiple
-                  accept=".pdf,.doc,.docx,.md,.txt,.csv,.xlsx,.json"
-                  onchange={handleFileInput}
-                />
-                <span class="card-label">Document Dropbox</span>
-                <h2 class="mt-1 font-display text-xl font-semibold text-bright">Drop 3-5 buyer documents</h2>
-                <p class="mt-1 text-sm text-subtle">RFI/RFP, workload profile, security requirements, pricing constraints, platform context.</p>
-                <p class="mt-3 font-mono text-xs text-muted">Click to browse or drag files here. This demo records names and document roles only.</p>
-              </label>
-              <button
-                type="button"
-                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-deep font-mono text-sm text-subtle transition hover:border-lime/50 hover:text-lime"
-                aria-label="Show expected document set"
-                onclick={() => (expectedDocsOpen = true)}
-              >
-                ?
-              </button>
-            </div>
+          <div class="grid gap-3">
+            <DocumentIntake
+              bind:documents
+              fastLoadEnabled={bootstrapMode === "sample"}
+              bind:executableReady
+              expectedDocs={expectedDocs}
+              onFilesSelected={(files) => handleFiles(files)}
+            />
 
-            <div class="mt-5 grid gap-3 md:grid-cols-2">
-              <button
-                class="flex items-center justify-between gap-3 rounded-xl border border-border bg-deep px-3 py-2 text-left transition hover:border-lime/50"
-                type="button"
-                onclick={() => toggleFastLoad(bootstrapMode !== "sample")}
-              >
-                <span>
-                  <span class="block text-sm text-text">Fast load</span>
-                  <span class="block text-xs text-muted">Load the Today package.</span>
-                </span>
-                <span class="h-2.5 w-2.5 rounded-full" class:bg-ok={bootstrapMode === "sample"} class:bg-muted={bootstrapMode !== "sample"}></span>
-              </button>
-
-              <label class="flex items-start gap-3 rounded-xl border border-border bg-deep px-3 py-2">
-                <input class="mt-1 accent-lime" type="checkbox" bind:checked={executableReady} />
-                <span>
-                  <span class="block text-sm text-text">Executable JTBD + converging Truth</span>
-                  <span class="block text-xs text-muted">Ready to run as a governed job.</span>
-                </span>
-              </label>
-            </div>
-
-            <div class="mt-3 grid gap-3 md:grid-cols-2">
-              <div class="rounded-xl border border-border bg-deep px-3 py-2">
-                <div class="flex items-center gap-2">
-                  <span class="h-2.5 w-2.5 rounded-full" class:bg-ok={documentPackageReady} class:bg-warn={!documentPackageReady}></span>
-                  <span class="font-display text-sm font-semibold text-bright">{documentReadinessLabel}</span>
-                </div>
-                <p class="mt-1 text-xs text-muted">{documentReadinessDetail}</p>
-              </div>
-
-              <div class="rounded-xl border border-border bg-deep px-3 py-2">
-                <div class="flex items-center gap-2">
-                  <span class="h-2.5 w-2.5 rounded-full" class:bg-ok={executableReady} class:bg-warn={!executableReady}></span>
-                  <span class="font-display text-sm font-semibold text-bright">{executableReadinessLabel}</span>
-                </div>
-                <p class="mt-1 text-xs text-muted">{executableReadinessDetail}</p>
-              </div>
-            </div>
+            <!-- Vendor-selection-specific: Fast-load toggle -->
+            <button
+              class="rounded-xl border px-3 py-2 text-left transition"
+              class:border-lime={bootstrapMode === "sample"}
+              class:bg-lime-glow={bootstrapMode === "sample"}
+              class:border-border={bootstrapMode !== "sample"}
+              class:bg-deep={bootstrapMode !== "sample"}
+              type="button"
+              onclick={() => toggleFastLoad(bootstrapMode === "upload")}
+            >
+              <span class="block text-sm font-semibold text-bright">
+                {bootstrapMode === "sample" ? "Using Sample Package" : "Load Sample Package"}
+              </span>
+              <span class="block text-xs text-muted">AI provider evaluation demo data</span>
+            </button>
           </div>
         </div>
 
