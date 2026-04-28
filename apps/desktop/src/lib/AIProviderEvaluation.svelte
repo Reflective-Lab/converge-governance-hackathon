@@ -1,7 +1,25 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
+  import { FlowPlayer, HitlGate, DocumentIntake } from "@reflective/helm-flow";
+  import type { RunState as HelmRunState, FlowPhase, FlowStep } from "@reflective/helm-flow";
   import { invokeTauri } from "./tauri";
   import { randomVerb } from "./spinner";
+  import type {
+    BootstrapMode,
+    EvaluationMode,
+    EvaluationDoc,
+    ExpectedDoc,
+    EvaluationStep,
+    FormationAgent,
+    VendorInput,
+    TruthResult,
+    RunSummary,
+    ExperienceSnapshot,
+    TodayRunResponse,
+    TodayRecordedRun,
+    TodayReplaySession,
+    TodayReplayStatus,
+  } from "./types";
 
   let {
     onBack = () => {},
@@ -13,123 +31,11 @@
     onSpecStudio?: () => void;
   } = $props();
 
-  type BootstrapMode = "upload" | "sample";
-  type EvaluationMode = "today" | "creative";
+  // Vendor-selection-specific run mode (extends Helm's RunMode)
   type DemoRunMode = "mock" | "replay" | "live";
-  type RunState = "bootstrap" | "running" | "gate-review" | "hitl" | "commit-review" | "finished";
 
-  interface EvaluationDoc {
-    name: string;
-    kind: string;
-    size: string;
-    href?: string;
-  }
-
-  interface ExpectedDoc {
-    title: string;
-    purpose: string;
-    requiredInformation: string;
-    examples: string;
-  }
-
-  interface EvaluationStep {
-    step: string;
-    detail: string;
-    agent: string;
-    purpose: string;
-    active: boolean;
-  }
-
-  interface FormationAgent {
-    name: string;
-    kind: string;
-    purpose: string;
-    source: string;
-  }
-
-  interface VendorInput {
-    name: string;
-    score: number;
-    risk_score: number;
-    compliance_status: string;
-    certifications: string[];
-    monthly_cost_minor: number;
-    currency_code: string;
-  }
-
-  interface TruthResult {
-    converged: boolean;
-    cycles: number;
-    stop_reason: string;
-    criteria_outcomes: { criterion: string; result: string }[];
-    projection: {
-      events_emitted: number;
-      details: Record<string, any> | null;
-    } | null;
-    llm_calls?: Array<Record<string, any>> | null;
-  }
-
-  interface RunSummary {
-    run_id: string;
-    cycles: number;
-    elapsed_ms: number;
-    vendor_count: number;
-    converged: boolean;
-    confidence: number;
-    recommended_vendor: string;
-    timestamp: string;
-  }
-
-  interface ExperienceSnapshot {
-    truth_key: string;
-    run_count: number;
-    summaries: RunSummary[];
-    aggregate: {
-      convergence_rate: number;
-      avg_cycles: number;
-      avg_confidence: number;
-      avg_elapsed_ms: number;
-      recommendation_frequencies: Array<{
-        recommendation: string;
-        count: number;
-        share: number;
-      }>;
-    };
-  }
-
-  interface TodayRunResponse {
-    stage: string;
-    result: TruthResult;
-    experience: ExperienceSnapshot;
-  }
-
-  interface TodayRecordedRun {
-    stage: string;
-    result: TruthResult;
-    experience: ExperienceSnapshot;
-    compressed_delay_ms: number;
-    original_elapsed_ms?: number | null;
-  }
-
-  interface TodayReplaySession {
-    schema_version: number;
-    recorded_at: string;
-    source_hash: string;
-    mode: string;
-    runs: TodayRecordedRun[];
-  }
-
-  interface TodayReplayStatus {
-    available: boolean;
-    path: string;
-    mode?: string | null;
-    recorded_at?: string | null;
-    source_hash?: string | null;
-    source_matches: boolean;
-    run_count: number;
-    model_summary: string[];
-    error?: string | null;
-  }
+  // Vendor-selection-specific run state (extends Helm's RunState with 'commit-review')
+  type RunState = HelmRunState | "commit-review";
 
   let runState = $state<RunState>("bootstrap");
   let bootstrapMode = $state<BootstrapMode>("upload");
