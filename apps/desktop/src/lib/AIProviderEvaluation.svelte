@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { FlowPlayer } from "@reflective/helm-flow";
+  import { FlowPlayer, ReplayRunner } from "@reflective/helm-flow";
   import HitlGate from "@reflective/helm-flow/src/HitlGate.svelte";
   import DocumentIntake from "@reflective/helm-flow/src/DocumentIntake.svelte";
   import type { RunState as HelmRunState, FlowPhase, FlowStep } from "@reflective/helm-flow";
   import { invokeTauri } from "./tauri";
   import { randomVerb } from "./spinner";
+  import { VendorSelectionReplayAdapter, statusFromReplaySession, emptyReplayStatus } from "./replay-adapter";
   import type {
     BootstrapMode,
     EvaluationMode,
@@ -38,6 +39,13 @@
 
   // Vendor-selection-specific run state (extends Helm's RunState with 'commit-review')
   type RunState = HelmRunState | "commit-review";
+
+  // Inline todayVendors for adapter initialization (moved later in component for full definition)
+  const todayVendorsForAdapter: Array<Record<string, any>> = [];
+
+  // Replay adapter and runner (initialized before state, but vendor data comes later)
+  const replayAdapter = new VendorSelectionReplayAdapter(todayVendorsForAdapter);
+  const replayRunner = new ReplayRunner(replayAdapter as any);
 
   // Flow orchestration (Helm-owned)
   const flowPlayer = new FlowPlayer({
@@ -90,10 +98,6 @@
   let executableReady = $state(false);
   let runMode = $state<DemoRunMode>("mock");
   let replayStatus = $state<TodayReplayStatus | null>(null);
-  let replaySession = $state<TodayReplaySession | null>(null);
-  let replayCursor = $state<Record<string, number>>({});
-  let recordingReplay = $state(false);
-  let buildingOfflineReplay = $state(false);
   let replayStatusLoaded = $state(false);
   let delegateToCedar = $state(true);
   let approver = $state("procurement.review@buyer.example");
@@ -110,6 +114,8 @@
 
   // Convenience aliases
   let runState = $derived(flowState.runState as RunState);
+  let recordingReplay = $derived(replayAdapter.recordingInProgress);
+  let buildingOfflineReplay = $derived(replayAdapter.buildingOfflineBackup);
 
   const todayVendors: VendorInput[] = [
     {
@@ -158,6 +164,9 @@
       currency_code: "USD",
     },
   ];
+
+  // Populate adapter with vendor data
+  todayVendorsForAdapter.push(...todayVendors);
 
   const expectedDocs: ExpectedDoc[] = [
     {
@@ -649,9 +658,9 @@
   function resetEvaluation() {
     flowPlayer.reset();
     updateFlowState();
+    replayRunner.resetCursor();
     installedCedar = false;
     flowError = "";
-    replayCursor = {};
     analysisRun = null;
     approvedRun = null;
     negativeControlRun = null;
@@ -659,25 +668,10 @@
     approvalNote = "Evidence package is sufficient for the demo threshold.";
   }
 
-  function isTauriRuntime() {
-    return Boolean((window as any).__TAURI_INTERNALS__);
-  }
 
   async function loadReplayStatus() {
     try {
-      if (isTauriRuntime()) {
-        replayStatus = await invokeTauri<TodayReplayStatus>("today_replay_status");
-      } else {
-        const response = await fetch("/demo/today-live-session.json", { cache: "no-store" });
-        if (response.ok) {
-          const session = await response.json() as TodayReplaySession;
-          replaySession = session;
-          replayStatus = statusFromReplaySession(session);
-        } else {
-          replayStatus = emptyReplayStatus();
-        }
-      }
-
+      replayStatus = await replayAdapter.getStatus();
       runMode = "mock";
     } catch (cause) {
       replayStatus = {
@@ -690,242 +684,72 @@
     }
   }
 
-  function emptyReplayStatus(): TodayReplayStatus {
-    return {
-      available: false,
-      path: "/demo/today-live-session.json",
-      mode: null,
-      recorded_at: null,
-      source_hash: null,
-      source_matches: false,
-      run_count: 0,
-      model_summary: [],
-    };
-  }
-
-  function statusFromReplaySession(session: TodayReplaySession): TodayReplayStatus {
-    return {
-      available: true,
-      path: "/demo/today-live-session.json",
-      mode: session.mode,
-      recorded_at: session.recorded_at,
-      source_hash: session.source_hash,
-      source_matches: true,
-      run_count: session.runs.length,
-      model_summary: modelSummary(session),
-    };
-  }
-
-  function modelSummary(session: TodayReplaySession) {
-    const seen = new Set<string>();
-    const summary: string[] = [];
-    for (const run of session.runs) {
-      for (const call of run.result.llm_calls ?? []) {
-        const label = `${String(call.context ?? "llm-call")} -> ${String(call.model ?? "unknown")}`;
-        if (!seen.has(label)) {
-          seen.add(label);
-          summary.push(label);
-        }
-        if (summary.length >= 8) return summary;
-      }
-    }
-    return summary;
-  }
 
   async function recordReplaySession() {
-    if (!isTauriRuntime()) {
-      flowError = "Recording is only available in the Tauri desktop app.";
-      return;
-    }
-
-    recordingReplay = true;
     flowError = "";
     try {
-      const session = await invokeTauri<TodayReplaySession>("record_today_replay_session");
-      replaySession = session;
-      replayStatus = statusFromReplaySession(session);
+      await replayAdapter.recordSession();
+      replayStatus = await replayAdapter.getStatus();
       runMode = "replay";
     } catch (cause) {
       flowError = describeRunError(cause);
     } finally {
-      recordingReplay = false;
       replayStatusLoaded = true;
     }
   }
 
   async function buildOfflineReplaySession() {
-    if (!isTauriRuntime()) {
-      flowError = "Offline backup creation is only available in the Tauri desktop app.";
-      return;
-    }
-
-    buildingOfflineReplay = true;
     flowError = "";
     try {
-      const session = await invokeTauri<TodayReplaySession>("build_today_offline_replay_session");
-      replaySession = session;
-      replayStatus = statusFromReplaySession(session);
+      await replayAdapter.buildOfflineSession();
+      replayStatus = await replayAdapter.getStatus();
       runMode = "replay";
     } catch (cause) {
       flowError = describeRunError(cause);
     } finally {
-      buildingOfflineReplay = false;
       replayStatusLoaded = true;
     }
   }
 
   async function clearReplaySession() {
-    if (isTauriRuntime()) {
-      await invokeTauri("clear_today_replay_session");
-    }
-    replaySession = null;
+    await replayAdapter.clearSession();
     replayStatus = emptyReplayStatus();
     runMode = "mock";
   }
 
   async function resetTodayExperience() {
-    if (isTauriRuntime()) {
-      await invokeTauri("reset_today_demo_experience");
-    }
+    await replayAdapter.resetExperience();
   }
 
   async function runTodayStage(stage: string): Promise<TodayRunResponse> {
-    if (runMode === "mock") {
-      if (isTauriRuntime()) {
-        return await invokeTauri<TodayRunResponse>("run_today_vendor_selection", {
-          stage,
-          live: false,
-        });
-      }
-
-      const response = await fetch("http://127.0.0.1:8080/v1/truths/vendor-selection/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          inputs: inputsForStage(stage, false),
-          persist_projection: true,
-        }),
-      });
-
-      if (!response.ok) {
-        const body = await response.text();
-        throw new Error(body || `HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
-      const experienceResponse = await fetch("http://127.0.0.1:8080/v1/experience/vendor-selection");
-      const nextExperience = experienceResponse.ok ? await experienceResponse.json() : emptyExperience();
-      return { stage, result, experience: nextExperience };
-    }
-
     if (runMode === "replay") {
-      const session = await ensureReplaySession();
-      const recorded = takeRecordedRun(session, stage);
-      await replayThinkingDelay(recorded);
-      const response = {
+      const session = await replayRunner.ensureSession();
+      const normalizedStage = replayAdapter.normalizeStage(stage);
+      const recorded = (await replayRunner.takeRun(session, normalizedStage)) as unknown as TodayRecordedRun;
+      await replayRunner.playDelay(recorded);
+
+      const response: TodayRunResponse = {
         stage: recorded.stage,
         result: recorded.result,
         experience: recorded.experience,
       };
-      if (session.mode === "recorded-live") {
+      if ((session as TodayReplaySession).mode === "recorded-live") {
         assertRealLlmCalls(response, "Recorded replay");
       }
       return response;
     }
 
-    if (isTauriRuntime()) {
-      const response = await invokeTauri<TodayRunResponse>("run_today_vendor_selection", {
-        stage,
-        live: true,
-      });
-      assertRealLlmCalls(response, "Live mode");
-      return response;
+    // Mock or Live mode
+    const inputs = replayAdapter.formInputs(stage, runMode === "live");
+    const result = await replayAdapter.runStage(stage, inputs);
+
+    if (runMode === "live") {
+      assertRealLlmCalls(result as TodayRunResponse, "Live mode");
     }
 
-    const response = await fetch("http://127.0.0.1:8080/v1/truths/vendor-selection/execute", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        inputs: inputsForStage(stage),
-        persist_projection: true,
-      }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(body || `HTTP ${response.status}`);
-    }
-
-    const result = await response.json();
-    const experienceResponse = await fetch("http://127.0.0.1:8080/v1/experience/vendor-selection");
-    const nextExperience = experienceResponse.ok ? await experienceResponse.json() : emptyExperience();
-    const todayResponse: TodayRunResponse = { stage, result, experience: nextExperience };
-    assertRealLlmCalls(todayResponse, "Live mode");
-    return todayResponse;
+    return result as TodayRunResponse;
   }
 
-  async function ensureReplaySession() {
-    if (replaySession) return replaySession;
-
-    if (isTauriRuntime()) {
-      const session = await invokeTauri<TodayReplaySession>("today_replay_session");
-      replaySession = session;
-      replayStatus = statusFromReplaySession(session);
-      return session;
-    } else {
-      const response = await fetch("/demo/today-live-session.json", { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error("No recorded live session is available. Record one from the Tauri app or switch to live mode.");
-      }
-      const session = await response.json() as TodayReplaySession;
-      replaySession = session;
-      replayStatus = statusFromReplaySession(session);
-      return session;
-    }
-  }
-
-  function takeRecordedRun(session: TodayReplaySession, stage: string) {
-    const normalized = normalizeStage(stage);
-    const offset = replayCursor[normalized] ?? 0;
-    const matches = session.runs.filter((run) => normalizeStage(run.stage) === normalized);
-    const recorded = matches[offset];
-    if (!recorded) {
-      throw new Error(`Recorded live session does not include stage '${stage}' at position ${offset + 1}. Record a fresh session before presenting.`);
-    }
-    replayCursor = { ...replayCursor, [normalized]: offset + 1 };
-    return recorded;
-  }
-
-  function normalizeStage(stage: string) {
-    if (stage === "before-hitl") return "analysis";
-    if (stage === "promote" || stage === "after-hitl") return "approved";
-    if (stage === "advisory") return "negative-control";
-    if (stage === "learning-loop") return "learning";
-    return stage;
-  }
-
-  function replayThinkingDelay(recorded: TodayRecordedRun) {
-    const delay = Math.max(900, Math.min(6500, recorded.compressed_delay_ms || 1800));
-    return new Promise<void>((resolve) => {
-      setTimeout(resolve, delay);
-    });
-  }
-
-  function inputsForStage(stage: string, live = true) {
-    const inputs: Record<string, string> = {
-      vendors_json: JSON.stringify(todayVendors),
-      min_score: "75",
-      max_risk: "30",
-      max_vendors: "3",
-      demo_mode: "governed",
-      principal_authority: "supervisory",
-    };
-    if (live) inputs.live_mode = "true";
-    if (stage === "analysis") inputs.human_approval_present = "false";
-    if (stage === "approved") inputs.human_approval_present = "true";
-    if (stage === "negative-control") inputs.principal_authority = "advisory";
-    return inputs;
-  }
 
   function emptyExperience(): ExperienceSnapshot {
     return {
