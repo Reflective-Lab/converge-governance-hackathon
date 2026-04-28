@@ -1514,56 +1514,18 @@
         {/if}
 
         {#if runState === "hitl"}
-          <form class="mt-5 rounded-2xl border border-warn/30 bg-warn/5 p-4" onsubmit={(event) => { event.preventDefault(); approveHitl(); }}>
-            <span class="card-label text-warn!">HITL Form</span>
-            <h2 class="mt-1 font-display text-xl font-semibold text-bright">Promote shortlist recommendation?</h2>
-            <p class="mt-2 text-sm text-subtle">
-              The system has enough evidence for a demo-threshold recommendation, but authority still requires review.
-            </p>
-
-            {#if analysisRun}
-              <div class="mt-4 grid gap-3 md:grid-cols-3">
-                <div class="rounded-xl border border-border bg-deep p-3">
-                  <span class="card-label">Recommendation</span>
-                  <p class="mt-1 text-sm text-bright">{stringAt(recommendationFor(analysisRun), "recommendation")}</p>
-                </div>
-                <div class="rounded-xl border border-border bg-deep p-3">
-                  <span class="card-label">Gate Before HITL</span>
-                  <p class="mt-1 text-sm text-bright">{stringAt(beforeHitlPolicy, "outcome")}</p>
-                  <p class="mt-1 text-xs text-muted">{stringAt(beforeHitlPolicy, "reason") || "Human approval is missing."}</p>
-                </div>
-                <div class="rounded-xl border border-border bg-deep p-3">
-                  <span class="card-label">Selected Amount</span>
-                  <p class="mt-1 text-sm text-bright">{money(numberAt(beforeHitlPolicy, "selected_amount_major"))}</p>
-                  <p class="mt-1 text-xs text-muted">threshold {money(numberAt(beforeHitlPolicy, "hitl_threshold_major"))}</p>
-                </div>
-              </div>
-            {/if}
-
-            <div class="mt-4 grid gap-3">
-              <label class="block">
-                <span class="card-label mb-1 block">Approver</span>
-                <input class="w-full rounded-xl border border-border bg-deep px-3 py-2 text-sm text-text focus:border-lime/50 focus:outline-none" bind:value={approver} />
-              </label>
-              <label class="block">
-                <span class="card-label mb-1 block">Decision Note</span>
-                <textarea class="min-h-20 w-full rounded-xl border border-border bg-deep px-3 py-2 text-sm text-text focus:border-lime/50 focus:outline-none" bind:value={approvalNote}></textarea>
-              </label>
-              <label class="flex items-start gap-3 rounded-xl border border-lime/20 bg-lime-glow p-3">
-                <input class="mt-1 accent-lime" type="checkbox" bind:checked={delegateToCedar} />
-                <span>
-                  <strong class="block text-sm text-bright">Auto-approve next time with Cedar</strong>
-                  <span class="text-xs text-subtle">Replace this human gate when the same threshold, evidence coverage, and risk class recur.</span>
-                </span>
-              </label>
-            </div>
-
-            {#if delegateToCedar}
-              <pre class="mt-4 overflow-auto rounded-xl border border-border bg-deep p-3 font-mono text-xs leading-relaxed text-subtle">{cedarPreview}</pre>
-            {/if}
-
-            <button class="btn-lime mt-4 w-full justify-center" type="submit">Approve And Promote</button>
-          </form>
+          <HitlGate
+            decisionSummary={{
+              candidate: stringAt(recommendationFor(analysisRun), "recommendation"),
+              reason: stringAt(beforeHitlPolicy, "reason") || "Human approval is missing.",
+              threshold: money(numberAt(beforeHitlPolicy, "hitl_threshold_major")),
+            }}
+            bind:approverName={approver}
+            bind:approvalNote
+            bind:delegateToPolicy={delegateToCedar}
+            policyPreview={delegateToCedar ? cedarPreview : ""}
+            onApprove={approveHitl}
+          />
         {/if}
 
         {#if runState === "commit-review"}
