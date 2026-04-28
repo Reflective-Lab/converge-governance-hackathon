@@ -382,9 +382,18 @@
       ? "A runnable job, authority boundary, evidence gates, and converging Truth are declared."
       : "Confirm that the package contains an executable job-to-be-done and a Truth that can converge.",
   );
-  let progressPercent = $derived(
-    Math.max(8, (steps.filter((step) => !step.active).length / pipelineSteps.length) * 100),
-  );
+  // Build steps array from pipeline steps and FlowPlayer state
+  let steps = $derived.by(() => {
+    return pipelineSteps.map((step, index) => ({
+      step: step.step,
+      detail: step.detail,
+      agent: step.agent,
+      purpose: step.purpose,
+      active: index === flowState.activeStepIndex,
+    }));
+  });
+
+  let progressPercent = $derived(flowState.progressPercent);
   let activeAgent = $derived(steps.find((step) => step.active)?.agent ?? "");
   let finalRun = $derived(approvedRun ?? analysisRun);
   let finalDetails = $derived(detailsFor(finalRun));
