@@ -1,0 +1,42 @@
+{
+  "title": "Procurement & Vendor-Decision Landscape",
+  "note": "This is NOT a vendor-selection input. It is a positioning map of adjacent commercial tools, used by the pitch deck to show where governed vendor selection sits in the procurement stack. See kb/Domain/Landscape.md.",
+  "layers": [
+    {
+      "layer": "intake_orchestration",
+      "label": "Intake & orchestration",
+      "relation_to_project": "upstream",
+      "tools": [
+        { "name": "Zip", "category": "procurement intake", "what": "Request capture, approval routing, workflow orchestration" }
+      ]
+    },
+    {
+      "layer": "decision",
+      "label": "Decision layer (governed selection)",
+      "relation_to_project": "this_project",
+      "tools": [
+        { "name": "Vendor Selection (this project)", "category": "governed multi-agent decision", "what": "Cedar-policy-gated convergence on a defensible vendor recommendation with audit trail" }
+      ]
+    },
+    {
+      "layer": "enterprise_procurement",
+      "label": "Enterprise procurement / sourcing",
+      "relation_to_project": "overlapping",
+      "tools": [
+        { "name": "Coupa", "category": "procurement suite", "what": "Sourcing, contracts, supplier mgmt, S2P platform" },
+        { "name": "SAP Ariba", "category": "procurement suite", "what": "Enterprise sourcing, supplier network, contract lifecycle" }
+      ]
+    },
+    {
+      "layer": "spend_management",
+      "label": "Spend management & operational vendor mgmt",
+      "relation_to_project": "downstream",
+      "tools": [
+        { "name": "Ramp", "category": "spend mgmt + finance automation", "what": "Corporate cards, AP, expense, vendor spend visibility, renewals; Buyer acquisition added negotiation", "notes": "Pushed slightly upstream via Buyer acquisition, but still post-selection" },
+        { "name": "Brex", "category": "spend mgmt + finance automation", "what": "Corporate cards, expense, AP, treasury" },
+        { "name": "Airbase", "category": "spend mgmt + finance automation", "what": "AP, cards, expense, procure-to-pay" },
+        { "name": "Navan", "category": "T&E + spend", "what": "Travel and expense management" }
+      ]
+    }
+  ]
+}

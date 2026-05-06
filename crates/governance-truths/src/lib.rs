@@ -3,7 +3,7 @@ use converge_model::{
     Criterion, PackId, TypesBudgets, TypesIntentId, TypesIntentKind, TypesObjective,
     TypesRootIntent,
 };
-use converge_provider_api::{AgentRequirements, ComplianceLevel, CostClass, DataSovereignty};
+use converge_provider::{AgentRequirements, ComplianceLevel, CostClass, DataSovereignty};
 
 // ---------------------------------------------------------------------------
 // Truth definitions
@@ -112,11 +112,86 @@ pub const TRUTHS: &[TruthDef] = &[
             ),
         ],
     },
+    TruthDef {
+        key: "vendor-selection-simple",
+        display_name: "Vendor Selection (Student Edition)",
+        summary: "Modular vendor selection with 5 evaluators (price, compliance, reliability, support, stability) → weighted synthesis → shortlist recommendation",
+        packs: &["evaluation-pack"],
+        criteria: &[
+            (
+                "all-vendors-evaluated",
+                "All vendors evaluated on all 5 criteria",
+            ),
+            (
+                "compliance-screened",
+                "Vendors screened for compliance certifications",
+            ),
+            ("cost-analyzed", "Vendors analyzed for cost vs budget"),
+            (
+                "support-rated",
+                "Vendors rated on support quality and response time",
+            ),
+            (
+                "stability-assessed",
+                "Vendors assessed for financial and organizational stability",
+            ),
+            ("shortlist-produced", "Ranked shortlist with recommendation"),
+        ],
+    },
+    TruthDef {
+        key: "budget-approval",
+        display_name: "Budget Approval Workflow",
+        summary: "4-tier threshold-based approval with HITL gates: Tier 1 (<$5k auto), Tier 2 ($5k-$25k), Tier 3 ($25k-$100k), Tier 4 (>$100k)",
+        packs: &["policy-pack"],
+        criteria: &[
+            (
+                "policy-decision-produced",
+                "A policy decision fact exists for the budget request",
+            ),
+            (
+                "request-approved-or-blocked",
+                "The request is either approved or blocked honestly for human review",
+            ),
+            (
+                "audit-entry-recorded",
+                "A complete audit entry has been recorded with decision provenance",
+            ),
+        ],
+    },
+    TruthDef {
+        key: "access-control",
+        display_name: "Role-Based Access Control with Delegations",
+        summary: "Governance-driven access control: role assignment, delegation verification, policy evaluation, audit trail. Demonstrates identity + role + time-scoped delegation tokens.",
+        packs: &["access-pack"],
+        criteria: &[
+            ("access-policy-defined", "Access policy rules are loaded"),
+            ("user-roles-assigned", "User role assignments are available"),
+            ("access-decision-made", "Access decision has been evaluated"),
+            (
+                "delegation-verified",
+                "Delegation token verified (if presented)",
+            ),
+            (
+                "audit-entry-recorded",
+                "Access decision recorded in audit trail",
+            ),
+        ],
+    },
     // Add your truths here.
 ];
 
+pub const PRODUCT_TRUTH_KEYS: &[&str] = &["vendor-selection"];
+
 pub fn find_truth(key: &str) -> Option<&'static TruthDef> {
     TRUTHS.iter().find(|t| t.key == key)
+}
+
+pub fn is_product_truth(key: &str) -> bool {
+    PRODUCT_TRUTH_KEYS.contains(&key)
+}
+
+pub fn product_truths() -> impl Iterator<Item = &'static TruthDef> {
+    TRUTHS.iter().filter(|truth| is_product_truth(truth.key))
 }
 
 // ---------------------------------------------------------------------------
@@ -281,7 +356,11 @@ pub struct EvaluateVendorEvaluator;
 
 pub struct VendorSelectionEvaluator;
 
+pub struct VendorSelectionSimpleEvaluator;
+
 pub struct DynamicDueDiligenceEvaluator;
+
+pub struct AccessControlEvaluator;
 
 impl CriterionEvaluator for DynamicDueDiligenceEvaluator {
     fn evaluate(&self, criterion: &Criterion, context: &dyn Context) -> CriterionResult {
@@ -291,7 +370,7 @@ impl CriterionEvaluator for DynamicDueDiligenceEvaluator {
                     .get(ContextKey::Hypotheses)
                     .iter()
                     .filter_map(|fact| {
-                        serde_json::from_str::<serde_json::Value>(&fact.content).ok()
+                        serde_json::from_str::<serde_json::Value>(fact.content()).ok()
                     })
                     .filter_map(|payload| {
                         payload
@@ -324,7 +403,7 @@ impl CriterionEvaluator for DynamicDueDiligenceEvaluator {
                 if context
                     .get(ContextKey::Proposals)
                     .iter()
-                    .any(|fact| fact.id == "dd:final-brief")
+                    .any(|fact| fact.id() == "dd:final-brief")
                 {
                     CriterionResult::Met { evidence: vec![] }
                 } else {
@@ -346,7 +425,7 @@ impl CriterionEvaluator for VendorSelectionEvaluator {
                 if context
                     .get(ContextKey::Strategies)
                     .iter()
-                    .any(|f| f.id.starts_with("strategy:"))
+                    .any(|f| f.id().starts_with("strategy:"))
                 {
                     CriterionResult::Met { evidence: vec![] }
                 } else {
@@ -359,7 +438,7 @@ impl CriterionEvaluator for VendorSelectionEvaluator {
                 if context
                     .get(ContextKey::Strategies)
                     .iter()
-                    .any(|f| f.id.starts_with("formation:plan:"))
+                    .any(|f| f.id().starts_with("formation:plan:"))
                 {
                     CriterionResult::Met { evidence: vec![] }
                 } else {
@@ -372,11 +451,11 @@ impl CriterionEvaluator for VendorSelectionEvaluator {
                 let screened = context
                     .get(ContextKey::Seeds)
                     .iter()
-                    .any(|f| f.id.starts_with("compliance:screen:"));
+                    .any(|f| f.id().starts_with("compliance:screen:"));
                 let risk_scored = context
                     .get(ContextKey::Evaluations)
                     .iter()
-                    .any(|f| f.id.starts_with("risk:score:"));
+                    .any(|f| f.id().starts_with("risk:score:"));
                 if screened && risk_scored {
                     CriterionResult::Met { evidence: vec![] }
                 } else {
@@ -389,7 +468,7 @@ impl CriterionEvaluator for VendorSelectionEvaluator {
                 if context
                     .get(ContextKey::Proposals)
                     .iter()
-                    .any(|f| f.id == "vendor:shortlist")
+                    .any(|f| f.id() == "vendor:shortlist")
                 {
                     CriterionResult::Met { evidence: vec![] }
                 } else {
@@ -402,11 +481,11 @@ impl CriterionEvaluator for VendorSelectionEvaluator {
                 let decision = context
                     .get(ContextKey::Evaluations)
                     .iter()
-                    .find(|f| f.id.starts_with("policy:decision:"));
+                    .find(|f| f.id().starts_with("policy:decision:"));
                 match decision {
                     Some(fact) => {
                         if let Ok(payload) =
-                            serde_json::from_str::<serde_json::Value>(&fact.content)
+                            serde_json::from_str::<serde_json::Value>(fact.content())
                         {
                             match payload.get("outcome").and_then(|v| v.as_str()) {
                                 Some("Promote") => CriterionResult::Met { evidence: vec![] },
@@ -447,7 +526,7 @@ impl CriterionEvaluator for EvaluateVendorEvaluator {
                 if context
                     .get(ContextKey::Seeds)
                     .iter()
-                    .any(|f| f.id.starts_with("compliance:screen:"))
+                    .any(|f| f.id().starts_with("compliance:screen:"))
                 {
                     CriterionResult::Met { evidence: vec![] }
                 } else {
@@ -460,12 +539,182 @@ impl CriterionEvaluator for EvaluateVendorEvaluator {
                 if context
                     .get(ContextKey::Evaluations)
                     .iter()
-                    .any(|f| f.id == "decision:recommendation")
+                    .any(|f| f.id() == "decision:recommendation")
                 {
                     CriterionResult::Met { evidence: vec![] }
                 } else {
                     CriterionResult::Unmet {
                         reason: "no recommendation produced".into(),
+                    }
+                }
+            }
+            _ => CriterionResult::Indeterminate,
+        }
+    }
+}
+
+impl CriterionEvaluator for AccessControlEvaluator {
+    fn evaluate(&self, criterion: &Criterion, context: &dyn Context) -> CriterionResult {
+        match criterion.id.as_str() {
+            "access-policy-defined" => {
+                if context
+                    .get(ContextKey::Strategies)
+                    .iter()
+                    .any(|f| f.id().starts_with("policy:"))
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "access policy not loaded".into(),
+                    }
+                }
+            }
+            "user-roles-assigned" => {
+                if context
+                    .get(ContextKey::Seeds)
+                    .iter()
+                    .any(|f| f.id().starts_with("role:assignment:"))
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "no user role assignments found".into(),
+                    }
+                }
+            }
+            "access-decision-made" => {
+                if context
+                    .get(ContextKey::Evaluations)
+                    .iter()
+                    .any(|f| f.id().starts_with("policy:decision:"))
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "no access decision has been made".into(),
+                    }
+                }
+            }
+            "delegation-verified" => {
+                let has_token_check = context
+                    .get(ContextKey::Evaluations)
+                    .iter()
+                    .any(|f| f.id().starts_with("delegation:"));
+                if has_token_check {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "delegation verification not completed (may be skipped if no token presented)".into(),
+                    }
+                }
+            }
+            "audit-entry-recorded" => {
+                if context
+                    .get(ContextKey::Proposals)
+                    .iter()
+                    .any(|f| f.id().starts_with("audit:access:"))
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "access decision not recorded in audit trail".into(),
+                    }
+                }
+            }
+            _ => CriterionResult::Indeterminate,
+        }
+    }
+}
+
+impl CriterionEvaluator for VendorSelectionSimpleEvaluator {
+    fn evaluate(&self, criterion: &Criterion, context: &dyn Context) -> CriterionResult {
+        match criterion.id.as_str() {
+            "all-vendors-evaluated" => {
+                let evals = context.get(ContextKey::Evaluations);
+                let has_price = evals.iter().any(|f| f.id().starts_with("criterion:price:"));
+                let has_compliance = evals
+                    .iter()
+                    .any(|f| f.id().starts_with("criterion:compliance:"));
+                let has_reliability = evals
+                    .iter()
+                    .any(|f| f.id().starts_with("criterion:reliability:"));
+                let has_support = evals
+                    .iter()
+                    .any(|f| f.id().starts_with("criterion:support:"));
+                let has_stability = evals
+                    .iter()
+                    .any(|f| f.id().starts_with("criterion:stability:"));
+
+                if has_price && has_compliance && has_reliability && has_support && has_stability {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "not all vendors evaluated on all criteria".into(),
+                    }
+                }
+            }
+            "compliance-screened" => {
+                if context
+                    .get(ContextKey::Evaluations)
+                    .iter()
+                    .any(|f| f.id().starts_with("criterion:compliance:"))
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "compliance screening not completed".into(),
+                    }
+                }
+            }
+            "cost-analyzed" => {
+                if context
+                    .get(ContextKey::Evaluations)
+                    .iter()
+                    .any(|f| f.id().starts_with("criterion:price:"))
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "cost analysis not completed".into(),
+                    }
+                }
+            }
+            "support-rated" => {
+                if context
+                    .get(ContextKey::Evaluations)
+                    .iter()
+                    .any(|f| f.id().starts_with("criterion:support:"))
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "support evaluation not completed".into(),
+                    }
+                }
+            }
+            "stability-assessed" => {
+                if context
+                    .get(ContextKey::Evaluations)
+                    .iter()
+                    .any(|f| f.id().starts_with("criterion:stability:"))
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "stability assessment not completed".into(),
+                    }
+                }
+            }
+            "shortlist-produced" => {
+                if context
+                    .get(ContextKey::Evaluations)
+                    .iter()
+                    .any(|f| f.id() == "synthesis:shortlist")
+                {
+                    CriterionResult::Met { evidence: vec![] }
+                } else {
+                    CriterionResult::Unmet {
+                        reason: "shortlist not produced".into(),
                     }
                 }
             }
@@ -489,25 +738,40 @@ mod tests {
     }
 
     #[test]
-    fn truth_catalog_has_all_four_truths() {
+    fn truth_catalog_has_all_truths() {
         for key in [
             "evaluate-vendor",
             "dynamic-due-diligence",
             "audit-vendor-decision",
             "authorize-vendor-commitment",
+            "vendor-selection",
+            "vendor-selection-simple",
+            "budget-approval",
+            "access-control",
         ] {
             assert!(find_truth(key).is_some(), "missing truth: {key}");
         }
     }
 
     #[test]
+    fn product_truths_expose_only_vendor_selection() {
+        let keys = product_truths().map(|truth| truth.key).collect::<Vec<_>>();
+
+        assert_eq!(keys, vec!["vendor-selection"]);
+        assert!(is_product_truth("vendor-selection"));
+        assert!(!is_product_truth("evaluate-vendor"));
+        assert!(!is_product_truth("budget-approval"));
+        assert!(!is_product_truth("access-control"));
+    }
+
+    #[test]
     fn intent_builds_with_packs() {
-        let truth = find_truth("evaluate-vendor").unwrap();
+        let truth = find_truth("vendor-selection").unwrap();
         let intent = build_intent(truth);
         assert!(
             intent
                 .active_packs
-                .contains(&PackId::new("compliance-pack"))
+                .contains(&PackId::new("evaluation-pack"))
         );
     }
 

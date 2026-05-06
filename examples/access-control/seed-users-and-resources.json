@@ -1,0 +1,113 @@
+{
+  "resources": [
+    {
+      "id": "budget-2026",
+      "name": "2026 Budget Plan",
+      "owner_id": "charlie",
+      "sensitivity_level": "confidential"
+    },
+    {
+      "id": "roadmap-public",
+      "name": "Public Roadmap",
+      "owner_id": "charlie",
+      "sensitivity_level": "public"
+    },
+    {
+      "id": "salary-data",
+      "name": "Salary Information",
+      "owner_id": "charlie",
+      "sensitivity_level": "secret"
+    },
+    {
+      "id": "api-keys",
+      "name": "API Keys and Credentials",
+      "owner_id": "charlie",
+      "sensitivity_level": "secret"
+    }
+  ],
+  "user_roles": {
+    "alice": "editor",
+    "bob": "viewer",
+    "charlie": "admin",
+    "diana": "viewer"
+  },
+  "delegation_tokens": [
+    {
+      "id": "token-diana-editor-temp",
+      "granted_by": "charlie",
+      "granted_to_user": "diana",
+      "elevated_role": "editor",
+      "valid_from": 1714320000,
+      "valid_until": 1714334400,
+      "max_operations": null,
+      "reason": "Temporary editor access for project collaboration",
+      "resource_id": null,
+      "signature": "3045022100e8a3f2f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3022100f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3"
+    }
+  ],
+  "test_scenarios": [
+    {
+      "name": "Scenario 1: Viewer reads public resource",
+      "user_id": "bob",
+      "resource_id": "roadmap-public",
+      "action": "read",
+      "delegation_token": null,
+      "expected_decision": "permit",
+      "description": "Viewers can always read public resources"
+    },
+    {
+      "name": "Scenario 2: Viewer attempts to write",
+      "user_id": "bob",
+      "resource_id": "roadmap-public",
+      "action": "write",
+      "delegation_token": null,
+      "expected_decision": "forbid",
+      "description": "Viewers cannot write (no write permission)"
+    },
+    {
+      "name": "Scenario 3: Editor reads confidential resource",
+      "user_id": "alice",
+      "resource_id": "budget-2026",
+      "action": "read",
+      "delegation_token": null,
+      "expected_decision": "permit",
+      "description": "Editors can read confidential resources"
+    },
+    {
+      "name": "Scenario 4: Editor writes confidential resource",
+      "user_id": "alice",
+      "resource_id": "budget-2026",
+      "action": "write",
+      "delegation_token": null,
+      "expected_decision": "permit",
+      "description": "Editors can write confidential resources"
+    },
+    {
+      "name": "Scenario 5: Admin deletes any resource",
+      "user_id": "charlie",
+      "resource_id": "budget-2026",
+      "action": "delete",
+      "delegation_token": null,
+      "expected_decision": "permit",
+      "description": "Admins can delete any resource"
+    },
+    {
+      "name": "Scenario 6: Viewer with valid delegation writes",
+      "user_id": "diana",
+      "resource_id": "budget-2026",
+      "action": "write",
+      "delegation_token": "token-diana-editor-temp",
+      "expected_decision": "permit",
+      "description": "Valid delegation elevates viewer to editor role temporarily"
+    },
+    {
+      "name": "Scenario 7: Admin reads secret resource",
+      "user_id": "charlie",
+      "resource_id": "salary-data",
+      "action": "read",
+      "delegation_token": null,
+      "expected_decision": "permit",
+      "description": "Only admins can read secret resources"
+    }
+  ]
+}

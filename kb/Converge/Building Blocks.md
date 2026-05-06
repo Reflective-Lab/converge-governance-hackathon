@@ -35,6 +35,6 @@ Golden path:
 
 - authoring types such as `Suggestor`, `AgentEffect`, `ProposedFact`, and `ContextKey` come from `converge-pack`
 - execution types such as `Engine`, `Context`, `Budget`, and run hooks come from `converge-kernel`
-- capability contracts such as `ChatBackend` and `ChatRequest` come from `converge-provider-api`
+- capability contracts such as `ChatBackend` and `ChatRequest` come from `converge-provider`
 
 See also: [[Domain/Key Types]], [[Development/Writing Suggestors]]

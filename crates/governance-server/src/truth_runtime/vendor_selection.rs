@@ -450,8 +450,8 @@ fn build_formation_catalog() -> Vec<ProfileSnapshot> {
             name: "planning-seed".into(),
             role: SuggestorRole::Planning,
             output_keys: vec![ContextKey::Strategies],
-            cost_hint: converge_provider_api::CostClass::Low,
-            latency_hint: converge_provider_api::LatencyClass::Interactive,
+            cost_hint: converge_provider::CostClass::Low,
+            latency_hint: converge_provider::LatencyClass::Interactive,
             capabilities: vec![
                 SuggestorCapability::KnowledgeRetrieval,
                 SuggestorCapability::ExperienceLearning,
@@ -463,8 +463,8 @@ fn build_formation_catalog() -> Vec<ProfileSnapshot> {
             name: "compliance-screener".into(),
             role: SuggestorRole::Analysis,
             output_keys: vec![ContextKey::Seeds],
-            cost_hint: converge_provider_api::CostClass::Low,
-            latency_hint: converge_provider_api::LatencyClass::Interactive,
+            cost_hint: converge_provider::CostClass::Low,
+            latency_hint: converge_provider::LatencyClass::Interactive,
             capabilities: vec![SuggestorCapability::PolicyEnforcement],
             confidence_min: 0.8,
             confidence_max: 1.0,
@@ -473,8 +473,8 @@ fn build_formation_catalog() -> Vec<ProfileSnapshot> {
             name: "cost-analysis".into(),
             role: SuggestorRole::Evaluation,
             output_keys: vec![ContextKey::Evaluations],
-            cost_hint: converge_provider_api::CostClass::Low,
-            latency_hint: converge_provider_api::LatencyClass::Interactive,
+            cost_hint: converge_provider::CostClass::Low,
+            latency_hint: converge_provider::LatencyClass::Interactive,
             capabilities: vec![SuggestorCapability::Analytics],
             confidence_min: 0.7,
             confidence_max: 0.9,
@@ -483,8 +483,8 @@ fn build_formation_catalog() -> Vec<ProfileSnapshot> {
             name: "vendor-risk".into(),
             role: SuggestorRole::Evaluation,
             output_keys: vec![ContextKey::Evaluations],
-            cost_hint: converge_provider_api::CostClass::Low,
-            latency_hint: converge_provider_api::LatencyClass::Interactive,
+            cost_hint: converge_provider::CostClass::Low,
+            latency_hint: converge_provider::LatencyClass::Interactive,
             capabilities: vec![SuggestorCapability::Analytics],
             confidence_min: 0.6,
             confidence_max: 0.85,
@@ -493,8 +493,8 @@ fn build_formation_catalog() -> Vec<ProfileSnapshot> {
             name: "vendor-shortlist".into(),
             role: SuggestorRole::Synthesis,
             output_keys: vec![ContextKey::Proposals],
-            cost_hint: converge_provider_api::CostClass::Low,
-            latency_hint: converge_provider_api::LatencyClass::Interactive,
+            cost_hint: converge_provider::CostClass::Low,
+            latency_hint: converge_provider::LatencyClass::Interactive,
             capabilities: vec![SuggestorCapability::Optimization],
             confidence_min: 0.7,
             confidence_max: 1.0,
@@ -503,8 +503,8 @@ fn build_formation_catalog() -> Vec<ProfileSnapshot> {
             name: "decision-synthesis".into(),
             role: SuggestorRole::Synthesis,
             output_keys: vec![ContextKey::Evaluations],
-            cost_hint: converge_provider_api::CostClass::Medium,
-            latency_hint: converge_provider_api::LatencyClass::Background,
+            cost_hint: converge_provider::CostClass::Medium,
+            latency_hint: converge_provider::LatencyClass::Background,
             capabilities: vec![SuggestorCapability::LlmReasoning],
             confidence_min: 0.75,
             confidence_max: 0.95,
@@ -513,8 +513,8 @@ fn build_formation_catalog() -> Vec<ProfileSnapshot> {
             name: "policy-gate".into(),
             role: SuggestorRole::Constraint,
             output_keys: vec![ContextKey::Evaluations],
-            cost_hint: converge_provider_api::CostClass::Low,
-            latency_hint: converge_provider_api::LatencyClass::Realtime,
+            cost_hint: converge_provider::CostClass::Low,
+            latency_hint: converge_provider::LatencyClass::Realtime,
             capabilities: vec![
                 SuggestorCapability::PolicyEnforcement,
                 SuggestorCapability::HumanInTheLoop,
@@ -547,7 +547,7 @@ impl Suggestor for PlanningSeedSuggestor {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         !ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|f| f.id.starts_with("strategy:vendor-sel:"))
+            .any(|f| f.id().starts_with("strategy:vendor-sel:"))
     }
 
     async fn execute(&self, _ctx: &dyn ContextView) -> AgentEffect {
@@ -653,14 +653,18 @@ impl Suggestor for ComplianceScreenerAgent {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|f| f.id == "strategy:vendor-sel:compliance")
+            .any(|f| f.id().as_str() == "strategy:vendor-sel:compliance")
     }
 
     async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let mut proposals = vec![];
         for vendor in &self.vendors {
             let fact_id = format!("compliance:screen:{}", slug(&vendor.name));
-            if ctx.get(ContextKey::Seeds).iter().any(|f| f.id == fact_id) {
+            if ctx
+                .get(ContextKey::Seeds)
+                .iter()
+                .any(|f| f.id().as_str() == fact_id)
+            {
                 continue;
             }
             let compliant = vendor.compliance_status == "compliant";
@@ -683,7 +687,7 @@ impl Suggestor for ComplianceScreenerAgent {
                 .with_confidence(if compliant { 0.9 } else { 0.5 }),
             );
         }
-        AgentEffect { proposals }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -704,11 +708,11 @@ impl Suggestor for CostAnalysisAgent {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|f| f.id == "strategy:vendor-sel:cost")
+            .any(|f| f.id().as_str() == "strategy:vendor-sel:cost")
             && ctx
                 .get(ContextKey::Seeds)
                 .iter()
-                .any(|f| f.id.starts_with("compliance:screen:"))
+                .any(|f| f.id().starts_with("compliance:screen:"))
     }
 
     async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
@@ -719,7 +723,7 @@ impl Suggestor for CostAnalysisAgent {
             if ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id == cost_id)
+                .any(|f| f.id().as_str() == cost_id)
             {
                 continue;
             }
@@ -739,7 +743,7 @@ impl Suggestor for CostAnalysisAgent {
                 .with_confidence(0.80),
             );
         }
-        AgentEffect { proposals }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -764,19 +768,19 @@ impl Suggestor for VendorRiskAgent {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|f| f.id == "strategy:vendor-sel:risk")
+            .any(|f| f.id().as_str() == "strategy:vendor-sel:risk")
             && ctx
                 .get(ContextKey::Seeds)
                 .iter()
-                .any(|f| f.id.starts_with("compliance:screen:"))
+                .any(|f| f.id().starts_with("compliance:screen:"))
             && ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id.starts_with("cost:estimate:"))
+                .any(|f| f.id().starts_with("cost:estimate:"))
             && !ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id.starts_with("risk:score:"))
+                .any(|f| f.id().starts_with("risk:score:"))
     }
 
     async fn execute(&self, _ctx: &dyn ContextView) -> AgentEffect {
@@ -810,7 +814,7 @@ impl Suggestor for VendorRiskAgent {
                 .with_confidence(0.75),
             );
         }
-        AgentEffect { proposals }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -838,15 +842,15 @@ impl Suggestor for VendorShortlistAgent {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|f| f.id == "strategy:vendor-sel:shortlist")
+            .any(|f| f.id().as_str() == "strategy:vendor-sel:shortlist")
             && ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id.starts_with("risk:score:"))
+                .any(|f| f.id().starts_with("risk:score:"))
             && !ctx
                 .get(ContextKey::Proposals)
                 .iter()
-                .any(|f| f.id == "vendor:shortlist")
+                .any(|f| f.id().as_str() == "vendor:shortlist")
     }
 
     async fn execute(&self, _ctx: &dyn ContextView) -> AgentEffect {
@@ -973,25 +977,25 @@ impl Suggestor for DecisionSynthesisAgent {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|f| f.id == "strategy:vendor-sel:decision")
+            .any(|f| f.id().as_str() == "strategy:vendor-sel:decision")
             && ctx
                 .get(ContextKey::Proposals)
                 .iter()
-                .any(|f| f.id == "vendor:shortlist")
+                .any(|f| f.id().as_str() == "vendor:shortlist")
             && !ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id == "decision:recommendation")
+                .any(|f| f.id().as_str() == "decision:recommendation")
     }
 
     async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let shortlist_fact = ctx
             .get(ContextKey::Proposals)
             .iter()
-            .find(|f| f.id == "vendor:shortlist");
+            .find(|f| f.id().as_str() == "vendor:shortlist");
 
         let (recommendation, confidence, needs_review) = if let Some(fact) = shortlist_fact {
-            if let Ok(payload) = serde_json::from_str::<serde_json::Value>(&fact.content) {
+            if let Ok(payload) = serde_json::from_str::<serde_json::Value>(fact.content()) {
                 let shortlist = payload.get("shortlist").and_then(|v| v.as_array());
                 if let Some(entries) = shortlist {
                     if let Some(top) = entries.first() {
@@ -1071,21 +1075,21 @@ impl Suggestor for PolicyGateSuggestor {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Evaluations)
             .iter()
-            .any(|f| f.id == "decision:recommendation")
+            .any(|f| f.id().as_str() == "decision:recommendation")
             && !ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id.starts_with("policy:decision:"))
+                .any(|f| f.id().starts_with("policy:decision:"))
     }
 
     async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let rec_fact = ctx
             .get(ContextKey::Evaluations)
             .iter()
-            .find(|f| f.id == "decision:recommendation");
+            .find(|f| f.id().as_str() == "decision:recommendation");
 
         let needs_review = rec_fact
-            .and_then(|f| serde_json::from_str::<serde_json::Value>(&f.content).ok())
+            .and_then(|f| serde_json::from_str::<serde_json::Value>(f.content()).ok())
             .and_then(|p| p.get("needs_human_review").and_then(|v| v.as_bool()))
             .unwrap_or(true);
 
@@ -1165,8 +1169,8 @@ fn selected_vendor_name(ctx: &dyn ContextView) -> Option<String> {
     let shortlist_fact = ctx
         .get(ContextKey::Proposals)
         .iter()
-        .find(|f| f.id == "vendor:shortlist")?;
-    let payload = serde_json::from_str::<serde_json::Value>(&shortlist_fact.content).ok()?;
+        .find(|f| f.id().as_str() == "vendor:shortlist")?;
+    let payload = serde_json::from_str::<serde_json::Value>(shortlist_fact.content()).ok()?;
     let shortlist = payload
         .get("shortlist")
         .and_then(|value| value.as_array())?;
@@ -1543,8 +1547,8 @@ async fn execute_inner(
         .context
         .get(ContextKey::Evaluations)
         .iter()
-        .find(|f| f.id == "decision:recommendation")
-        .and_then(|f| serde_json::from_str::<serde_json::Value>(&f.content).ok())
+        .find(|f| f.id().as_str() == "decision:recommendation")
+        .and_then(|f| serde_json::from_str::<serde_json::Value>(f.content()).ok())
         .and_then(|v| v.get("confidence").and_then(|c| c.as_f64()))
         .unwrap_or(0.5);
 
@@ -1552,8 +1556,8 @@ async fn execute_inner(
         .context
         .get(ContextKey::Evaluations)
         .iter()
-        .find(|f| f.id == "decision:recommendation")
-        .and_then(|f| serde_json::from_str::<serde_json::Value>(&f.content).ok())
+        .find(|f| f.id().as_str() == "decision:recommendation")
+        .and_then(|f| serde_json::from_str::<serde_json::Value>(f.content()).ok())
         .and_then(|v| {
             v.get("recommendation")
                 .and_then(|r| r.as_str())
@@ -1630,7 +1634,7 @@ async fn execute_inner(
                     .context
                     .get(ContextKey::Evaluations)
                     .iter()
-                    .find(|f| f.id == "decision:recommendation")
+                    .find(|f| f.id().as_str() == "decision:recommendation")
                 {
                     #[derive(Deserialize)]
                     struct Payload {
@@ -1638,7 +1642,7 @@ async fn execute_inner(
                         confidence: f64,
                         needs_human_review: bool,
                     }
-                    if let Ok(p) = serde_json::from_str::<Payload>(&fact.content) {
+                    if let Ok(p) = serde_json::from_str::<Payload>(fact.content()) {
                         let policy_outcome = policy.as_ref().map(|policy| policy.outcome.as_str());
                         let needs_human_review =
                             p.needs_human_review || matches!(policy_outcome, Some("Escalate"));
@@ -1734,8 +1738,8 @@ struct PolicyDecisionPayload {
 fn policy_decision_payload(ctx: &ContextState) -> Option<PolicyDecisionPayload> {
     ctx.get(ContextKey::Evaluations)
         .iter()
-        .find(|f| f.id == "policy:decision:vendor-selection")
-        .and_then(|fact| serde_json::from_str::<PolicyDecisionPayload>(&fact.content).ok())
+        .find(|f| f.id().as_str() == "policy:decision:vendor-selection")
+        .and_then(|fact| serde_json::from_str::<PolicyDecisionPayload>(fact.content()).ok())
 }
 
 struct ProjectionOptions<'a> {
@@ -1756,18 +1760,18 @@ fn vendor_selection_projection_details(
     let recommendation = ctx
         .get(ContextKey::Evaluations)
         .iter()
-        .find(|f| f.id == "decision:recommendation")
-        .and_then(|fact| serde_json::from_str::<serde_json::Value>(&fact.content).ok());
+        .find(|f| f.id().as_str() == "decision:recommendation")
+        .and_then(|fact| serde_json::from_str::<serde_json::Value>(fact.content()).ok());
     let shortlist = ctx
         .get(ContextKey::Proposals)
         .iter()
-        .find(|f| f.id == "vendor:shortlist")
-        .and_then(|fact| serde_json::from_str::<serde_json::Value>(&fact.content).ok());
+        .find(|f| f.id().as_str() == "vendor:shortlist")
+        .and_then(|fact| serde_json::from_str::<serde_json::Value>(fact.content()).ok());
     let policy = ctx
         .get(ContextKey::Evaluations)
         .iter()
-        .find(|f| f.id == "policy:decision:vendor-selection")
-        .and_then(|fact| serde_json::from_str::<serde_json::Value>(&fact.content).ok());
+        .find(|f| f.id().as_str() == "policy:decision:vendor-selection")
+        .and_then(|fact| serde_json::from_str::<serde_json::Value>(fact.content()).ok());
 
     if recommendation.is_none() && shortlist.is_none() && policy.is_none() {
         return None;
@@ -2076,8 +2080,8 @@ fn stack_pressure_payload(
     let policy_outcome = ctx
         .get(ContextKey::Evaluations)
         .iter()
-        .find(|fact| fact.id == "policy:decision:vendor-selection")
-        .and_then(|fact| serde_json::from_str::<serde_json::Value>(&fact.content).ok())
+        .find(|fact| fact.id().as_str() == "policy:decision:vendor-selection")
+        .and_then(|fact| serde_json::from_str::<serde_json::Value>(fact.content()).ok())
         .and_then(|payload| {
             payload
                 .get("outcome")
@@ -2103,24 +2107,24 @@ fn stack_pressure_payload(
         },
         {
             "layer": "Organism",
-            "version": "1.4.0",
+            "version": "1.5.0",
             "contract": "Intent, planning seed, formation assembly, topology choice, and strategy proposals.",
             "demo_signal": format!("{} formation roles assigned with mode {}.", formation_role_count(ctx), options.demo_mode.as_str()),
             "pressure": "Promote panel, huddle, adversarial, and self-organizing topologies from demo labels into typed plan bundles.",
         },
         {
             "layer": "Converge",
-            "version": "3.7.4",
+            "version": "3.8.1",
             "contract": "Engine cycles, context partitions, promoted facts, criteria, policy decisions, and fixed-point stop reasons.",
             "demo_signal": format!("{} strategies, {} seeds, {} evaluations, {} proposal fact(s).", ctx.get(ContextKey::Strategies).len(), ctx.get(ContextKey::Seeds).len(), ctx.get(ContextKey::Evaluations).len(), ctx.get(ContextKey::Proposals).len()),
             "pressure": "Expose richer criterion evidence, promotion traces, and stop reasons so participants can debug governance runs quickly.",
         },
         {
             "layer": "Ferrox",
-            "version": "0.3.12",
+            "version": "0.4.1",
             "contract": "Optimization substrate for feasible sets, Pareto frontier analysis, and MIP/CP-SAT style decisions.",
             "demo_signal": format!("{} feasible candidates, {} Pareto frontier candidates, shortlist cap {}.", feasible_count, frontier_count, options.max_vendors),
-            "pressure": "Replace local weighted ranking with a Ferrox MIP/Pareto suggestor once the participant dependency stays fast to build.",
+            "pressure": "Replace local weighted ranking with a Ferrox Solvers MIP/Pareto suggestor once the participant dependency stays fast to build.",
         },
     ])
 }
@@ -2138,19 +2142,19 @@ fn formation_role_count(ctx: &ContextState) -> usize {
 fn formation_plan_payload(ctx: &ContextState) -> Option<serde_json::Value> {
     ctx.get(ContextKey::Strategies)
         .iter()
-        .find(|fact| fact.id == "formation:plan:vendor-selection")
-        .and_then(|fact| serde_json::from_str::<serde_json::Value>(&fact.content).ok())
+        .find(|fact| fact.id().as_str() == "formation:plan:vendor-selection")
+        .and_then(|fact| serde_json::from_str::<serde_json::Value>(fact.content()).ok())
 }
 
 fn fact_views(ctx: &ContextState, key: ContextKey) -> Vec<serde_json::Value> {
     ctx.get(key)
         .iter()
         .map(|fact| {
-            let content = serde_json::from_str::<serde_json::Value>(&fact.content)
-                .unwrap_or_else(|_| serde_json::Value::String(fact.content.clone()));
+            let content = serde_json::from_str::<serde_json::Value>(fact.content())
+                .unwrap_or_else(|_| serde_json::Value::String(fact.content().to_string()));
             serde_json::json!({
                 "key": format!("{:?}", key),
-                "id": fact.id.as_str(),
+                "id": fact.id().as_str(),
                 "content": content,
                 "promotion": fact.promotion_record(),
             })
@@ -2320,7 +2324,9 @@ mod tests {
             rows.iter().any(|row| {
                 row.get("pressure")
                     .and_then(serde_json::Value::as_str)
-                    .is_some_and(|pressure| pressure.contains("Ferrox MIP/Pareto suggestor"))
+                    .is_some_and(|pressure| {
+                        pressure.contains("Ferrox Solvers MIP/Pareto suggestor")
+                    })
             }),
             "Ferrox pressure should name the missing optimizer handoff"
         );

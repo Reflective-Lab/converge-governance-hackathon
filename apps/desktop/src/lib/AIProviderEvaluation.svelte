@@ -2,8 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { FlowPlayer, ReplayRunner } from "@reflective/helm-flow";
   import HitlGate from "@reflective/helm-flow/src/HitlGate.svelte";
-  import DocumentIntake from "@reflective/helm-flow/src/DocumentIntake.svelte";
-  import type { RunState as HelmRunState, FlowPhase, FlowStep } from "@reflective/helm-flow";
+  import type { RunState as HelmRunState } from "@reflective/helm-flow";
   import { invokeTauri } from "./tauri";
   import { randomVerb } from "./spinner";
   import { VendorSelectionReplayAdapter, statusFromReplaySession, emptyReplayStatus } from "./replay-adapter";
@@ -15,8 +14,6 @@
     EvaluationStep,
     FormationAgent,
     VendorInput,
-    TruthResult,
-    RunSummary,
     ExperienceSnapshot,
     TodayRunResponse,
     TodayRecordedRun,
@@ -39,63 +36,24 @@
 
   // Vendor-selection-specific run state (extends Helm's RunState with 'commit-review')
   type RunState = HelmRunState | "commit-review";
+  const PRESENTATION_STEP_DELAY_MS = 4_000;
 
-  // Inline todayVendors for adapter initialization (moved later in component for full definition)
+  // Inline vendor arrays for adapter initialization (moved later in component for full definition)
   const todayVendorsForAdapter: Array<Record<string, any>> = [];
+  const creativeVendorsForAdapter: Array<Record<string, any>> = [];
 
   // Replay adapter and runner (initialized before state, but vendor data comes later)
-  const replayAdapter = new VendorSelectionReplayAdapter(todayVendorsForAdapter);
+  const replayAdapter = new VendorSelectionReplayAdapter(
+    todayVendorsForAdapter,
+    creativeVendorsForAdapter,
+  );
   const replayRunner = new ReplayRunner(replayAdapter as any);
 
-  // Flow orchestration (Helm-owned)
-  const flowPlayer = new FlowPlayer({
-    phases: [
-      {
-        name: "Analysis",
-        steps: pipelineSteps.slice(0, 6).map((s, i) => ({
-          id: `step-${i}`,
-          label: s.step,
-          detail: s.detail,
-          agent: s.agent,
-          purpose: s.purpose,
-        })),
-      },
-      {
-        name: "HITL Gate",
-        steps: [
-          {
-            id: "step-6",
-            label: pipelineSteps[6].step,
-            detail: pipelineSteps[6].detail,
-            agent: pipelineSteps[6].agent,
-            purpose: pipelineSteps[6].purpose,
-          },
-        ],
-        gateName: "hitl",
-      },
-      {
-        name: "Promotion",
-        steps: pipelineSteps.slice(7).map((s, i) => ({
-          id: `step-${7 + i}`,
-          label: s.step,
-          detail: s.detail,
-          agent: s.agent,
-          purpose: s.purpose,
-        })),
-      },
-    ],
-    stepDelayMs: 1650,
-    reviewPauseMs: 1100,
-  });
-
-  let flowState = $state(flowPlayer.getState());
-  let spinnerVerb = $state(randomVerb());
-
   // Domain state
-  let bootstrapMode = $state<BootstrapMode>("upload");
+  let bootstrapMode = $state<BootstrapMode>("sample");
   let evaluationMode = $state<EvaluationMode>("today");
   let documents = $state<EvaluationDoc[]>([]);
-  let executableReady = $state(false);
+  let executableReady = $state(true);
   let runMode = $state<DemoRunMode>("mock");
   let replayStatus = $state<TodayReplayStatus | null>(null);
   let replayStatusLoaded = $state(false);
@@ -111,9 +69,16 @@
   let learningRuns = $state<TodayRunResponse[]>([]);
   let experience = $state<ExperienceSnapshot | null>(null);
   let spinnerInterval: ReturnType<typeof setInterval> | null = null;
+  let presentationFrame: number | null = null;
+  let presentationSequence = 0;
+  let presentationProgressPercent = $state(8);
+  let runningSegmentStart = $state(0);
+  let runningSegmentEnd = $state(5);
+  let runAnimationKey = $state(0);
+  let autoStarted = false;
+  let mockExperienceRunCount = 0;
 
   // Convenience aliases
-  let runState = $derived(flowState.runState as RunState);
   let recordingReplay = $derived(replayAdapter.recordingInProgress);
   let buildingOfflineReplay = $derived(replayAdapter.buildingOfflineBackup);
 
@@ -165,8 +130,102 @@
     },
   ];
 
+  const creativeVendors: VendorInput[] = [
+    {
+      name: "Anthropic Claude Enterprise",
+      score: 96,
+      risk_score: 14,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "ISO27001", "GDPR"],
+      monthly_cost_minor: 7600000,
+      currency_code: "USD",
+    },
+    {
+      name: "OpenAI Enterprise",
+      score: 94,
+      risk_score: 18,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "ISO27001", "GDPR"],
+      monthly_cost_minor: 6800000,
+      currency_code: "USD",
+    },
+    {
+      name: "Google Vertex AI",
+      score: 90,
+      risk_score: 16,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "ISO27001", "GDPR", "FedRAMP"],
+      monthly_cost_minor: 6200000,
+      currency_code: "USD",
+    },
+    {
+      name: "Mistral EU",
+      score: 84,
+      risk_score: 20,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "ISO27001", "GDPR"],
+      monthly_cost_minor: 2800000,
+      currency_code: "USD",
+    },
+    {
+      name: "Cohere Enterprise",
+      score: 82,
+      risk_score: 18,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "ISO27001", "GDPR"],
+      monthly_cost_minor: 3600000,
+      currency_code: "USD",
+    },
+    {
+      name: "Fireworks AI",
+      score: 78,
+      risk_score: 24,
+      compliance_status: "compliant",
+      certifications: ["SOC2"],
+      monthly_cost_minor: 1800000,
+      currency_code: "USD",
+    },
+    {
+      name: "Qwen Alibaba Cloud",
+      score: 86,
+      risk_score: 38,
+      compliance_status: "pending",
+      certifications: ["ISO27001"],
+      monthly_cost_minor: 1600000,
+      currency_code: "USD",
+    },
+    {
+      name: "Kong AI Gateway",
+      score: 80,
+      risk_score: 12,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "ISO27001", "GDPR"],
+      monthly_cost_minor: 2400000,
+      currency_code: "USD",
+    },
+    {
+      name: "Brave Search API",
+      score: 76,
+      risk_score: 16,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "GDPR"],
+      monthly_cost_minor: 800000,
+      currency_code: "USD",
+    },
+    {
+      name: "Tavily Research API",
+      score: 78,
+      risk_score: 14,
+      compliance_status: "compliant",
+      certifications: ["SOC2", "GDPR"],
+      monthly_cost_minor: 1200000,
+      currency_code: "USD",
+    },
+  ];
+
   // Populate adapter with vendor data
   todayVendorsForAdapter.push(...todayVendors);
+  creativeVendorsForAdapter.push(...creativeVendors);
 
   const expectedDocs: ExpectedDoc[] = [
     {
@@ -289,6 +348,18 @@
       purpose: "Promote only evidence that survives gates into the record.",
       source: "Governed context",
     },
+    {
+      name: "Cedar Gate",
+      kind: "policy",
+      purpose: "Authorize promotion, escalation, rejection, and commitment.",
+      source: "Cedar policy",
+    },
+    {
+      name: "Experience Store",
+      kind: "memory",
+      purpose: "Replay governed context without changing hard policy boundaries.",
+      source: "Prior runs",
+    },
   ];
 
   const pipelineSteps: Omit<EvaluationStep, "active">[] = [
@@ -366,10 +437,69 @@
     },
   ];
 
+  // Flow orchestration (Helm-owned). Keep this after pipelineSteps; Svelte
+  // initializes component script top-to-bottom.
+  const flowPlayer = new FlowPlayer({
+    phases: [
+      {
+        name: "Analysis",
+        steps: pipelineSteps.slice(0, 6).map((s, i) => ({
+          id: `step-${i}`,
+          label: s.step,
+          detail: s.detail,
+          agent: s.agent,
+          purpose: s.purpose,
+        })),
+      },
+      {
+        name: "HITL Gate",
+        steps: [
+          {
+            id: "step-6",
+            label: pipelineSteps[6].step,
+            detail: pipelineSteps[6].detail,
+            agent: pipelineSteps[6].agent,
+            purpose: pipelineSteps[6].purpose,
+          },
+        ],
+        gateName: "hitl",
+      },
+      {
+        name: "Promotion",
+        steps: pipelineSteps.slice(7).map((s, i) => ({
+          id: `step-${7 + i}`,
+          label: s.step,
+          detail: s.detail,
+          agent: s.agent,
+          purpose: s.purpose,
+        })),
+      },
+    ],
+    stepDelayMs: PRESENTATION_STEP_DELAY_MS,
+    reviewPauseMs: 1_800,
+  });
+
+  let flowState = $state(flowPlayer.getState());
+  let runState = $state<RunState>("bootstrap");
+  let spinnerVerb = $state(randomVerb());
+  let presentationStepIndex = $state(0);
+
   let documentPackageReady = $derived(documents.length >= 3);
-  let canStart = $derived(documentPackageReady && executableReady);
+  let canStart = $derived(bootstrapMode === "sample" || (documentPackageReady && executableReady));
+  let activeDemoMode = $derived(evaluationMode);
+  let activeTruthDemoMode = $derived(
+    activeDemoMode === "creative" ? "pareto-breakout" : "governed",
+  );
+  let activeVendors = $derived(activeDemoMode === "creative" ? creativeVendors : todayVendors);
+  let activeDemoLabel = $derived(
+    activeDemoMode === "creative" ? "Creative Pareto Breakout" : "Today Governed Selection",
+  );
+  let activeDemoShortLabel = $derived(activeDemoMode === "creative" ? "Creative" : "Today");
   let canRunToday = $derived(
-    canStart && (runMode === "mock" || runMode === "live" || replayStatus?.available === true),
+    canStart &&
+      (runMode === "mock" ||
+        runMode === "live" ||
+        (activeDemoMode === "today" && replayStatus?.available === true)),
   );
   let bootstrapLabel = $derived(
     bootstrapMode === "sample"
@@ -391,19 +521,15 @@
       ? "A runnable job, authority boundary, evidence gates, and converging Truth are declared."
       : "Confirm that the package contains an executable job-to-be-done and a Truth that can converge.",
   );
-  // Build steps array from pipeline steps and FlowPlayer state
-  let steps = $derived.by(() => {
-    return pipelineSteps.map((step, index) => ({
-      step: step.step,
-      detail: step.detail,
-      agent: step.agent,
-      purpose: step.purpose,
-      active: index === flowState.activeStepIndex,
-    }));
-  });
-
-  let progressPercent = $derived(flowState.progressPercent);
-  let activeAgent = $derived(steps.find((step) => step.active)?.agent ?? "");
+  let highlightedStep = $state(pipelineSteps[0]);
+  let progressPercent = $derived(presentationProgressPercent);
+  let activeAgent = $derived(highlightedStep?.agent ?? "");
+  let activeSuggestorNames = $derived(suggestorsForStep(presentationStepIndex));
+  let activeSuggestorSet = $derived(new Set(activeSuggestorNames));
+  let parallelSuggestorWork = $derived(activeSuggestorNames.length > 1);
+  let runningSegmentSteps = $derived(
+    pipelineSteps.slice(runningSegmentStart, runningSegmentEnd + 1),
+  );
   let finalRun = $derived(approvedRun ?? analysisRun);
   let finalDetails = $derived(detailsFor(finalRun));
   let finalPolicy = $derived(policyFor(finalRun));
@@ -425,7 +551,7 @@
   );
   let runModeDetail = $derived(
     runMode === "mock"
-      ? "Runs the governed Today path locally with deterministic agents and presenter-paced timing."
+      ? `Runs the ${activeDemoShortLabel} path locally with deterministic agents and presenter-paced timing.`
       : runMode === "replay"
       ? replayIsLive
         ? "Uses a previously captured session with real LLM telemetry and compressed thinking delays."
@@ -525,12 +651,71 @@
     flowState = flowPlayer.getState();
   }
 
-  async function startEvaluation() {
-    if (!canRunToday || evaluationMode !== "today") return;
-
-    // Initialize flow
-    flowPlayer.start();
+  function setPresentationStep(index: number) {
+    presentationStepIndex = Math.min(Math.max(index, 0), pipelineSteps.length - 1);
+    highlightedStep = pipelineSteps[presentationStepIndex];
     updateFlowState();
+  }
+
+  function clearPresentationTimers() {
+    if (presentationFrame !== null) {
+      cancelAnimationFrame(presentationFrame);
+      presentationFrame = null;
+    }
+    presentationSequence += 1;
+  }
+
+  function schedulePresentationSegment(
+    startIndex: number,
+    endIndex: number,
+    onComplete: () => void,
+  ) {
+    clearPresentationTimers();
+    const sequence = presentationSequence;
+    const startedAt = performance.now();
+    const totalDuration = Math.max(1, endIndex - startIndex + 1) * PRESENTATION_STEP_DELAY_MS;
+
+    setPresentationStep(startIndex);
+    presentationProgressPercent = Math.max(8, ((startIndex + 1) / pipelineSteps.length) * 100);
+
+    const animate = (now: number) => {
+      if (sequence !== presentationSequence) {
+        return;
+      }
+
+      const elapsed = Math.max(0, now - startedAt);
+      const stepOffset = Math.min(endIndex - startIndex, Math.floor(elapsed / PRESENTATION_STEP_DELAY_MS));
+      const nextStep = startIndex + stepOffset;
+      const continuousStep = Math.min(endIndex + 1, startIndex + elapsed / PRESENTATION_STEP_DELAY_MS);
+
+      if (nextStep !== presentationStepIndex) {
+        setPresentationStep(nextStep);
+      }
+
+      presentationProgressPercent = Math.max(
+        8,
+        Math.min(100, (continuousStep / pipelineSteps.length) * 100),
+      );
+
+      if (elapsed >= totalDuration) {
+        clearPresentationTimers();
+        setPresentationStep(endIndex);
+        presentationProgressPercent = Math.max(8, ((endIndex + 1) / pipelineSteps.length) * 100);
+        onComplete();
+        return;
+      }
+
+      presentationFrame = requestAnimationFrame(animate);
+    };
+
+    presentationFrame = requestAnimationFrame(animate);
+  }
+
+  function startEvaluation() {
+    runMode = "mock";
+    useSampleProcess();
+
+    resetMockExperience();
     installedCedar = false;
     flowError = "";
     replayCursor = {};
@@ -539,125 +724,85 @@
     negativeControlRun = null;
     learningRuns = [];
     experience = null;
-    startSpinner();
-
-    try {
-      // Schedule first 6 steps (Bootstrapping → Compliance Screen)
-      flowPlayer.scheduleSteps(6, (index) => {
-        updateFlowState();
-      });
-
-      if (runMode === "mock") {
-        await resetTodayExperience();
-      } else if (runMode === "replay") {
-        await ensureReplaySession();
-      } else {
-        await resetTodayExperience();
-      }
-
-      // Run analysis while steps progress
-      const [response] = await Promise.all([
-        runTodayStage("analysis"),
-        wait(9_200),
-      ]);
-      analysisRun = response;
-      experience = analysisRun.experience;
-      await pauseForReview(1_800);
-
-      // Transition to gate review
-      flowPlayer.pauseAtGate("hitl", () => {
-        updateFlowState();
-      });
-    } catch (cause) {
-      flowError = describeRunError(cause);
-      flowPlayer.reset();
-      updateFlowState();
-    } finally {
-      stopSpinner();
-    }
+    beginMockSegment(0, 5);
   }
 
   function openHitlDecision() {
-    flowState = { ...flowState, runState: "hitl" as RunState };
+    runState = "hitl";
   }
 
-  async function approveHitl() {
+  function approveHitl() {
     installedCedar = delegateToCedar;
-    flowPlayer.approveGate();
-    updateFlowState();
     flowError = "";
-    startSpinner();
-
-    try {
-      // Step 6: Promote Commitment
-      flowPlayer.scheduleSteps(1, () => updateFlowState());
-      const [approved] = await Promise.all([
-        runTodayStage("approved"),
-        wait(2_400),
-      ]);
-      approvedRun = approved;
-      experience = approvedRun.experience;
-
-      // Step 7: Negative Control
-      flowPlayer.scheduleSteps(1, () => updateFlowState());
-      const [negative] = await Promise.all([
-        runTodayStage("negative-control"),
-        wait(2_400),
-      ]);
-      negativeControlRun = negative;
-      experience = negativeControlRun.experience;
-
-      // Steps 8-10: Learning Runs
-      for (let index = 0; index < 3; index += 1) {
-        flowPlayer.scheduleSteps(1, () => updateFlowState());
-        const [learningRun] = await Promise.all([
-          runTodayStage("learning"),
-          wait(1_650),
-        ]);
-        learningRuns = [...learningRuns, learningRun];
-        experience = learningRun.experience;
-      }
-
-      // Step 11: Fixed Point
-      await pauseForReview(1_300);
-      flowPlayer.finish();
-      updateFlowState();
-    } catch (cause) {
-      flowError = describeRunError(cause);
-      flowState = { ...flowState, runState: "hitl" as RunState };
-    } finally {
-      stopSpinner();
-    }
+    beginMockSegment(6, 11);
   }
 
-  async function continueAfterCommitReview() {
-    flowState = { ...flowState, runState: "running" };
+  function continueAfterCommitReview() {
     flowError = "";
+    beginMockSegment(7, 11);
+  }
+
+  function beginMockSegment(startIndex: number, endIndex: number) {
+    clearPresentationTimers();
+    runningSegmentStart = startIndex;
+    runningSegmentEnd = endIndex;
+    runAnimationKey += 1;
+    runState = "running";
+    setPresentationStep(startIndex);
+    presentationProgressPercent = Math.max(8, ((startIndex + 1) / pipelineSteps.length) * 100);
     startSpinner();
+  }
 
-    try {
-      negativeControlRun = await runTodayStage("negative-control");
+  function completeMockSegment() {
+    if (runState !== "running") return;
+
+    setPresentationStep(runningSegmentEnd);
+    presentationProgressPercent = Math.max(8, ((runningSegmentEnd + 1) / pipelineSteps.length) * 100);
+    stopSpinner();
+
+    if (runningSegmentStart === 0) {
+      const response = mockTodayStage("analysis");
+      analysisRun = response;
+      experience = analysisRun.experience;
+      runState = "gate-review";
+      return;
+    }
+
+    if (runningSegmentStart === 6) {
+      approvedRun = mockTodayStage("approved");
+      experience = approvedRun.experience;
+      negativeControlRun = mockTodayStage("negative-control");
       experience = negativeControlRun.experience;
+      learningRuns = [
+        mockTodayStage("learning"),
+        mockTodayStage("learning"),
+        mockTodayStage("learning"),
+      ];
+      experience = learningRuns[learningRuns.length - 1].experience;
+      runState = "finished";
+      return;
+    }
 
-      for (let index = 0; index < 3; index += 1) {
-        const learningRun = await runTodayStage("learning");
-        learningRuns = [...learningRuns, learningRun];
-        experience = learningRun.experience;
-      }
-
-      flowPlayer.finish();
-      updateFlowState();
-    } catch (cause) {
-      flowError = describeRunError(cause);
-      flowState = { ...flowState, runState: "commit-review" };
-    } finally {
-      stopSpinner();
+    if (runningSegmentStart === 7) {
+      negativeControlRun = mockTodayStage("negative-control");
+      experience = negativeControlRun.experience;
+      learningRuns = [
+        mockTodayStage("learning"),
+        mockTodayStage("learning"),
+        mockTodayStage("learning"),
+      ];
+      experience = learningRuns[learningRuns.length - 1].experience;
+      runState = "finished";
     }
   }
 
   function resetEvaluation() {
     flowPlayer.reset();
     updateFlowState();
+    runState = "bootstrap";
+    clearPresentationTimers();
+    setPresentationStep(0);
+    presentationProgressPercent = 8;
     replayRunner.resetCursor();
     installedCedar = false;
     flowError = "";
@@ -666,6 +811,7 @@
     negativeControlRun = null;
     learningRuns = [];
     approvalNote = "Evidence package is sufficient for the demo threshold.";
+    resetMockExperience();
   }
 
 
@@ -722,6 +868,10 @@
   }
 
   async function runTodayStage(stage: string): Promise<TodayRunResponse> {
+    if (runMode === "mock") {
+      return mockTodayStage(stage);
+    }
+
     if (runMode === "replay") {
       const session = await replayRunner.ensureSession();
       const normalizedStage = replayAdapter.normalizeStage(stage);
@@ -740,7 +890,7 @@
     }
 
     // Mock or Live mode
-    const inputs = replayAdapter.formInputs(stage, runMode === "live");
+    const inputs = replayAdapter.formInputs(stage, runMode === "live", activeTruthDemoMode);
     const result = await replayAdapter.runStage(stage, inputs);
 
     if (runMode === "live") {
@@ -748,6 +898,199 @@
     }
 
     return result as TodayRunResponse;
+  }
+
+  function resetMockExperience() {
+    mockExperienceRunCount = 0;
+  }
+
+  function mockTodayStage(stage: string): TodayRunResponse {
+    const normalizedStage = replayAdapter.normalizeStage(stage);
+    mockExperienceRunCount += 1;
+
+    const creative = activeDemoMode === "creative";
+    const selectedVendor = creative ? "Kong AI Gateway + Mistral EU" : "Mistral";
+    const selectedAmountMajor = creative ? 52_000 : 22_000;
+    const confidence = creative ? 0.88 : 0.91;
+    const shortlist = mockShortlist(creative);
+    const rejected = mockRejected(creative);
+    const policy = mockPolicy(normalizedStage, selectedVendor, selectedAmountMajor);
+    const learning = {
+      prior_runs: Math.max(0, mockExperienceRunCount - 1),
+      status:
+        normalizedStage === "learning"
+          ? "accepted pattern replayed without weakening gates"
+          : "experience context available",
+    };
+
+    return {
+      stage: normalizedStage,
+      result: {
+        converged: true,
+        cycles: normalizedStage === "analysis" ? 3 : 2,
+        stop_reason: normalizedStage === "negative-control" ? "policy_rejected" : "fixed_point",
+        criteria_outcomes: [
+          { criterion: "compliance_evidence", result: "satisfied" },
+          { criterion: "risk_boundary", result: "satisfied" },
+          { criterion: "cedar_authority", result: policy.outcome === "Reject" ? "rejected" : "satisfied" },
+        ],
+        projection: {
+          events_emitted: normalizedStage === "analysis" ? 6 : 5,
+          details: {
+            formation: {
+              assignments: formationAgents.map((agent) => ({
+                agent: agent.name,
+                source: agent.source,
+              })),
+            },
+            recommendation: {
+              recommendation: selectedVendor,
+              confidence,
+              rationale: creative
+                ? "The governed mix keeps Kong at the policy perimeter and Mistral EU in the model slot."
+                : "Mistral clears compliance, stays inside the risk boundary, and wins the cost trade-off.",
+            },
+            shortlist: {
+              shortlist,
+              rejected,
+            },
+            policy,
+            learning,
+          },
+        },
+        llm_calls: [],
+      },
+      experience: mockExperienceSnapshot(selectedVendor, confidence),
+    };
+  }
+
+  function mockPolicy(stage: string, selectedVendor: string, selectedAmountMajor: number) {
+    if (stage === "analysis") {
+      return {
+        outcome: "Escalate",
+        selected_vendor: selectedVendor,
+        selected_amount_major: selectedAmountMajor,
+        hitl_threshold_major: 15_000,
+        human_approval_present: false,
+        principal_authority: "supervisory",
+        reason: "Human approval is required before recommendation becomes a commitment.",
+      };
+    }
+
+    if (stage === "negative-control") {
+      return {
+        outcome: "Reject",
+        selected_vendor: selectedVendor,
+        selected_amount_major: selectedAmountMajor,
+        hitl_threshold_major: 15_000,
+        human_approval_present: true,
+        principal_authority: "advisory",
+        reason: "Advisory authority cannot promote a vendor commitment.",
+      };
+    }
+
+    return {
+      outcome: "Promote",
+      selected_vendor: selectedVendor,
+      selected_amount_major: selectedAmountMajor,
+      hitl_threshold_major: 15_000,
+      human_approval_present: true,
+      principal_authority: "supervisory",
+      reason: "Human approval and supervisory authority are present.",
+    };
+  }
+
+  function mockShortlist(creative: boolean): Array<Record<string, any>> {
+    if (creative) {
+      return [
+        {
+          rank: 1,
+          vendor_name: "Kong AI Gateway + Mistral EU",
+          score: 87,
+          risk_score: 16,
+          composite_score: "0.92",
+        },
+        {
+          rank: 2,
+          vendor_name: "OpenAI Enterprise",
+          score: 94,
+          risk_score: 18,
+          composite_score: "0.89",
+        },
+        {
+          rank: 3,
+          vendor_name: "Google Vertex AI",
+          score: 90,
+          risk_score: 16,
+          composite_score: "0.88",
+        },
+      ];
+    }
+
+    return [
+      {
+        rank: 1,
+        vendor_name: "Mistral",
+        score: 82,
+        risk_score: 22,
+        composite_score: "0.91",
+      },
+      {
+        rank: 2,
+        vendor_name: "Google DeepMind",
+        score: 88,
+        risk_score: 15,
+        composite_score: "0.87",
+      },
+      {
+        rank: 3,
+        vendor_name: "OpenAI",
+        score: 90,
+        risk_score: 18,
+        composite_score: "0.86",
+      },
+    ];
+  }
+
+  function mockRejected(creative: boolean): Array<Record<string, any>> {
+    return [
+      {
+        vendor_name: creative ? "Qwen Alibaba Cloud" : "Qwen (Alibaba Cloud)",
+        reasons: ["compliance evidence pending", "risk score exceeds governed threshold"],
+      },
+    ];
+  }
+
+  function mockExperienceSnapshot(selectedVendor: string, confidence: number): ExperienceSnapshot {
+    const summaries = Array.from({ length: mockExperienceRunCount }, (_, index) => ({
+      run_id: `mock-vendor-selection-${index + 1}`,
+      cycles: index === 0 ? 3 : 2,
+      elapsed_ms: 420 + index * 35,
+      vendor_count: activeVendors.length,
+      converged: true,
+      confidence,
+      recommended_vendor: selectedVendor,
+      timestamp: new Date(2026, 3, 29, 12, index, 0).toISOString(),
+    }));
+
+    return {
+      truth_key: "vendor-selection",
+      run_count: mockExperienceRunCount,
+      summaries,
+      aggregate: {
+        convergence_rate: 1,
+        avg_cycles: summaries.length > 1 ? 2.2 : 3,
+        avg_confidence: confidence,
+        avg_elapsed_ms: 455,
+        recommendation_frequencies: [
+          {
+            recommendation: selectedVendor,
+            count: mockExperienceRunCount,
+            share: 1,
+          },
+        ],
+      },
+    };
   }
 
 
@@ -772,7 +1115,7 @@
     try {
       return JSON.stringify(cause);
     } catch {
-      return "Today demo failed.";
+      return `${activeDemoShortLabel} demo failed.`;
     }
   }
 
@@ -794,16 +1137,6 @@
           .join(", ")}. Check provider credentials and model availability.`
       );
     }
-  }
-
-  function wait(ms: number) {
-    return new Promise<void>((resolve) => {
-      setTimeout(resolve, ms);
-    });
-  }
-
-  function pauseForReview(ms = 1_100) {
-    return wait(ms);
   }
 
   function detailsFor(run: TodayRunResponse | null | undefined) {
@@ -871,13 +1204,39 @@
     return runs.reduce((total, run) => total + (run.result.llm_calls?.length ?? 0), 0);
   }
 
+  function suggestorsForStep(index: number) {
+    const byStep = [
+      ["Bootstrap Mapper"],
+      ["Formation Planner"],
+      ["Compliance Agent", "Wide Evidence Agent", "Deep Evidence Agent"],
+      ["Price Optimizer", "Risk Skeptic"],
+      ["Consensus Promoter"],
+      ["Cedar Gate"],
+      ["Cedar Gate"],
+      ["Cedar Gate", "Risk Skeptic"],
+      ["Experience Store", "Consensus Promoter"],
+      ["Experience Store", "Consensus Promoter"],
+      ["Experience Store", "Consensus Promoter"],
+      ["Consensus Promoter"],
+    ];
+    return byStep[index] ?? [];
+  }
+
   function latestRunSummaries() {
     return [...(experience?.summaries ?? [])].reverse().slice(0, 5);
   }
 
-  onMount(loadReplayStatus);
+  onMount(async () => {
+    useSampleProcess();
+    await loadReplayStatus();
+    if (!autoStarted) {
+      autoStarted = true;
+      startEvaluation();
+    }
+  });
   onDestroy(() => {
     stopSpinner();
+    clearPresentationTimers();
     flowPlayer.reset();
   });
 
@@ -889,7 +1248,7 @@
   <header class="flex items-center justify-between border-b border-border px-8 py-4">
     <div class="flex items-center gap-4">
       <button class="btn-ghost text-sm" type="button" onclick={onBack}>&larr; Slides</button>
-      <span class="font-mono text-xs tracking-widest text-muted uppercase">AI Provider Evaluation</span>
+      <span class="font-mono text-xs tracking-widest text-muted uppercase">{activeDemoLabel}</span>
     </div>
     <div class="flex items-center gap-3">
       <button class="btn-ghost text-sm" type="button" onclick={onSpecStudio}>Spec Studio</button>
@@ -898,140 +1257,48 @@
   </header>
 
   {#if runState === "bootstrap"}
-    <div class="mx-auto max-w-5xl px-8 py-10">
-      <section>
-        <p class="slide-eyebrow mb-3">Bootstrapping</p>
-        <h1 class="slide-headline mb-5 text-4xl!">Start with the decision package.</h1>
-
-        <div class="mb-0 flex items-end gap-1 border-b border-border">
-          <div class="flex gap-1">
-            <button
-              type="button"
-              class="-mb-px rounded-t-xl border border-border px-5 py-2 text-sm font-semibold transition"
-              class:border-b-raised={evaluationMode === "today"}
-              class:bg-raised={evaluationMode === "today"}
-              class:bg-deep={evaluationMode !== "today"}
-              class:text-bright={evaluationMode === "today"}
-              class:text-subtle={evaluationMode !== "today"}
-              onclick={() => (evaluationMode = "today")}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              class="-mb-px rounded-t-xl border border-border px-5 py-2 text-sm font-semibold transition"
-              class:border-b-raised={evaluationMode === "creative"}
-              class:bg-raised={evaluationMode === "creative"}
-              class:bg-deep={evaluationMode !== "creative"}
-              class:text-bright={evaluationMode === "creative"}
-              class:text-subtle={evaluationMode !== "creative"}
-              onclick={() => (evaluationMode = "creative")}
-            >
-              Future
-            </button>
-          </div>
-        </div>
-        <div class="mb-6 rounded-b-2xl rounded-tr-2xl border border-t-0 border-border bg-raised p-4">
-          {#if evaluationMode === "today"}
-            <p class="text-sm text-subtle">Governed selection inside the current RFI/RFP frame, using the same source pack and policy path as <code class="font-mono text-lime">just demo-today-live</code>.</p>
-          {:else}
-            <p class="text-sm text-subtle">Preview: challenge the premise and explore Pareto breakouts.</p>
-          {/if}
-        </div>
-
-        {#if evaluationMode === "creative"}
-          <div class="mb-6 rounded-2xl border border-warn/25 bg-warn/5 p-4">
-            <span class="card-label text-warn!">Preview Only</span>
-            <h2 class="mt-1 font-display text-xl font-semibold text-bright">Creative mode is deliberately parked.</h2>
-            <p class="mt-2 text-sm text-subtle">
-              This will be the mode where the system can challenge the original vendor-only frame and propose a router, gateway, or multi-provider Pareto breakout. For now, the runnable path is As of today.
-            </p>
-          </div>
-        {/if}
+    <div class="mx-auto grid max-w-7xl gap-6 px-8 py-8 lg:grid-cols-[0.85fr_1.15fr]">
+      <section class="rounded-[28px] border border-border bg-panel p-5">
+        <p class="slide-eyebrow mb-3">Vendor Selection Demo</p>
+        <h1 class="slide-headline mb-4 text-4xl!">{activeDemoLabel}</h1>
 
         <div class="grid gap-3">
-          <div class="grid gap-3">
-            <DocumentIntake
-              bind:documents
-              fastLoadEnabled={bootstrapMode === "sample"}
-              bind:executableReady
-              expectedDocs={expectedDocs}
-              onFilesSelected={(files) => handleFiles(files)}
-            />
+          <button
+            type="button"
+            class="rounded-2xl border p-4 text-left transition"
+            class:border-lime={evaluationMode === "today"}
+            class:bg-lime-glow={evaluationMode === "today"}
+            class:border-border={evaluationMode !== "today"}
+            class:bg-raised={evaluationMode !== "today"}
+            onclick={() => (evaluationMode = "today")}
+          >
+            <span class="block font-display text-xl font-semibold text-bright">Today</span>
+            <span class="mt-1 block text-sm text-subtle">Governed selection inside the current RFI/RFP frame.</span>
+          </button>
+          <button
+            type="button"
+            class="rounded-2xl border p-4 text-left transition"
+            class:border-lime={evaluationMode === "creative"}
+            class:bg-lime-glow={evaluationMode === "creative"}
+            class:border-border={evaluationMode !== "creative"}
+            class:bg-raised={evaluationMode !== "creative"}
+            onclick={() => (evaluationMode = "creative")}
+          >
+            <span class="block font-display text-xl font-semibold text-bright">Creative</span>
+            <span class="mt-1 block text-sm text-subtle">Pareto breakout that may prefer a router or provider mix.</span>
+          </button>
+        </div>
 
-            <!-- Vendor-selection-specific: Fast-load toggle -->
-            <button
-              class="rounded-xl border px-3 py-2 text-left transition"
-              class:border-lime={bootstrapMode === "sample"}
-              class:bg-lime-glow={bootstrapMode === "sample"}
-              class:border-border={bootstrapMode !== "sample"}
-              class:bg-deep={bootstrapMode !== "sample"}
-              type="button"
-              onclick={() => toggleFastLoad(bootstrapMode === "upload")}
-            >
-              <span class="block text-sm font-semibold text-bright">
-                {bootstrapMode === "sample" ? "Using Sample Package" : "Load Sample Package"}
-              </span>
-              <span class="block text-xs text-muted">AI provider evaluation demo data</span>
-            </button>
+        <div class="mt-5 rounded-2xl border border-border bg-raised p-4">
+          <span class="card-label">Run Mode</span>
+          <div class="mt-3 rounded-xl border border-lime/30 bg-lime-glow px-3 py-3">
+            <span class="block text-sm font-semibold text-bright">Mock presentation flow</span>
+            <span class="block text-xs text-subtle">No providers, no replay, no backend calls during the walkthrough.</span>
           </div>
         </div>
 
-        <div class="mt-5 rounded-2xl border border-border bg-deep p-4">
-          <div class="mb-3 flex items-center justify-between gap-4">
-            <span class="card-label">Uploaded Documents</span>
-            <span class="pill" class:pill-ok={documentPackageReady} class:pill-warn={!documentPackageReady}>{bootstrapLabel}</span>
-          </div>
-          {#if documents.length > 0}
-            <div class="space-y-2">
-              {#each documents as document}
-                <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-raised px-3 py-2">
-                  <div class="min-w-0">
-                    <p class="truncate text-sm text-bright">{document.name}</p>
-                    <p class="text-xs text-muted">{document.kind}</p>
-                  </div>
-                  <div class="flex shrink-0 items-center gap-2">
-                    {#if document.href}
-                      <a class="font-mono text-xs text-lime hover:underline" href={document.href} target="_blank" rel="noreferrer">Open</a>
-                    {/if}
-                    <span class="font-mono text-xs text-subtle">{document.size}</span>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {:else}
-            <p class="text-sm text-subtle">No uploaded documents yet.</p>
-          {/if}
-        </div>
-
-        {#if bootstrapMode === "sample"}
-          <div class="mt-5 rounded-2xl border border-border bg-deep p-4">
-            <div class="mb-3 flex items-center justify-between gap-4">
-              <span class="card-label">As Of Today</span>
-              <span class="pill pill-info">Mocked flow</span>
-            </div>
-            <div class="grid gap-2 md:grid-cols-2">
-              {#each todayVendors as vendor}
-                <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-raised px-3 py-2">
-                  <div class="min-w-0">
-                    <p class="truncate text-sm text-bright">{vendor.name}</p>
-                    <p class="text-xs text-muted">score {vendor.score} / risk {vendor.risk_score}</p>
-                  </div>
-                  <span
-                    class="pill"
-                    class:pill-ok={vendor.compliance_status === "compliant"}
-                    class:pill-warn={vendor.compliance_status !== "compliant"}
-                  >
-                    {vendor.compliance_status}
-                  </span>
-                </div>
-              {/each}
-            </div>
-          </div>
-        {/if}
-
-        <button class="btn-lime mt-5 w-full justify-center py-3" type="button" disabled={!canRunToday || evaluationMode !== "today"} onclick={startEvaluation}>
-          Run
+        <button class="btn-lime mt-5 w-full justify-center py-3" type="button" onclick={startEvaluation}>
+          Run {activeDemoShortLabel}
         </button>
 
         {#if flowError}
@@ -1042,121 +1309,33 @@
         {/if}
       </section>
 
-      <section class="hidden rounded-[28px] border border-border bg-panel p-5">
-        <span class="card-label">Readiness</span>
-        <h2 class="mt-1 font-display text-2xl font-semibold text-bright">Bootstrap status</h2>
-        <div class="mt-5 rounded-2xl border border-border bg-raised p-5">
-          <div class="flex items-center justify-between gap-4">
-            <div>
-              <p class="font-display text-xl font-semibold text-bright">{documentReadinessLabel}</p>
-              <p class="mt-1 text-sm text-subtle">{documentReadinessDetail}</p>
-            </div>
-            <span class="pill" class:pill-ok={documentPackageReady} class:pill-warn={!documentPackageReady}>{bootstrapLabel}</span>
-          </div>
-          <div class="mt-5 h-2 overflow-hidden rounded-full bg-border">
-            <div class="h-full rounded-full bg-lime transition-all duration-500" style="width: {documentProgressPercent}%"></div>
-          </div>
-          <button class="btn-ghost mt-5 w-full justify-center" type="button" onclick={() => (expectedDocsOpen = true)}>
-            What documents are expected?
-          </button>
-        </div>
-
-        <div class="mt-4 rounded-2xl border border-border bg-raised p-5">
+      <aside class="space-y-5">
+        <section class="rounded-[28px] border border-border bg-panel p-5">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <span class="card-label">Demo Run Mode</span>
-              <p class="mt-1 font-display text-xl font-semibold text-bright">{runModeLabel}</p>
-              <p class="mt-1 text-sm text-subtle">{runModeDetail}</p>
+              <span class="card-label">Source Pack</span>
+              <h2 class="mt-1 font-display text-2xl font-semibold text-bright">Fast track package loaded</h2>
             </div>
-            <span
-              class="pill"
-              class:pill-ok={runMode === "replay" && replayStatus?.available}
-              class:pill-info={runMode === "live"}
-              class:pill-warn={runMode === "replay" && !replayStatus?.available}
-            >
-              {runMode === "replay" ? "Replay" : "Live"}
-            </span>
+            <span class="pill pill-ok">{documents.length || sampleDocs.length} docs</span>
           </div>
-
           <div class="mt-4 grid gap-2 md:grid-cols-2">
-            <button
-              type="button"
-              class="rounded-xl border px-3 py-2 text-left transition"
-              class:border-lime={runMode === "replay"}
-              class:bg-lime-glow={runMode === "replay"}
-              class:border-border={runMode !== "replay"}
-              class:bg-deep={runMode !== "replay"}
-              class:opacity-50={!replayStatus?.available}
-              disabled={!replayStatus?.available}
-              onclick={() => (runMode = "replay")}
-            >
-              <span class="block text-sm font-semibold text-bright">Use replay</span>
-              <span class="block text-xs text-muted">{replayStatus?.available ? `${replayStatus.run_count} recorded stages` : "No recording found"}</span>
-            </button>
-            <button
-              type="button"
-              class="rounded-xl border px-3 py-2 text-left transition"
-              class:border-lime={runMode === "live"}
-              class:bg-lime-glow={runMode === "live"}
-              class:border-border={runMode !== "live"}
-              class:bg-deep={runMode !== "live"}
-              onclick={() => (runMode = "live")}
-            >
-              <span class="block text-sm font-semibold text-bright">Run live</span>
-              <span class="block text-xs text-muted">Uses provider credentials now</span>
-            </button>
+            {#each (documents.length > 0 ? documents : sampleDocs) as document}
+              <a class="rounded-xl border border-border bg-raised px-3 py-2 transition hover:border-lime/50" href={document.href} target="_blank" rel="noreferrer">
+                <span class="block truncate text-sm text-bright">{document.name}</span>
+                <span class="block text-xs text-muted">{document.kind} / {document.size}</span>
+              </a>
+            {/each}
           </div>
+        </section>
 
-          <div class="mt-4 rounded-xl border border-border bg-deep p-3">
-            {#if !replayStatusLoaded}
-              <p class="text-sm text-subtle">Checking for a recorded live session...</p>
-            {:else if replayStatus?.available}
-              <div class="flex items-start justify-between gap-3">
-                <div>
-                  <p class="text-sm text-bright">
-                    {replayStatus.mode === "recorded-live" ? "Recording ready" : "Offline backup ready"}
-                  </p>
-                  <p class="mt-1 font-mono text-xs text-muted">{replayStatus.recorded_at} / {replayStatus.source_hash}</p>
-                </div>
-                <span class="pill" class:pill-ok={replayStatus.source_matches} class:pill-warn={!replayStatus.source_matches}>
-                  {replayStatus.source_matches ? "Source match" : "Source changed"}
-                </span>
-              </div>
-              {#if replayStatus.model_summary.length > 0}
-                <div class="mt-3 space-y-1">
-                  {#each replayStatus.model_summary.slice(0, 4) as model}
-                    <p class="truncate font-mono text-[0.68rem] text-muted">{model}</p>
-                  {/each}
-                </div>
-              {/if}
-            {:else}
-              <p class="text-sm text-subtle">No recording is available yet. Record once with credentials, then present from replay mode.</p>
-              {#if replayStatus?.error}
-                <p class="mt-1 text-xs text-warn">{replayStatus.error}</p>
-              {/if}
-            {/if}
+        <section class="rounded-[28px] border border-border bg-panel p-5">
+          <div class="flex items-center justify-between gap-4">
+            <span class="card-label">{activeDemoShortLabel} Candidates</span>
+            <span class="pill pill-info">{activeVendors.length} candidates</span>
           </div>
-
-          <div class="mt-4 flex flex-wrap gap-2">
-            <button class="btn-ghost text-sm" type="button" disabled={recordingReplay} onclick={recordReplaySession}>
-              {recordingReplay ? "Recording..." : "Record New Live Session"}
-            </button>
-            <button class="btn-ghost text-sm" type="button" disabled={buildingOfflineReplay || recordingReplay} onclick={buildOfflineReplaySession}>
-              {buildingOfflineReplay ? "Building..." : "Build Offline Backup"}
-            </button>
-            {#if replayStatus?.available}
-              <button class="btn-ghost text-sm" type="button" disabled={recordingReplay} onclick={clearReplaySession}>
-                Clear Recording
-              </button>
-            {/if}
-          </div>
-        </div>
-
-        <div class="mt-4 rounded-2xl border border-border bg-raised p-5">
-          <span class="card-label">Today Candidates</span>
-          <div class="mt-3 space-y-2">
-            {#each todayVendors as vendor}
-              <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-deep px-3 py-2">
+          <div class="mt-3 grid gap-2 md:grid-cols-2">
+            {#each activeVendors as vendor}
+              <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-raised px-3 py-2">
                 <div class="min-w-0">
                   <p class="truncate text-sm text-bright">{vendor.name}</p>
                   <p class="text-xs text-muted">score {vendor.score} / risk {vendor.risk_score}</p>
@@ -1171,8 +1350,8 @@
               </div>
             {/each}
           </div>
-        </div>
-      </section>
+        </section>
+      </aside>
     </div>
   {:else}
     <div class="mx-auto grid max-w-7xl gap-6 px-8 py-8 lg:grid-cols-[0.9fr_1.1fr]">
@@ -1188,7 +1367,7 @@
                     ? "Human Gate"
                     : "Formation In Work"}
             </p>
-            <h1 class="slide-headline text-3xl!">AI Provider Evaluation</h1>
+            <h1 class="slide-headline text-3xl!">{activeDemoLabel}</h1>
             <p class="mt-2 text-sm text-subtle">{bootstrapLabel}</p>
           </div>
           {#if runState === "finished"}
@@ -1204,42 +1383,76 @@
           {/if}
         </div>
 
-        <div class="mb-6 space-y-3">
-          {#each steps as step}
-            <div class="flex items-start gap-3 fade-in">
-              <div
-                class="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                class:bg-lime-glow={step.active}
-                class:text-lime={step.active}
-                style={!step.active ? "background: rgba(52,211,153,0.15); color: var(--color-ok)" : ""}
-              >
-                {#if step.active}
-                  <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-lime"></span>
-                {:else}
-                  <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                {/if}
-              </div>
-              <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="text-sm font-semibold" class:text-bright={step.active} class:text-subtle={!step.active}>{step.step}</span>
-                  <span class="rounded-full border border-border px-2 py-0.5 font-mono text-[0.65rem] text-muted">{step.agent}</span>
+        <div class="mb-6 grid gap-2">
+          {#key runAnimationKey}
+            {#if runState === "running"}
+              {#each runningSegmentSteps as step, localIndex}
+                {@const globalIndex = runningSegmentStart + localIndex}
+                <div
+                  class="mock-step-row flex items-center gap-3 rounded-xl border px-3 py-2"
+                  style={`--step-index: ${localIndex}; --step-duration: ${PRESENTATION_STEP_DELAY_MS}ms;`}
+                >
+                  <span class="mock-step-badge flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-[0.7rem]">
+                    {globalIndex + 1}
+                  </span>
+                  <span class="min-w-0 truncate text-sm font-semibold">
+                    {step.step}
+                  </span>
+                  <span class="mock-step-pulse ml-auto h-2 w-2 shrink-0 rounded-full"></span>
                 </div>
-                <p class="mt-1 text-xs text-subtle">{step.detail}</p>
-                <p class="mt-1 text-xs text-muted">{step.purpose}</p>
-              </div>
-            </div>
-          {/each}
+              {/each}
+            {:else}
+              {#each pipelineSteps.slice(0, presentationStepIndex + 1) as step, index}
+                <div
+                  class="flex items-center gap-3 rounded-xl border px-3 py-2 transition-all"
+                  class:border-warn={index === presentationStepIndex}
+                  class:bg-warn={index === presentationStepIndex}
+                  class:bg-opacity-10={index === presentationStepIndex}
+                  class:border-border={index < presentationStepIndex}
+                  class:bg-deep={index < presentationStepIndex}
+                  class:opacity-50={index < presentationStepIndex}
+                >
+                  <span
+                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-[0.7rem]"
+                    class:bg-warn={index === presentationStepIndex}
+                    class:text-deep={index === presentationStepIndex}
+                    class:bg-raised={index < presentationStepIndex}
+                    class:text-muted={index !== presentationStepIndex}
+                  >
+                    {index + 1}
+                  </span>
+                  <span
+                    class="min-w-0 truncate text-sm font-semibold"
+                    class:text-bright={index === presentationStepIndex}
+                    class:text-subtle={index !== presentationStepIndex}
+                  >
+                    {step.step}
+                  </span>
+                </div>
+              {/each}
+            {/if}
+          {/key}
         </div>
 
         {#if runState === "running"}
-          <div class="h-1 overflow-hidden rounded-full bg-border">
-            <div class="h-full rounded-full bg-lime transition-all duration-1000" style="width: {progressPercent}%"></div>
+          <div class="h-1.5 overflow-hidden rounded-full bg-border">
+            {#key runAnimationKey}
+              <div
+                class="mock-progress-fill h-full rounded-full bg-warn"
+                style={`--segment-duration: ${(runningSegmentEnd - runningSegmentStart + 1) * PRESENTATION_STEP_DELAY_MS}ms;`}
+                onanimationend={completeMockSegment}
+              ></div>
+            {/key}
           </div>
-          <p class="mt-4 text-center text-sm text-muted">
-            {spinnerVerb}... {runMode === "mock" ? "mocked governed agents" : runMode === "replay" ? "recorded live LLM thinking" : "live provider path"}
+          <p class="mt-4 flex items-center justify-center gap-2 text-center text-sm text-muted">
+            <span class="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-warn"></span>
+            <span>
+              {spinnerVerb}... {runMode === "mock" ? "mocked governed agents" : runMode === "replay" ? "recorded live LLM thinking" : "live provider path"}
+            </span>
           </p>
+          <button class="btn-ghost mt-3 w-full justify-center text-sm" type="button" onclick={completeMockSegment}>
+            Continue
+          </button>
         {/if}
 
         {#if flowError && runState !== "bootstrap"}
@@ -1352,20 +1565,63 @@
       <aside class="space-y-5">
         {#if runState !== "finished"}
           <section class="rounded-[28px] border border-border bg-panel p-5">
-            <span class="card-label">Formation</span>
-            <h2 class="mt-1 font-display text-2xl font-semibold text-bright">Agents and purpose</h2>
-            <div class="mt-4 grid gap-3 md:grid-cols-2">
-              {#each formationAgents as agent}
-                <article class="rounded-2xl border border-border bg-raised p-4" class:ring-1={activeAgent === agent.name} class:ring-lime={activeAgent === agent.name}>
-                  <div class="flex items-start justify-between gap-3">
-                    <h3 class="font-display text-sm font-semibold text-bright">{agent.name}</h3>
-                    <span class="pill pill-info">{agent.kind}</span>
-                  </div>
-                  <p class="mt-2 text-xs text-subtle">{agent.purpose}</p>
-                  <p class="mt-2 font-mono text-[0.68rem] text-muted">{agent.source}</p>
-                </article>
-              {/each}
-            </div>
+            <span class="card-label">Suggestors</span>
+            <h2 class="mt-1 font-display text-2xl font-semibold text-bright">Who is active now?</h2>
+            {#if runState === "running"}
+              <p class="mt-2 text-sm text-subtle">Suggestor groups light up as the mocked flow progresses.</p>
+            {:else if parallelSuggestorWork}
+              <p class="mt-2 text-sm text-subtle">Parallel suggestors are running for this step.</p>
+            {:else}
+              <p class="mt-2 text-sm text-subtle">One suggestor is carrying the current step.</p>
+            {/if}
+            {#if runState === "running"}
+              {#key runAnimationKey}
+                <div class="mt-4 grid gap-3">
+                  {#each runningSegmentSteps as step, localIndex}
+                    {@const globalIndex = runningSegmentStart + localIndex}
+                    <article
+                      class="mock-suggestor-row rounded-2xl border p-3"
+                      style={`--step-index: ${localIndex}; --step-duration: ${PRESENTATION_STEP_DELAY_MS}ms;`}
+                    >
+                      <div class="flex items-center justify-between gap-3">
+                        <h3 class="font-display text-sm font-semibold text-bright">{step.step}</h3>
+                        <span class="pill pill-info">{suggestorsForStep(globalIndex).length > 1 ? "Parallel" : "Focused"}</span>
+                      </div>
+                      <div class="mt-3 flex flex-wrap gap-2">
+                        {#each suggestorsForStep(globalIndex) as suggestor}
+                          <span class="rounded-full border border-warn/30 bg-warn/5 px-3 py-1 font-mono text-[0.68rem] text-warn">
+                            {suggestor}
+                          </span>
+                        {/each}
+                      </div>
+                    </article>
+                  {/each}
+                </div>
+              {/key}
+            {:else}
+              <div class="mt-4 grid gap-3 md:grid-cols-2">
+                {#each formationAgents as agent}
+                  <article
+                    class="rounded-2xl border p-3 transition-all"
+                    class:border-lime={activeSuggestorSet.has(agent.name)}
+                    class:bg-lime-glow={activeSuggestorSet.has(agent.name)}
+                    class:border-border={!activeSuggestorSet.has(agent.name)}
+                    class:bg-raised={!activeSuggestorSet.has(agent.name)}
+                    class:ring-1={activeSuggestorSet.has(agent.name)}
+                    class:ring-lime={activeSuggestorSet.has(agent.name)}
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <h3 class="font-display text-sm font-semibold text-bright">{agent.name}</h3>
+                      <span class="pill" class:pill-ok={activeSuggestorSet.has(agent.name)} class:pill-info={!activeSuggestorSet.has(agent.name)}>
+                        {activeSuggestorSet.has(agent.name) ? "Active" : agent.kind}
+                      </span>
+                    </div>
+                    <p class="mt-2 text-xs text-subtle">{agent.purpose}</p>
+                    <p class="mt-2 font-mono text-[0.68rem] text-muted">{agent.source}</p>
+                  </article>
+                {/each}
+              </div>
+            {/if}
           </section>
 
           {#if analysisRun}
@@ -1411,7 +1667,7 @@
             <span class="card-label text-lime!">Result</span>
             <h2 class="mt-1 font-display text-3xl font-semibold text-bright">{selectedVendorName || "Recommendation"} promoted through governance.</h2>
             <p class="mt-3 text-sm text-subtle">
-              The desktop {runModeVerb} the governed Today path: first it stopped at HITL, then it promoted the same recommendation after approval, rejected the advisory-authority negative control, and grew the learning context.
+              The desktop {runModeVerb} the {activeDemoShortLabel} path: first it stopped at HITL, then it promoted the same recommendation after approval, rejected the advisory-authority negative control, and grew the learning context.
             </p>
 
             <div class="mt-5 grid gap-3 md:grid-cols-2">
@@ -1524,3 +1780,94 @@
     </div>
   {/if}
 </section>
+
+<style>
+  .mock-step-row,
+  .mock-suggestor-row {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transform: translateY(-0.35rem);
+    border-color: var(--color-border);
+    background: var(--color-deep);
+    color: var(--color-subtle);
+    animation:
+      mock-row-reveal 180ms ease forwards calc(var(--step-index) * var(--step-duration)),
+      mock-row-active var(--step-duration) linear forwards calc(var(--step-index) * var(--step-duration));
+  }
+
+  .mock-step-badge {
+    background: var(--color-raised);
+    color: var(--color-muted);
+    animation: mock-badge-active var(--step-duration) linear forwards calc(var(--step-index) * var(--step-duration));
+  }
+
+  .mock-step-pulse {
+    background: var(--color-warn);
+    opacity: 0;
+    animation: mock-pulse-active var(--step-duration) linear forwards calc(var(--step-index) * var(--step-duration));
+  }
+
+  .mock-progress-fill {
+    width: 8%;
+    animation: mock-progress var(--segment-duration) linear forwards;
+  }
+
+  @keyframes mock-row-reveal {
+    to {
+      opacity: 1;
+      max-height: 4rem;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes mock-row-active {
+    0%,
+    88% {
+      border-color: var(--color-warn);
+      background: rgba(251, 191, 36, 0.12);
+      color: var(--color-bright);
+      opacity: 1;
+    }
+    100% {
+      border-color: var(--color-border);
+      background: var(--color-deep);
+      color: var(--color-subtle);
+      opacity: 0.5;
+    }
+  }
+
+  @keyframes mock-badge-active {
+    0%,
+    88% {
+      background: var(--color-warn);
+      color: var(--color-deep);
+    }
+    100% {
+      background: var(--color-raised);
+      color: var(--color-muted);
+    }
+  }
+
+  @keyframes mock-pulse-active {
+    0%,
+    88% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    44% {
+      opacity: 0.35;
+      transform: scale(0.7);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.7);
+    }
+  }
+
+  @keyframes mock-progress {
+    to {
+      width: 100%;
+    }
+  }
+</style>

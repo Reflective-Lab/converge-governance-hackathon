@@ -1,107 +1,93 @@
-# Hackathon Milestones
+# Vendor Selection Milestones
 
-> Single source of truth for what ships and when.
-> Every session starts by reading this file. Scope work to the current milestone.
->
-> See `~/dev/work/EPIC.md` for the coarse-grained outcomes these milestones advance.
+Single source of truth for what ships and when. Every session starts by reading this file. Scope work to the current milestone.
 
----
+See `/Users/kpernyer/dev/work/EPIC.md` for workspace strategy when available.
 
-## Current: Ready for Participants
-**Deadline:** TBD | **Epic:** E6 (Hackathon ready for participants)
+## Current: Product Baseline
 
-**Goal:** A participant with Rust experience can clone, build, and explore Converge governance in under 10 minutes. They can write a truth, add a Cedar policy, and see it execute — without hitting walls.
+**Deadline:** TBD  
+**Goal:** Convert the hackathon repo into a clean vendor-selection product starter with one release train, one canonical product truth, GitHub-ready docs, standard skills, clear deployment targets, and a truthful map of current versus planned architecture.
 
-### Getting started (zero to running)
+### Repository Scaffold
 
-- [ ] `just setup` recipe installs all dependencies and verifies toolchain
-- [ ] `just seed` populates meaningful starting scenario (vendor evaluation, budget approval)
-- [ ] `just dev` starts both server and desktop app in one command
-- [ ] Getting Started guide tested from clean machine — under 10 minutes to first governance run
-- [ ] CAPABILITIES.md makes it obvious what participants can build with
+- [x] Root agent entrypoints exist: `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `GEMINI.md`
+- [x] GitHub docs exist: `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`, `CHANGELOG.md`
+- [x] License file exists
+- [x] GitHub issue and PR templates exist
+- [x] Standard local workflow skills are present under `.claude/skills`
+- [x] Workflow docs say release branches only; no feature branches and no worktrees
+- [ ] Stale hackathon-only docs are either rewritten or moved under historical notes
 
-### API surface alignment (student-facing)
+### One Truth
 
-- [x] Canonical authoring examples use `converge-pack` for `Suggestor`, `AgentEffect`, `ProposedFact`, and `ContextKey`
-- [x] Canonical in-process runtime examples use `converge-kernel` for `Engine`, `Context`, `Budget`, criteria, and run hooks
-- [x] Canonical LLM examples use `ChatBackend` + `ChatRequest` instead of `KongGateway` / `LlmRequest`
-- [x] Canonical Organism examples use `organism-pack` + `organism-runtime` for `IntentPacket`, `Plan`, and standard-pack registry wiring
-- [x] `apps/desktop/src-tauri` is migrated off legacy gateway-specific and pre-Axiom APIs such as `KongGateway`, `StaticLlmProvider`, and `converge-axiom`
-- [x] One `Programming API Surfaces` guide is linked from README, Getting Started, and `kb/Home.md` for participants
+- [ ] Make `vendor-selection` the only product truth exposed by app/operator surfaces
+- [ ] Demote `evaluate-vendor`, `dynamic-due-diligence`, `audit-vendor-decision`, `authorize-vendor-commitment`, `budget-approval`, and `access-control` to examples, fixtures, or archived migration references
+- [ ] Rename truth-catalog docs to make the single product truth explicit
+- [ ] Keep one governed endpoint for the product workflow
+- [ ] Keep supporting policy and audit behavior inside the `vendor-selection` flow instead of separate product truths
 
-### Example truths (3+ modifiable)
+### Product Architecture
 
-- [ ] **Vendor selection truth** — Multi-criteria evaluation with Cedar policy gates (students can add criteria)
-- [x] **Dynamic due-diligence truth** — Research loop with dynamic gap-chasing, contradictions, and structured synthesis
-- [ ] **Budget approval truth** — Amount thresholds requiring HITL approval (students can adjust policy)
-- [ ] **Access control truth** — Role-based governance with delegation tokens (students can define new roles)
-- [ ] Each example has: truth definition, Cedar policy, test, documentation in kb/
+- [ ] Decide web app location: reuse `apps/desktop` UI shell or create `apps/web`
+- [ ] Define gRPC API contracts for vendor evaluation, evidence, decision history, and audit trails
+- [ ] Select monitored Google Cloud database target and schema migration tool
+- [ ] Add Terraform for Firebase, backend runtime, database, monitoring, and secrets
+- [ ] Add Firebase Hosting config based on the Wolfgang deployment pattern
+- [ ] Add backend container build and Cloud Run deployment path
 
-### Cedar policies (hands-on)
+### Vendor Selection Core
 
-- [ ] Policy fixtures with comments explaining each clause
-- [ ] At least 3 policies participants can modify and see immediate effects
-- [ ] Test harness: change policy → re-run truth → see different outcome
-- [ ] Cedar policy validator with clear error messages
+- [ ] Promote `vendor-selection` to the canonical product truth
+- [ ] Remove or archive product-facing references to noncanonical truths
+- [ ] Replace participant language with buyer/operator language
+- [ ] Add durable persistence for decisions, vendors, criteria, evidence, and audit entries
+- [ ] Add provenance-preserving imports for vendor questionnaires and evidence packs
 
-### Desktop visualization
+### Desktop Release
 
-- [ ] Governance decision flow visible in real time
-- [ ] Truth execution timeline (proposal → policy check → promotion → convergence)
-- [ ] "What happened and why" view for each governance decision
-- [ ] Agent proposal/promotion lifecycle visible
+- [ ] Align Tauri app name, bundle identifiers, icons, and metadata with Vendor Selection
+- [ ] Package macOS Apple silicon
+- [ ] Package macOS Intel
+- [ ] Package Windows
+- [ ] Document signing, notarization, checksums, and release upload process
 
-### Seed data
+### Quality Gate
 
-- [ ] Realistic vendor evaluation scenario for participants (3+ vendors, 5+ criteria)
-- [ ] Budget approval scenario with amounts near threshold boundaries
-- [ ] Pre-loaded facts and proposals participants can inspect
+- [x] `just check` green
+- [x] `just test` green
+- [x] `just lint` clean
+- [x] No `unsafe` code
+- [ ] No committed secrets or `.env` files
 
-### Documentation
+## Next: Cloud Web App
 
-- [ ] kb/ pages reviewed for accuracy and completeness
-- [ ] Truth addition process documented with working example
-- [ ] "Build your first truth" tutorial in kb/Development/
-- [ ] Common pitfalls and troubleshooting guide
+**Goal:** Ship the Svelte web surface through Firebase and connect it to the Rust backend through a typed API boundary.
 
----
+- [ ] Create or promote `apps/web`
+- [ ] Add Firebase project config in repo root
+- [ ] Add browser support check for Firefox
+- [ ] Add web build recipe
+- [ ] Add Firebase deploy recipe
+- [ ] Add CI check for web build
 
-## Next: Kong AI Gateway Integration
+## Later: Production Backend
 
-**Epic:** E7 — Two-layer AI governance with Kong as external governance layer
+**Goal:** Move from local HTTP harness to production Rust backend with gRPC and durable data.
 
-**Goal:** Position Kong as the external governance layer for all AI system access. Participants see the two-layer story: Converge governs decisions, Kong governs external access.
+- [ ] Define protobuf contracts
+- [ ] Implement gRPC service
+- [ ] Keep HTTP compatibility only if explicitly required by the product
+- [ ] Add Cloud Run container build
+- [ ] Add Cloud SQL or approved Google Cloud database integration
+- [ ] Add OpenTelemetry traces, metrics, and logs
 
-### K1: Kong Wiring (COMPLETE)
+## Later: Desktop Distribution
 
-- [x] `KongBackend` implementing `DynChatBackend` in `converge-provider`
-- [x] `select_chat_backend()` recognizes `"kong"` as a provider
-- [x] `.env` wiring: `KONG_AI_GATEWAY_URL` and `KONG_API_KEY` consumed
-- [x] Desktop app and server route through Kong when configured
-- [x] Falls back to direct providers or offline when Kong unreachable
+**Goal:** Provide signed downloadable desktop builds for macOS and Windows.
 
-### K2: Kong Governance Plugins
-
-- [ ] AI Rate Limiting — per-team token budgets (configured in Konnect)
-- [ ] AI PII Sanitizer — redact sensitive data before prompts reach models
-- [ ] AI Prompt Guard — block prompts containing prohibited patterns
-- [ ] AI Audit Log — every request logged with tokens, cost, latency
-
-### K3: Governance Data Pipeline
-
-- [ ] Kong audit/metrics accessible from Rust (API or log ingestion)
-- [ ] Cost-per-evaluation flows into `DecisionRecord` metadata
-- [ ] Token usage per agent visible in truth execution results
-- [ ] Desktop dashboard panel: Kong governance data alongside Converge
-- [ ] "What it cost" summary in truth execution view
-
-### K4: Demo Story
-
-- [ ] All agents run with real LLM calls through Kong
-- [ ] Kong dashboard showing rate limits, PII redaction, cost tracking
-- [ ] Desktop app showing two-layer governance (Converge + Kong)
-- [ ] "Change a policy, see a different outcome" demo
-- [ ] "Kong blocks an agent" demo (honest stopping)
-- [ ] Presentation-ready walkthrough script
-
-**Dependencies:** K1 → K2 → K3 → K4 (sequential)
+- [ ] Configure Tauri bundle metadata
+- [ ] Add release workflow for macOS universal or separate silicon/intel artifacts
+- [ ] Add release workflow for Windows
+- [ ] Publish checksums
+- [ ] Document download verification

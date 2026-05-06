@@ -133,7 +133,7 @@ fn preview_gherkin_vendor_selection(
     build_preview(
         source.name,
         title,
-        truth_key.unwrap_or_else(|| "evaluate-vendor".into()),
+        truth_key.unwrap_or_else(|| "vendor-selection".into()),
         TruthSourceFormat::Gherkin,
         vendors,
     )
@@ -166,7 +166,7 @@ fn preview_truths_json_vendor_selection(
     let mut preview = build_preview(
         source.name,
         spec.title,
-        spec.truth_key.unwrap_or_else(|| "evaluate-vendor".into()),
+        spec.truth_key.unwrap_or_else(|| "vendor-selection".into()),
         TruthSourceFormat::TruthsJson,
         vendors,
     )?;
@@ -190,10 +190,10 @@ fn build_preview(
     format: TruthSourceFormat,
     vendors: Vec<String>,
 ) -> Result<VendorSelectionSourcePreview, String> {
-    if truth_key != "evaluate-vendor" {
+    if truth_key != "vendor-selection" {
         return Err(format!(
             "this prep repo is currently centered on vendor selection; expected truth_key \
-             \"evaluate-vendor\", got \"{truth_key}\""
+             \"vendor-selection\", got \"{truth_key}\""
         ));
     }
 
@@ -330,7 +330,7 @@ mod tests {
 Feature: Evaluate AI vendors
 
   Scenario: shortlist vendors
-    Given truth "evaluate-vendor"
+    Given truth "vendor-selection"
     And vendors "Acme AI, Beta ML, Gamma LLM"
 "#
             .into(),
@@ -338,7 +338,7 @@ Feature: Evaluate AI vendors
         .unwrap();
 
         assert_eq!(preview.title, "Evaluate AI vendors");
-        assert_eq!(preview.truth_key, "evaluate-vendor");
+        assert_eq!(preview.truth_key, "vendor-selection");
         assert_eq!(preview.format, TruthSourceFormat::Gherkin);
         assert_eq!(preview.vendors, vec!["Acme AI", "Beta ML", "Gamma LLM"]);
     }
@@ -369,7 +369,7 @@ Feature: Vendor review
             name: "vendor-selection.truths.json".into(),
             content: r#"{
   "title": "Desktop vendor selection",
-  "truth_key": "evaluate-vendor",
+  "truth_key": "vendor-selection",
   "vendors": ["Acme AI", "Beta ML"]
 }"#
             .into(),
@@ -393,6 +393,6 @@ Feature: Vendor review
         })
         .unwrap_err();
 
-        assert!(error.contains("evaluate-vendor"));
+        assert!(error.contains("vendor-selection"));
     }
 }

@@ -62,7 +62,7 @@ The migration path remains:
 
 The governance boundary is independent of Kong.
 
-- All agent-facing code stays on `converge-provider-api` contracts (`ChatBackend`, `ChatRequest`) and never depends on Kong internals.
+- All agent-facing code stays on `converge-provider` contracts (`ChatBackend`, `ChatRequest`) and never depends on Kong internals.
 - Kong is an optional routing transport selected at runtime by environment config.
 - In this repo, removing or omitting Kong credentials gives the same core behavior with direct provider backends.
 - This keeps audit/telemetry semantics identical whether calls pass through Kong or direct APIs.

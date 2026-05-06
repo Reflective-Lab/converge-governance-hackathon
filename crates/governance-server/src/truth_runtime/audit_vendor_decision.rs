@@ -32,7 +32,7 @@ impl CriterionEvaluator for AuditVendorDecisionEvaluator {
                 if context
                     .get(ContextKey::Proposals)
                     .iter()
-                    .any(|f| f.id.starts_with("audit:"))
+                    .any(|f| f.id().starts_with("audit:"))
                 {
                     CriterionResult::Met { evidence: vec![] }
                 } else {
@@ -45,7 +45,7 @@ impl CriterionEvaluator for AuditVendorDecisionEvaluator {
                 if context
                     .get(ContextKey::Evaluations)
                     .iter()
-                    .any(|f| f.id.starts_with("compliance:"))
+                    .any(|f| f.id().starts_with("compliance:"))
                 {
                     CriterionResult::Met { evidence: vec![] }
                 } else {

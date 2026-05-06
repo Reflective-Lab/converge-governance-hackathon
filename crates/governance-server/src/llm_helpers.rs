@@ -4,12 +4,12 @@ use std::time::Instant;
 
 use anyhow::anyhow;
 use converge_provider::{
-    AnthropicBackend, ChatBackendSelectionConfig, GeminiBackend, MistralBackend, OpenAiBackend,
-    OpenRouterBackend, select_healthy_chat_backend,
+    ChatBackendSelectionConfig, ChatMessage, ChatRequest, ChatRole, DynChatBackend, LlmError,
+    ResponseFormat, SelectionCriteria,
 };
-use converge_provider_api::{
-    ChatMessage, ChatRequest, ChatRole, DynChatBackend, LlmError, ResponseFormat,
-    SelectionCriteria,
+use converge_provider_adapters::{
+    AnthropicBackend, GeminiBackend, MistralBackend, OpenAiBackend, OpenRouterBackend,
+    select_healthy_chat_backend,
 };
 use governance_telemetry::{LlmCallSink, LlmCallTelemetry, LlmUsageSummary};
 use serde::Deserialize;
@@ -101,7 +101,11 @@ async fn select_direct_model(provider: &str, model: &str) -> anyhow::Result<Sele
                 .map_err(|error| anyhow!("failed to configure Mistral: {error}"))?
                 .with_model(model),
         ),
-        _ => return Err(anyhow!("unsupported direct provider for model {model}: {provider}")),
+        _ => {
+            return Err(anyhow!(
+                "unsupported direct provider for model {model}: {provider}"
+            ));
+        }
     };
     probe_model(&backend, model)
         .await
@@ -116,7 +120,11 @@ async fn select_direct_model(provider: &str, model: &str) -> anyhow::Result<Sele
 }
 
 fn infer_direct_provider(model: &str) -> Option<&'static str> {
-    if model.starts_with("gpt-") || model.starts_with("o1") || model.starts_with("o3") || model.starts_with("o4") {
+    if model.starts_with("gpt-")
+        || model.starts_with("o1")
+        || model.starts_with("o3")
+        || model.starts_with("o4")
+    {
         return std::env::var_os("OPENAI_API_KEY").map(|_| "openai");
     }
     if model.starts_with("claude-") {

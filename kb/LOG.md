@@ -5,6 +5,14 @@ type: reference
 
 # Knowledge Base Mutation Log
 
+## 2026-05-06
+
+**Added competitive/adjacent landscape positioning:**
+- Created `kb/Domain/Landscape.md` placing this project as the *decision layer* of procurement, between intake (Zip) and operational vendor mgmt (Ramp, Brex, Airbase), overlapping with enterprise sourcing suites (Coupa, Ariba).
+- Created `examples/vendor-selection/landscape-procurement-tools.json` as a structured positioning map for pitch-deck use. Explicitly NOT a vendor-selection input — different schema, different purpose.
+- Linked the new page from `kb/Home.md` under Domain.
+- Ramp framing: downstream (post-selection spend & vendor record), with Buyer acquisition pushing slightly upstream into negotiation but not into governed selection itself.
+
 ## 2026-04-25
 
 **Added team pitch for governed vendor selection:**

@@ -1,45 +1,54 @@
 ---
 name: help
 model: haiku
-description: Show available skills — the daily workflow cheat sheet.
+description: Show available Vendor Selection skills and daily workflow.
 user-invocable: true
 allowed-tools: Read
 ---
 # Skills
 
-```
-Morning:    /focus → /sync → /next
-Work:       /fix, /check, /pr
-Evening:    /done
-Monday:     /audit
-
-── Developer ──────────────────────────────────────
-/dev            Start local dev environment
-/check          Lint + test. Am I clean?
-/fix <issue>    Fix GitHub issue → branch → PR
-/pr [title]     Push and create PR
-/wip            Save WIP, push, switch devices
-
-── Git ────────────────────────────────────────────
-/branch <type/slug>     Start topic branch + worktree
-/merge-cleanup <branch> Post-merge: delete branch + worktree
-
-── Product Owner ──────────────────────────────────
-/focus          Session opener. Where are we?
-/next           Pick from milestone
-/ticket <desc>  File a GitHub issue
-/done           End session. Progress + observations
-/experiment     Hypothesis-driven development
-
-── VP Engineering ─────────────────────────────────
-/audit          Weekly: security, compliance, drift
-/review <pr>    Review a pull request
-
-── DevOps ─────────────────────────────────────────
-/sync           Pull, PRs, issues, build health
-/deploy [target] Deploy to production
+```text
+Morning:    /focus -> /sync -> /next
+Work:       /fix, /test, /check, /pr
+Evening:    /done or /wip
+Weekly:     /audit
+As needed:  /review, /ticket, /experiment, /deploy, /branch release/<version>
 ```
 
-Justfile equivalents: `just git-hygiene`, `just worktree <branch>`, `just worktree-rm <branch>`, `just worktrees`
+## Developer
 
-For the full reference: `~/dev/work/kb/Workflow/Cheat Sheet.md`
+| Skill | Purpose |
+|---|---|
+| `/dev` | Start local backend, desktop, web, or all targets |
+| `/check` | Run quality gate |
+| `/test` | Add or run focused tests |
+| `/fix <issue>` | Fix an issue |
+| `/pr` | Prepare a pull request |
+| `/wip` | Save resumable work |
+
+## Product And Planning
+
+| Skill | Purpose |
+|---|---|
+| `/focus` | Session opener |
+| `/next` | Pick the next milestone task |
+| `/ticket` | Draft or create an issue |
+| `/done` | End-session handoff |
+| `/experiment` | Run and record a falsifiable experiment |
+
+## Review And Operations
+
+| Skill | Purpose |
+|---|---|
+| `/audit` | Security, compliance, drift, and milestone review |
+| `/review <pr>` | Review a pull request |
+| `/sync` | Pull, PRs, issues, milestone progress, health |
+| `/deploy` | Deploy or package with confirmation |
+| `/branch release/<version>` | Start or switch to a release branch |
+| `/merge-cleanup release/<version>` | Retire a release branch after release |
+
+## Git Rule
+
+Use one train: `main` plus release branches only. Do not use worktrees or feature branches.
+
+For the workspace reference, read `/Users/kpernyer/dev/work/kb/Workflow/Cheat Sheet.md`.

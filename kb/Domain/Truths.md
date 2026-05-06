@@ -5,17 +5,26 @@ tags: [domain, truths]
 
 A truth is an Axiom contract: it declares what a governed decision must prove before the app treats the outcome as admissible.
 
-In this hackathon repo, truth definitions also carry pack and evaluator wiring so examples can run end to end. That wiring is application scaffolding. The architectural authority of Axiom is still normative: define, validate, simulate, and explain the policy lens for the decision. Organism chooses the formation strategy, and Converge promotes facts.
+This product has one product truth: `vendor-selection`.
 
-## Truth Catalog
+Supporting truth runtimes may remain while the repo is being migrated from hackathon scaffolding, but they are examples, fixtures, or historical references. They should not become separate product workflows.
+
+## Product Truth
 
 Defined in `governance-truths/src/lib.rs`.
 
-### evaluate-vendor
-The primary truth. Multi-agent vendor evaluation: compliance, risk, cost, decision.
+### vendor-selection
+The canonical truth. Multi-agent vendor evaluation with intake, evidence, scoring, policy gates, audit output, and final recommendation.
 
 - **Packs:** compliance-pack, risk-pack, cost-pack
-- **Criteria:** all-vendors-screened, recommendation-produced
+- **Criteria:** all vendors evaluated, policy gates satisfied, recommendation produced, audit evidence available
+
+## Supporting Runtimes
+
+These are not product truths. Keep them only if they support tests, migration, demos, or implementation references.
+
+### evaluate-vendor
+Reference vendor evaluation runtime.
 
 ### dynamic-due-diligence
 Advanced truth inspired by Monterro's dynamic research loop. Organism seeds typed breadth and depth strategies, Converge governs research signals and extracted hypotheses, contradictions are promoted explicitly, and a final due-diligence brief is synthesized as structured output.
@@ -45,12 +54,12 @@ commits budget or contract.
 
 ```rust
 TruthDef {
-    key: "evaluate-vendor",
-    display_name: "Evaluate AI Vendor",
-    summary: "Multi-agent vendor evaluation: compliance, risk, cost, decision",
+    key: "vendor-selection",
+    display_name: "Vendor Selection",
+    summary: "Governed vendor selection with evidence, policy gates, and audit output",
     packs: &["compliance-pack", "risk-pack", "cost-pack"],
     criteria: &[
-        ("all-vendors-screened", "All vendors have compliance screening facts"),
+        ("all-vendors-evaluated", "All vendors have evaluation facts"),
         ("recommendation-produced", "A decision recommendation fact exists"),
     ],
 }
@@ -68,7 +77,7 @@ The dynamic due-diligence example is a good reference when you need a loop that 
 
 ```rust
 fn execute(store, inputs, persist) -> Result<TruthExecutionResult> {
-    let truth = find_truth("your-truth-key")?;
+    let truth = find_truth("vendor-selection")?;
     let intent = build_intent(truth);
 
     let mut engine = Engine::new();

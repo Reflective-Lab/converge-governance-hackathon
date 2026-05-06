@@ -1,0 +1,35 @@
+[
+  {
+    "name": "CloudTrust AI",
+    "cost_minor": 18000000,
+    "certifications": ["SOC2", "ISO27001", "GDPR"],
+    "sla_uptime": 99.99,
+    "support_tier": "premium",
+    "response_sla_hours": 1.0,
+    "company_funding": "series-d",
+    "founded_year": 2016,
+    "headcount": 450
+  },
+  {
+    "name": "QuickAI Solutions",
+    "cost_minor": 3000000,
+    "certifications": ["SOC2"],
+    "sla_uptime": 99.5,
+    "support_tier": "basic",
+    "response_sla_hours": 24.0,
+    "company_funding": "series-a",
+    "founded_year": 2023,
+    "headcount": 35
+  },
+  {
+    "name": "MidScale AI",
+    "cost_minor": 9000000,
+    "certifications": ["SOC2", "ISO27001"],
+    "sla_uptime": 99.95,
+    "support_tier": "standard",
+    "response_sla_hours": 4.0,
+    "company_funding": "series-b",
+    "founded_year": 2020,
+    "headcount": 180
+  }
+]

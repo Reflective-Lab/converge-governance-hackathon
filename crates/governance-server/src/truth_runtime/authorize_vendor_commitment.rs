@@ -50,7 +50,7 @@ impl Suggestor for CommitmentPolicySuggestor {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         !ctx.get(ContextKey::Evaluations)
             .iter()
-            .any(|fact| fact.id == policy_fact_id(&self.request.commitment_id))
+            .any(|fact| fact.id().as_str() == policy_fact_id(&self.request.commitment_id))
     }
 
     async fn execute(&self, _ctx: &dyn ContextView) -> AgentEffect {
@@ -447,8 +447,8 @@ fn find_policy_decision(context: &dyn Context) -> Option<PolicyDecisionFact> {
     context
         .get(ContextKey::Evaluations)
         .iter()
-        .find(|fact| fact.id.starts_with("policy:decision:"))
-        .and_then(|fact| serde_json::from_str::<PolicyDecisionFact>(&fact.content).ok())
+        .find(|fact| fact.id().starts_with("policy:decision:"))
+        .and_then(|fact| serde_json::from_str::<PolicyDecisionFact>(fact.content()).ok())
 }
 
 fn parse_i64(inputs: &HashMap<String, String>, key: &str) -> Result<i64, String> {

@@ -60,13 +60,12 @@ impl GovernanceApp {
     }
 
     pub fn list_truths(&self) -> Vec<TruthListItem> {
-        governance_truths::TRUTHS
-            .iter()
+        governance_truths::product_truths()
             .map(|t| TruthListItem {
                 key: t.key.into(),
                 display_name: t.display_name.into(),
                 summary: t.summary.into(),
-                executable: matches!(t.key, "evaluate-vendor" | "dynamic-due-diligence"),
+                executable: true,
             })
             .collect()
     }
@@ -77,6 +76,12 @@ impl GovernanceApp {
         inputs: HashMap<String, String>,
         persist: bool,
     ) -> Result<truth_runtime::TruthExecutionResult, String> {
+        if !governance_truths::is_product_truth(key) {
+            return Err(format!(
+                "truth '{key}' is not a product workflow; use vendor-selection"
+            ));
+        }
+
         truth_runtime::execute_truth(&self.store, key, inputs, persist, &self.experience).await
     }
 
@@ -126,7 +131,7 @@ mod tests {
 
         let inputs = HashMap::from([("vendors".into(), "Acme AI, Beta ML".into())]);
         let result = app
-            .execute_truth("evaluate-vendor", inputs, true)
+            .execute_truth("vendor-selection", inputs, true)
             .await
             .unwrap();
 
@@ -144,12 +149,37 @@ mod tests {
         assert_eq!(dashboard.recent_decisions.len(), 0);
 
         let inputs = HashMap::from([("vendors".into(), "Acme AI".into())]);
-        app.execute_truth("evaluate-vendor", inputs, true)
+        app.execute_truth("vendor-selection", inputs, true)
             .await
             .unwrap();
 
         let dashboard = app.dashboard();
         assert_eq!(dashboard.recent_decisions.len(), 1);
+    }
+
+    #[test]
+    fn list_truths_exposes_only_vendor_selection() {
+        let store = InMemoryStore::new();
+        let app = GovernanceApp::new(store);
+
+        let truths = app.list_truths();
+
+        assert_eq!(truths.len(), 1);
+        assert_eq!(truths[0].key, "vendor-selection");
+        assert!(truths[0].executable);
+    }
+
+    #[tokio::test]
+    async fn archived_truths_are_not_app_workflows() {
+        let store = InMemoryStore::new();
+        let app = GovernanceApp::new(store);
+
+        let error = app
+            .execute_truth("evaluate-vendor", HashMap::new(), false)
+            .await
+            .unwrap_err();
+
+        assert!(error.contains("vendor-selection"));
     }
 
     #[test]
@@ -185,7 +215,7 @@ Feature: Evaluate AI vendors
                     name: "vendor-selection.truths.json".into(),
                     content: r#"{
   "title": "Desktop vendor selection",
-  "truth_key": "evaluate-vendor",
+  "truth_key": "vendor-selection",
   "vendors": ["Acme AI", "Beta ML"]
 }"#
                     .into(),

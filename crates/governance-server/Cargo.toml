@@ -27,8 +27,8 @@ converge-policy = { workspace = true }
 converge-pack = { workspace = true }
 converge-kernel = { workspace = true }
 converge-model = { workspace = true }
-converge-provider-api = { workspace = true }
 converge-provider = { workspace = true }
+converge-provider-adapters = { workspace = true }
 organism-pack = { workspace = true }
 organism-runtime = { workspace = true }
 organism-planning = { workspace = true }

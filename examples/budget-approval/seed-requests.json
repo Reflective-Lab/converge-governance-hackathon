@@ -1,0 +1,62 @@
+[
+  {
+    "request_id": "office-supplies-001",
+    "requester_id": "alice@example.com",
+    "amount_minor": 120000,
+    "currency_code": "USD",
+    "authority": "advisory",
+    "description": "Office supplies and equipment for Q2 refresh",
+    "justification": "Monthly restocking for main office, routine expenditure",
+    "human_approval_present": false
+  },
+  {
+    "request_id": "software-licenses-002",
+    "requester_id": "bob@example.com",
+    "amount_minor": 2200000,
+    "currency_code": "USD",
+    "authority": "supervisory",
+    "description": "Annual software licensing renewal",
+    "justification": "Vendor lock-in risk mitigation, budget optimization through multi-year commitment",
+    "human_approval_present": true
+  },
+  {
+    "request_id": "contractor-services-003",
+    "requester_id": "carol@example.com",
+    "amount_minor": 7500000,
+    "currency_code": "USD",
+    "authority": "sovereign",
+    "description": "External contractor engagement for infrastructure modernization",
+    "justification": "Strategic initiative requiring external expertise, 6-month engagement, aligns with FY2026 roadmap",
+    "human_approval_present": true
+  },
+  {
+    "request_id": "infrastructure-004",
+    "requester_id": "david@example.com",
+    "amount_minor": 15000000,
+    "currency_code": "USD",
+    "authority": "advisory",
+    "description": "Cloud infrastructure expansion and data center upgrade",
+    "justification": "Capacity planning for anticipated 3x growth, vendor consolidation",
+    "human_approval_present": false
+  },
+  {
+    "request_id": "partner-api-005",
+    "requester_id": "eve@example.com",
+    "amount_minor": 499000,
+    "currency_code": "USD",
+    "authority": "participatory",
+    "description": "Third-party API subscription at tier-boundary",
+    "justification": "Just under $5k threshold to test auto-approval boundary",
+    "human_approval_present": false
+  },
+  {
+    "request_id": "training-program-006",
+    "requester_id": "frank@example.com",
+    "amount_minor": 5100000,
+    "currency_code": "USD",
+    "authority": "supervisory",
+    "description": "Team training and certification program",
+    "justification": "Employee development investment, just above $5k threshold to test Tier 2 escalation",
+    "human_approval_present": true
+  }
+]

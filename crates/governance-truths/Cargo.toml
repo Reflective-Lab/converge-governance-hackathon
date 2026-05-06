@@ -6,7 +6,7 @@ edition.workspace = true
 [dependencies]
 converge-kernel = { workspace = true }
 converge-model = { workspace = true }
-converge-provider-api = { workspace = true }
+converge-provider = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

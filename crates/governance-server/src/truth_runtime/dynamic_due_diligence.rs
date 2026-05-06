@@ -173,7 +173,7 @@ impl Suggestor for PlanningSeedSuggestor {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         !ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|fact| fact.id.starts_with("dd:strategy:"))
+            .any(|fact| fact.id().starts_with("dd:strategy:"))
     }
 
     async fn execute(&self, _ctx: &dyn ContextView) -> AgentEffect {
@@ -297,7 +297,7 @@ impl Suggestor for BreadthResearchSuggestor {
                 .insert(strategy_id);
         }
 
-        AgentEffect { proposals }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -387,7 +387,7 @@ impl Suggestor for DepthResearchSuggestor {
                 .insert(strategy_id);
         }
 
-        AgentEffect { proposals }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -407,12 +407,12 @@ impl Suggestor for FactExtractorSuggestor {
 
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Signals).iter().any(|signal| {
-            signal.id.starts_with("dd:signal:")
+            signal.id().starts_with("dd:signal:")
                 && !self
                     .processed_signal_ids
                     .lock()
                     .unwrap()
-                    .contains(signal.id.as_str())
+                    .contains(signal.id().as_str())
         })
     }
 
@@ -421,7 +421,7 @@ impl Suggestor for FactExtractorSuggestor {
         let existing_hypotheses = known_fact_ids(ctx, ContextKey::Hypotheses);
 
         for signal in ctx.get(ContextKey::Signals) {
-            if !signal.id.starts_with("dd:signal:") {
+            if !signal.id().starts_with("dd:signal:") {
                 continue;
             }
 
@@ -429,16 +429,17 @@ impl Suggestor for FactExtractorSuggestor {
                 .processed_signal_ids
                 .lock()
                 .unwrap()
-                .contains(signal.id.as_str())
+                .contains(signal.id().as_str())
             {
                 continue;
             }
 
-            let Ok(payload) = serde_json::from_str::<ResearchSignalPayload>(&signal.content) else {
+            let Ok(payload) = serde_json::from_str::<ResearchSignalPayload>(signal.content())
+            else {
                 self.processed_signal_ids
                     .lock()
                     .unwrap()
-                    .insert(signal.id.to_string());
+                    .insert(signal.id().to_string());
                 continue;
             };
 
@@ -452,7 +453,7 @@ impl Suggestor for FactExtractorSuggestor {
                 let hypothesis = HypothesisPayload {
                     category: claim.category,
                     claim: claim.claim,
-                    source_id: signal.id.to_string(),
+                    source_id: signal.id().to_string(),
                     source_title: payload.title.clone(),
                     source_url: payload.url.clone(),
                     provider: payload.provider,
@@ -477,10 +478,10 @@ impl Suggestor for FactExtractorSuggestor {
             self.processed_signal_ids
                 .lock()
                 .unwrap()
-                .insert(signal.id.to_string());
+                .insert(signal.id().to_string());
         }
 
-        AgentEffect { proposals }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -545,7 +546,7 @@ impl Suggestor for ContradictionSuggestor {
             }
         }
 
-        AgentEffect { proposals }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -604,7 +605,7 @@ impl Suggestor for LooseEndSuggestor {
             }
         }
 
-        AgentEffect { proposals }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -629,7 +630,7 @@ impl Suggestor for SynthesisSuggestor {
         if ctx
             .get(ContextKey::Proposals)
             .iter()
-            .any(|fact| fact.id == FINAL_BRIEF_ID)
+            .any(|fact| fact.id().as_str() == FINAL_BRIEF_ID)
         {
             return false;
         }
@@ -961,10 +962,10 @@ fn collect_strategies(ctx: &dyn ContextView, mode: StrategyMode) -> Vec<(String,
     ctx.get(ContextKey::Strategies)
         .iter()
         .filter_map(|fact| {
-            serde_json::from_str::<StrategyPayload>(&fact.content)
+            serde_json::from_str::<StrategyPayload>(fact.content())
                 .ok()
                 .filter(|payload| payload.mode == mode)
-                .map(|payload| (fact.id.to_string(), payload))
+                .map(|payload| (fact.id().to_string(), payload))
         })
         .collect()
 }
@@ -972,7 +973,7 @@ fn collect_strategies(ctx: &dyn ContextView, mode: StrategyMode) -> Vec<(String,
 fn known_fact_ids(ctx: &dyn ContextView, key: ContextKey) -> HashSet<String> {
     ctx.get(key)
         .iter()
-        .map(|fact| fact.id.to_string())
+        .map(|fact| fact.id().to_string())
         .collect()
 }
 
@@ -981,7 +982,7 @@ fn contradiction_candidates(
 ) -> HashMap<String, Vec<(String, String, String)>> {
     let mut grouped: HashMap<String, Vec<(String, String, String)>> = HashMap::new();
     for fact in ctx.get(ContextKey::Hypotheses) {
-        let Ok(payload) = serde_json::from_str::<HypothesisPayload>(&fact.content) else {
+        let Ok(payload) = serde_json::from_str::<HypothesisPayload>(fact.content()) else {
             continue;
         };
         let Some(topic) = payload.topic else {
@@ -991,7 +992,7 @@ fn contradiction_candidates(
             continue;
         };
         grouped.entry(topic).or_default().push((
-            fact.id.to_string(),
+            fact.id().to_string(),
             normalized_value,
             payload.claim,
         ));
@@ -1008,7 +1009,7 @@ fn pending_gaps(
     let contradictions = ctx
         .get(ContextKey::Evaluations)
         .iter()
-        .filter(|fact| fact.id.starts_with("dd:contradiction:"))
+        .filter(|fact| fact.id().starts_with("dd:contradiction:"))
         .count();
     let wants_financials = focus_areas
         .iter()
@@ -1072,7 +1073,7 @@ fn critical_categories_covered(ctx: &dyn ContextView) -> bool {
 fn hypothesis_categories(ctx: &dyn ContextView) -> HashSet<String> {
     ctx.get(ContextKey::Hypotheses)
         .iter()
-        .filter_map(|fact| serde_json::from_str::<HypothesisPayload>(&fact.content).ok())
+        .filter_map(|fact| serde_json::from_str::<HypothesisPayload>(fact.content()).ok())
         .map(|payload| payload.category)
         .collect()
 }
@@ -1085,12 +1086,12 @@ fn build_report(
     let hypotheses: Vec<HypothesisPayload> = ctx
         .get(ContextKey::Hypotheses)
         .iter()
-        .filter_map(|fact| serde_json::from_str::<HypothesisPayload>(&fact.content).ok())
+        .filter_map(|fact| serde_json::from_str::<HypothesisPayload>(fact.content()).ok())
         .collect();
     let contradictions: Vec<ContradictionPayload> = ctx
         .get(ContextKey::Evaluations)
         .iter()
-        .filter_map(|fact| serde_json::from_str::<ContradictionPayload>(&fact.content).ok())
+        .filter_map(|fact| serde_json::from_str::<ContradictionPayload>(fact.content()).ok())
         .collect();
 
     let market_analysis = claims_for(&hypotheses, &["market", "customers"]);

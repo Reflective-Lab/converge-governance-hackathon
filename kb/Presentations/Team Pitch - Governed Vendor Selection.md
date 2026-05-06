@@ -5,6 +5,19 @@ tags: [presentation, demo, vendor-selection, helm]
 
 Purpose: sell the team on the idea today, while making the next few days of demo work concrete.
 
+## Slide Index
+
+| Slide | Topic |
+|---|---|
+| 1 | The Core Sell — Governance By Construction |
+| 2 | Converge + Kong — Complementary, Not Competitive |
+| 3 | Beyond LLM-Agents — What Powers The Loop |
+| 4 | Four Layers of Governance — Who Decides What |
+| 5 | Stack Vocabulary (Act 1) |
+| 6 | Today — Governed Vendor Selection (Act 2) |
+| 7 | Tomorrow — Pareto Breakout (Act 3) |
+| 8 | Demo Close (Act 4) |
+
 ## Core Message
 
 We are not building a chatbot that writes procurement summaries. We are building a governed execution environment where a buyer's intent becomes an auditable decision.
@@ -14,6 +27,97 @@ The hackathon app is **Helm**: the operator surface. Axiom defines the truth con
 For the first demo, the concrete case is AI partner selection. The buyer submits a document pack with vendors, capabilities, risks, compliance status, certifications, and costs. The system detects missing, underspecified, or contradictory inputs. Given a good specification, it converges on the best candidate from the submitted list.
 
 The future case is the breakout: the formation can challenge the original problem frame. Instead of forcing a single vendor, it may discover that the real need is a governed provider mix behind Kong or OpenRouter.
+
+## Slide 1: The Core Sell — Governance By Construction
+
+**Big idea:**
+
+> "Every AI framework today lets agents do things. We built one that makes agents prove they should."
+
+**The elevator pitch:**
+
+The core sell is **governance by construction, not by convention**. You're not just orchestrating agents—you're building a system where:
+
+- Every decision can be explained to a regulator or auditor
+- You know exactly why something was promoted or rejected
+- The system stops honestly when it's stuck (instead of guessing)
+- Policy gates are not bolted-on; they're part of the convergence loop itself
+
+This is the foundation before we talk about vendors, budget approvals, or access control.
+
+## Slide 2: Converge + Kong — Complementary, Not Competitive
+
+**Nuance: It's Not "vs Kong"**
+
+Converge v3.4 ships a Kong AI Gateway provider as a full backend. The relationship is complementary, not competitive:
+
+| Layer | What it does | Example |
+|---|---|---|
+| **Kong** | Traffic layer | Routes requests, enforces rate limits, handles auth tokens, load-balances across LLM providers |
+| **Converge** | Decision layer | Governs what becomes a fact (a governed assertion). Cedar policies enforce who can promote what, with what authority. |
+
+**The right frame for students:**
+
+> "Kong decides whether your request reaches the LLM. Converge decides whether the LLM's answer becomes truth."
+
+Both layers are governance. Kong protects the perimeter. Converge protects the facts.
+
+## Slide 3: Beyond LLM-Agents — What Powers The Loop
+
+**The loop is not just agents talking to LLMs.**
+
+Converge uses classical computer science to constrain language-based reasoning:
+
+| Technique | What it solves | Why it matters |
+|---|---|---|
+| **Lamport Clocks** | How do you prove ordering in a distributed system? | Every promoted fact carries a logical timestamp. You get a causal chain, not just a log. Auditors can verify the order of decisions. |
+| **SAT/CSP Solving (CP-SAT)** | When the LLM says "allocate budget this way," is it actually feasible? | The constraint solver checks if it's mathematically valid. Math constrains language. |
+| **Hungarian Algorithm** | How do you match noisy entries with minimum error? | Optimal one-to-one matching for ledger reconciliation: pair entries with minimum residue. Exact, not heuristic. |
+| **Dijkstra's Frontier** | When suggestors discover new work mid-loop, what do you explore next? | Shortest-path frontier planning: efficient search through the proposal space. |
+
+**The implication:** This is not a chatbot architecture. It's a constraint-driven decision system.
+
+## Slide 4: Four Layers of Governance — Who Decides What
+
+**Question:** What's the governance story? Who decides what?
+
+**Answer:** Four layers, from proposal to decision:
+
+### Layer 1: Agents Propose, Never Decide
+
+- An agent constructs a `ProposedFact` — that's freely constructible. The agent can say anything.
+- But `Fact` — the governed type — is kernel-gated. **Only the engine's promotion gate can create one.**
+- This is the critical boundary: proposals are cheap; facts are expensive.
+
+### Layer 2: Cedar Policies Scope Authority
+
+- Each agent has a principal (identity and authority level)
+- Cedar policies define what that principal can **propose, to which resources, under what conditions**
+- An agent doesn't get to decide what promotable questions are even worth asking
+
+### Layer 3: Invariants Are Hard Gates
+
+- Business rules that must hold (e.g., "budget cannot exceed $100K without VP approval")
+- If a promotion would violate an invariant, it's **rejected**
+- Invariants are checked before a fact is promoted
+
+### Layer 4: Human-in-the-Loop Is First-Class
+
+- Not bolted on as an afterthought
+- It's a configured stop condition: the engine pauses and **waits for human review**
+- When configured, a human acts as a policy authority in the promotion gate
+
+**The payoff: Provenance**
+
+Every promoted fact carries a full audit trail:
+- Who proposed it (agent identity)
+- When (timestamp + Lamport clock)
+- With what confidence (agent-provided metadata)
+- Which policy authorized it (Cedar outcome)
+- Which invariants were checked (governance rules)
+- Human approval (if required)
+
+**That's your audit trail. That's what you explain to a regulator.**
 
 ## RFI/RFP Boundary
 

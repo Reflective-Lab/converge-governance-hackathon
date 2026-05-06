@@ -79,22 +79,11 @@ async fn run_system_truth_endpoint_with_durable_adapter() {
         .oneshot(
             Request::builder()
                 .method(Method::POST)
-                .uri("/v1/truths/authorize-vendor-commitment/execute")
+                .uri("/v1/truths/vendor-selection/execute")
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::json!({
-                        "inputs": {
-                            "principal_id": "user:procurement-lead",
-                            "principal_authority": "supervisory",
-                            "commitment_id": "commitment:vendor-a-2026-04",
-                            "vendor_name": "Vendor A",
-                            "commitment_type": "contract",
-                            "action": "commit",
-                            "amount_minor": "75000",
-                            "currency_code": "USD",
-                            "human_approval_present": "true",
-                            "required_gates_met": "true"
-                        },
+                        "inputs": vendor_selection_inputs(),
                         "persist_projection": true,
                     })
                     .to_string(),
@@ -151,7 +140,7 @@ async fn run_system_truth_endpoint_over_tcp_with_durable_adapter() {
 
     let response = reqwest::Client::new()
         .post(format!(
-            "http://{}/v1/truths/authorize-vendor-commitment/execute",
+            "http://{}/v1/truths/vendor-selection/execute",
             addr
         ))
         .json(&truth_request_payload())
@@ -179,19 +168,16 @@ async fn run_system_truth_endpoint_over_tcp_with_durable_adapter() {
 
 fn truth_request_payload() -> serde_json::Value {
     serde_json::json!({
-        "inputs": {
-            "principal_id": "user:procurement-lead",
-            "principal_authority": "supervisory",
-            "commitment_id": "commitment:vendor-a-2026-04",
-            "vendor_name": "Vendor A",
-            "commitment_type": "contract",
-            "action": "commit",
-            "amount_minor": "75000",
-            "currency_code": "USD",
-            "human_approval_present": "true",
-            "required_gates_met": "true"
-        },
+        "inputs": vendor_selection_inputs(),
         "persist_projection": true,
+    })
+}
+
+fn vendor_selection_inputs() -> serde_json::Value {
+    serde_json::json!({
+        "vendors": "Vendor A, Vendor B",
+        "principal_authority": "supervisory",
+        "human_approval_present": "true",
     })
 }
 

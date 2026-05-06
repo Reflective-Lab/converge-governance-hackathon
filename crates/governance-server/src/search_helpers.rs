@@ -1,5 +1,5 @@
 use anyhow::{Context as AnyhowContext, anyhow};
-use converge_provider::{
+use converge_provider_adapters::{
     BraveSearchProvider, SearchDepth, TavilySearchProvider, WebSearchBackend, WebSearchRequest,
 };
 use serde::{Deserialize, Serialize};

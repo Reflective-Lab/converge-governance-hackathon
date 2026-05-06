@@ -112,7 +112,7 @@ struct ComplianceScreenerAgent {
 ## LLM-Backed Suggestor Example
 
 ```rust
-use converge_provider_api::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
+use converge_provider::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
 
 struct SmartComplianceAgent {
     backend: Arc<dyn DynChatBackend>,
@@ -141,6 +141,6 @@ impl Suggestor for SmartComplianceAgent {
 }
 ```
 
-Keep Kong or any other infrastructure routing below this boundary. The suggestor should see the `converge-provider-api` chat contract, not a second provider-specific contract.
+Keep Kong or any other infrastructure routing below this boundary. The suggestor should see the `converge-provider` chat contract, not a second provider-specific contract.
 
 See also: [[Domain/Agents]], [[Architecture/Convergence Loop]], [[Converge/Building Blocks]]

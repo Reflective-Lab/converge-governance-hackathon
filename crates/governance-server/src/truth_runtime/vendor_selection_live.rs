@@ -58,7 +58,7 @@ impl Suggestor for LiveComplianceScreenerAgent {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|f| f.id == "strategy:vendor-sel:compliance")
+            .any(|f| f.id().as_str() == "strategy:vendor-sel:compliance")
     }
 
     async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
@@ -66,7 +66,11 @@ impl Suggestor for LiveComplianceScreenerAgent {
 
         for vendor in &self.vendors {
             let fact_id = format!("compliance:screen:{}", slug(&vendor.name));
-            if ctx.get(ContextKey::Seeds).iter().any(|f| f.id == fact_id) {
+            if ctx
+                .get(ContextKey::Seeds)
+                .iter()
+                .any(|f| f.id().as_str() == fact_id)
+            {
                 continue;
             }
 
@@ -215,15 +219,15 @@ impl Suggestor for LiveCostAnalysisAgent {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|f| f.id == "strategy:vendor-sel:cost")
+            .any(|f| f.id().as_str() == "strategy:vendor-sel:cost")
             && ctx
                 .get(ContextKey::Seeds)
                 .iter()
-                .any(|f| f.id.starts_with("compliance:screen:"))
+                .any(|f| f.id().starts_with("compliance:screen:"))
             && !ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id.starts_with("cost:estimate:"))
+                .any(|f| f.id().starts_with("cost:estimate:"))
     }
 
     async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
@@ -231,7 +235,7 @@ impl Suggestor for LiveCostAnalysisAgent {
         if ctx
             .get(ContextKey::Evaluations)
             .iter()
-            .any(|f| f.id.starts_with("cost:estimate:"))
+            .any(|f| f.id().starts_with("cost:estimate:"))
         {
             return AgentEffect::with_proposals(vec![]);
         }
@@ -363,26 +367,26 @@ impl Suggestor for LiveVendorRiskAgent {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|f| f.id == "strategy:vendor-sel:risk")
+            .any(|f| f.id().as_str() == "strategy:vendor-sel:risk")
             && ctx
                 .get(ContextKey::Seeds)
                 .iter()
-                .any(|f| f.id.starts_with("compliance:screen:"))
+                .any(|f| f.id().starts_with("compliance:screen:"))
             && ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id.starts_with("cost:estimate:"))
+                .any(|f| f.id().starts_with("cost:estimate:"))
             && !ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id.starts_with("risk:score:"))
+                .any(|f| f.id().starts_with("risk:score:"))
     }
 
     async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         if ctx
             .get(ContextKey::Evaluations)
             .iter()
-            .any(|f| f.id.starts_with("risk:score:"))
+            .any(|f| f.id().starts_with("risk:score:"))
         {
             return AgentEffect::with_proposals(vec![]);
         }
@@ -518,22 +522,22 @@ impl Suggestor for LiveDecisionSynthesisAgent {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|f| f.id == "strategy:vendor-sel:decision")
+            .any(|f| f.id().as_str() == "strategy:vendor-sel:decision")
             && ctx
                 .get(ContextKey::Proposals)
                 .iter()
-                .any(|f| f.id == "vendor:shortlist")
+                .any(|f| f.id().as_str() == "vendor:shortlist")
             && !ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id == "decision:recommendation")
+                .any(|f| f.id().as_str() == "decision:recommendation")
     }
 
     async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         if ctx
             .get(ContextKey::Evaluations)
             .iter()
-            .any(|f| f.id == "decision:recommendation")
+            .any(|f| f.id().as_str() == "decision:recommendation")
         {
             return AgentEffect::with_proposals(vec![]);
         }
@@ -543,7 +547,7 @@ impl Suggestor for LiveDecisionSynthesisAgent {
             .iter()
             .chain(ctx.get(ContextKey::Evaluations).iter())
             .chain(ctx.get(ContextKey::Proposals).iter())
-            .map(|f| format!("[{}] {}", f.id, f.content))
+            .map(|f| format!("[{}] {}", f.id(), f.content()))
             .collect();
 
         let prior_section = if self.prior_context.is_empty() {
@@ -671,8 +675,8 @@ Respond with JSON only:
 fn selected_shortlist_vendor(ctx: &dyn ContextView) -> Option<String> {
     ctx.get(ContextKey::Proposals)
         .iter()
-        .find(|fact| fact.id == "vendor:shortlist")
-        .and_then(|fact| serde_json::from_str::<serde_json::Value>(&fact.content).ok())
+        .find(|fact| fact.id().as_str() == "vendor:shortlist")
+        .and_then(|fact| serde_json::from_str::<serde_json::Value>(fact.content()).ok())
         .and_then(|payload| {
             payload
                 .get("shortlist")

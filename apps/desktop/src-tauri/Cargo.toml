@@ -16,8 +16,8 @@ tauri-build = { version = "2", features = [] }
 governance-kernel = { path = "../../../crates/governance-kernel" }
 governance-server = { path = "../../../crates/governance-server" }
 governance-telemetry = { path = "../../../crates/governance-telemetry" }
-converge-provider-api = "3.7.4"
-converge-provider = { version = "3.7.4", default-features = false, features = ["anthropic", "gemini", "openai", "openrouter", "mistral", "kong"] }
+converge-provider = "3.8.1"
+converge-provider-adapters = { package = "converge-manifold-adapters", version = "1.0.0", path = "../../../../../extensions/manifold-adapters/crates/manifold", default-features = false, features = ["anthropic", "gemini", "openai", "openrouter", "mistral", "kong"] }
 axiom-truth = "0.7.0"
 dotenv = "0.15"
 serde = { version = "1", features = ["derive"] }
@@ -29,3 +29,19 @@ reqwest = { version = "0.12", features = ["json"] }
 
 [features]
 default = []
+
+[patch.crates-io]
+converge-core              = { path = "../../../../../work/converge/crates/core" }
+converge-experience        = { path = "../../../../../work/converge/crates/experience" }
+converge-kernel            = { path = "../../../../../work/converge/crates/kernel" }
+converge-manifold-adapters = { path = "../../../../../extensions/manifold-adapters/crates/manifold" }
+converge-model             = { path = "../../../../../work/converge/crates/model" }
+converge-optimization      = { path = "../../../../../work/converge/crates/optimization" }
+converge-pack              = { path = "../../../../../work/converge/crates/pack" }
+converge-provider          = { path = "../../../../../work/converge/crates/provider" }
+converge-storage           = { path = "../../../../../work/converge/crates/storage" }
+organism-pack              = { path = "../../../../../work/organism/crates/pack" }
+organism-runtime           = { path = "../../../../../work/organism/crates/runtime" }
+organism-planning          = { path = "../../../../../work/organism/crates/planning" }
+organism-intent            = { path = "../../../../../work/organism/crates/intent" }
+axiom-truth                = { path = "../../../../../work/axiom" }

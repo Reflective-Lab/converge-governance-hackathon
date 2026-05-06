@@ -3,10 +3,11 @@
 
 use std::time::Instant;
 
-use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
-use converge_provider_api::{
-    ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend, LlmError, ResponseFormat,
+use converge_provider::{
+    ChatBackendSelectionConfig, ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend,
+    LlmError, ResponseFormat,
 };
+use converge_provider_adapters::select_healthy_chat_backend;
 use governance_telemetry::{
     InMemoryLlmCallCollector, LlmCallSink, LlmCallTelemetry, LlmUsageSummary,
 };

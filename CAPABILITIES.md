@@ -1,74 +1,65 @@
 # Capabilities
 
-What this project gives hackathon participants.
+What this vendor-selection starter provides and what is planned next.
 
-## Governance Loop
+## Current
 
-- **Proposal protocol** — agents emit proposals, never direct facts
-- **Promotion gates** — proposals validated before becoming facts
-- **Cedar policy evaluation** — Amazon Cedar authorizer decides who can do what
-- **Convergence** — engine iterates until fixed-point or honest stop
-- **Audit trail** — every decision has provenance
+### Governed Decision Loop
 
-## Cedar Policy Engine
+- Agents emit proposals, not direct facts.
+- Promotion gates validate proposals before they become facts.
+- Cedar policies govern consequential actions.
+- The engine converges to a fixed point or stops honestly.
+- Decision records preserve provenance and evidence.
 
-| Policy type | What it governs |
-|---|---|
-| Agent authority levels | Advisory, participatory, supervisory, sovereign |
-| Commitment actions | Propose, commit, promote |
-| Amount thresholds | Spending limits requiring human approval |
-| Delegation tokens | Ed25519-signed, time-scoped, replay-protected |
+### Product Truth
 
-## Truth Catalog
+`vendor-selection` is the one product truth. It owns vendor intake, evidence, scoring, policy gates, audit output, and the final recommendation.
 
-| Truth | What it governs |
-|---|---|
-| `evaluate-vendor` | Multi-criteria vendor evaluation with swarm consensus |
-| `dynamic-due-diligence` | Research loop with contradictions and synthesis |
-| `audit-vendor-decision` | Audit trail and compliance scan |
-| `authorize-vendor-commitment` | Cedar policy gates for procurement |
+Other runtimes may exist during migration as examples, fixtures, or tests. They should not be exposed as product workflows.
 
-## Organism Patterns
+### Operator Surfaces
 
-Beyond flat agent swarms — structured organizational intelligence:
+- Local backend harness on `localhost:8080`.
+- Tauri/Svelte desktop app scaffold.
+- Seed data, policies, and vendor-selection examples.
+- Workflow skills under `.claude/skills`.
+- Knowledge base under `kb/`.
+- One git train: `main` plus release branches only. No worktrees and no feature branches.
 
-| Pattern | What it gives you |
-|---|---|
-| Intent decomposition | Break complex goals into governed subtasks |
-| Collaboration topologies | Huddle, panel, discussion, self-organizing |
-| Adversarial review | Five skepticism kinds challenge every plan |
-| Simulation swarm | Five-dimension parallel stress testing |
-| Learning episodes | Outcomes calibrate planning priors |
-| Domain packs | 15 pre-built organizational workflows |
+## Planned
 
-See `kb/Converge/Organism Patterns.md` for implementation details.
+### Web App
 
-## API Surface
+- Svelte/SvelteKit app deployable to Firebase Hosting.
+- Firefox-supported browser workflow.
+- Shared UI patterns with the desktop operator shell.
 
-| Role | Crate | Primary types |
-|---|---|---|
-| Converge authoring | `converge-pack` | `Suggestor`, `AgentEffect`, `ProposedFact`, `ContextKey` |
-| Converge runtime | `converge-kernel` | `Engine`, `Context`, `Budget`, criteria |
-| LLM access | `converge-provider` | `ChatBackend`, provider selection |
-| Organism authoring | `organism-pack` | `IntentPacket`, `Plan`, `CollaborationCharter` |
-| Organism runtime | `organism-runtime` | `Registry`, readiness, built-in packs |
+### Backend
 
-## What You Can Build
+- Rust gRPC service boundary.
+- Durable database-backed projections.
+- Typed contracts for vendors, criteria, evidence, decisions, and audit trails.
 
-- Custom truths with domain-specific governance rules
-- Cedar policies for new authority patterns
-- Agents (Suggestors) that propose facts through the promotion gate
-- Organism-planned multi-agent workflows with adversarial review
-- Visualizations of convergence behavior
-- Multi-agent scenarios with competing proposals
+### Cloud
 
-## Getting Started
+- Google Cloud runtime and monitored database.
+- Terraform-managed infrastructure.
+- Firebase Hosting for web.
+- Observability for backend, database, and governance runs.
+
+### Desktop Releases
+
+- Tauri bundles for macOS Apple silicon, macOS Intel, and Windows.
+- Signing, notarization, checksums, and downloadable releases.
+
+## Commands
 
 ```bash
-just hit-the-ground-running   # build, test, lint
-just server                   # start governance server
-just test                     # run tests
-just test-coverage            # tests with coverage report
+just check
+just test
+just lint
+just server
+just desktop
+just package-desktop
 ```
-
-See `kb/Development/Getting Started.md` for the full walkthrough.

@@ -12,10 +12,13 @@ use serde::{Deserialize, Serialize};
 
 const VENDORS_JSON: &str =
     include_str!("../../../../examples/vendor-selection/demo-ai-vendors.json");
+const CREATIVE_VENDORS_JSON: &str =
+    include_str!("../../../../examples/vendor-selection/demo-ai-provider-mix.json");
 const BUYER_BRIEF: &str = include_str!("../../../../examples/vendor-selection/buyer-brief.md");
 const STATIC_FACTS: &str = include_str!("../../../../examples/vendor-selection/static-facts.json");
 
 const VENDORS_PATH: &str = "examples/vendor-selection/demo-ai-vendors.json";
+const CREATIVE_VENDORS_PATH: &str = "examples/vendor-selection/demo-ai-provider-mix.json";
 const BUYER_BRIEF_PATH: &str = "examples/vendor-selection/buyer-brief.md";
 const STATIC_FACTS_PATH: &str = "examples/vendor-selection/static-facts.json";
 const TRUTH_KEY: &str = "vendor-selection";
@@ -207,6 +210,14 @@ pub async fn build_offline_replay_session() -> Result<TodayReplaySession, String
 }
 
 pub async fn run_stage(stage: &str, live: bool) -> Result<TodayRunResponse, String> {
+    run_stage_with_demo_mode(stage, live, None).await
+}
+
+pub async fn run_stage_with_demo_mode(
+    stage: &str,
+    live: bool,
+    demo_mode: Option<&str>,
+) -> Result<TodayRunResponse, String> {
     if live {
         load_repo_env();
         load_env();
@@ -216,7 +227,7 @@ pub async fn run_stage(stage: &str, live: bool) -> Result<TodayRunResponse, Stri
     let normalized_stage = normalize_stage(stage)?;
     let store = InMemoryStore::new();
     let experience = ExperienceRegistry::with_path(experience_path());
-    let inputs = inputs_for_stage(normalized_stage, live)?;
+    let inputs = inputs_for_stage(normalized_stage, live, demo_mode)?;
     let result = if live {
         vendor_selection::execute_with_model_overrides(
             &store,
@@ -251,7 +262,11 @@ fn normalize_stage(stage: &str) -> Result<&'static str, String> {
     }
 }
 
-fn inputs_for_stage(stage: &str, live: bool) -> Result<HashMap<String, String>, String> {
+fn inputs_for_stage(
+    stage: &str,
+    live: bool,
+    demo_mode: Option<&str>,
+) -> Result<HashMap<String, String>, String> {
     let static_facts = serde_json::from_str::<serde_json::Value>(STATIC_FACTS)
         .map_err(|error| format!("invalid embedded static facts: {error}"))?;
     let static_fact_paths = vec![STATIC_FACTS_PATH.to_string()];
@@ -260,9 +275,15 @@ fn inputs_for_stage(stage: &str, live: bool) -> Result<HashMap<String, String>, 
         "content": static_facts,
     })];
 
+    let demo_mode = normalized_demo_mode(demo_mode);
+    let (vendors_json, vendors_path) = match demo_mode {
+        "pareto-breakout" => (CREATIVE_VENDORS_JSON, CREATIVE_VENDORS_PATH),
+        _ => (VENDORS_JSON, VENDORS_PATH),
+    };
+
     let mut inputs = HashMap::from([
-        ("vendors_json".to_string(), VENDORS_JSON.to_string()),
-        ("vendors_json_path".to_string(), VENDORS_PATH.to_string()),
+        ("vendors_json".to_string(), vendors_json.to_string()),
+        ("vendors_json_path".to_string(), vendors_path.to_string()),
         (
             "source_document_path".to_string(),
             BUYER_BRIEF_PATH.to_string(),
@@ -271,7 +292,7 @@ fn inputs_for_stage(stage: &str, live: bool) -> Result<HashMap<String, String>, 
         ("min_score".to_string(), "75".to_string()),
         ("max_risk".to_string(), "30".to_string()),
         ("max_vendors".to_string(), "3".to_string()),
-        ("demo_mode".to_string(), "governed".to_string()),
+        ("demo_mode".to_string(), demo_mode.to_string()),
         ("principal_authority".to_string(), "supervisory".to_string()),
         (
             "static_facts_paths_json".to_string(),
@@ -304,6 +325,13 @@ fn inputs_for_stage(stage: &str, live: bool) -> Result<HashMap<String, String>, 
     }
 
     Ok(inputs)
+}
+
+fn normalized_demo_mode(demo_mode: Option<&str>) -> &'static str {
+    match demo_mode.unwrap_or("governed") {
+        "pareto-breakout" | "creative" | "open" => "pareto-breakout",
+        _ => "governed",
+    }
 }
 
 fn today_model_overrides() -> ModelOverrides {
@@ -531,6 +559,46 @@ mod tests {
         reset_experience().unwrap();
     }
 
+    #[tokio::test]
+    async fn creative_stage_uses_pareto_breakout_source_pack() {
+        reset_experience().unwrap();
+
+        let analysis = run_stage_with_demo_mode("analysis", false, Some("pareto-breakout"))
+            .await
+            .unwrap();
+        let details = details(&analysis);
+        assert_eq!(
+            details
+                .pointer("/root_intent/demo_mode/id")
+                .and_then(serde_json::Value::as_str),
+            Some("pareto-breakout")
+        );
+        assert_eq!(
+            details
+                .pointer("/source_material/source_document/path")
+                .and_then(serde_json::Value::as_str),
+            Some(BUYER_BRIEF_PATH)
+        );
+        assert_eq!(
+            details
+                .pointer("/context/strategies")
+                .and_then(serde_json::Value::as_array)
+                .and_then(|facts| {
+                    facts
+                        .iter()
+                        .find(|fact| {
+                            fact.get("id").and_then(serde_json::Value::as_str)
+                                == Some("strategy:vendor-sel:router-hypothesis")
+                        })
+                        .and_then(|fact| fact.pointer("/content/router_fit"))
+                })
+                .and_then(serde_json::Value::as_bool),
+            Some(true)
+        );
+
+        reset_experience().unwrap();
+    }
+
     #[test]
     fn replay_metadata_is_stable_enough_for_status() {
         let hash = current_source_hash();
@@ -539,12 +607,17 @@ mod tests {
     }
 
     fn policy(response: &TodayRunResponse) -> &serde_json::Value {
+        details(response)
+            .get("policy")
+            .expect("policy details should be projected")
+    }
+
+    fn details(response: &TodayRunResponse) -> &serde_json::Value {
         response
             .result
             .projection
             .as_ref()
             .and_then(|projection| projection.details.as_ref())
-            .and_then(|details| details.get("policy"))
-            .expect("policy details should be projected")
+            .expect("projection details should be projected")
     }
 }

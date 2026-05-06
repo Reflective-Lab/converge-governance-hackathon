@@ -37,7 +37,7 @@ pub fn payload_from_result<T: DeserializeOwned>(
         .context
         .get(key)
         .iter()
-        .find(|f| f.id == fact_id)
+        .find(|f| f.id().as_str() == fact_id)
         .ok_or_else(|| format!("missing fact: {fact_id}"))?;
-    serde_json::from_str(&fact.content).map_err(|e| format!("invalid {fact_id} payload: {e}"))
+    serde_json::from_str(fact.content()).map_err(|e| format!("invalid {fact_id} payload: {e}"))
 }

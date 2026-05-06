@@ -6,13 +6,13 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
-use converge_provider_api::{
-    AgentRequirements, ComplianceLevel, CostClass, CostTier, LatencyClass, RequiredCapabilities,
-    SelectionCriteria, TaskComplexity,
+use converge_provider::{
+    AgentRequirements, ChatBackendSelectionConfig, ComplianceLevel, CostClass, CostTier,
+    LatencyClass, RequiredCapabilities, SelectionCriteria, TaskComplexity,
 };
+use converge_provider_adapters::select_healthy_chat_backend;
 use governance_kernel::InMemoryStore;
-use governance_truths::{AGENT_MODELS, AgentModelConfig};
+use governance_truths::{AGENT_MODELS, AgentModelConfig, is_product_truth, product_truths};
 use serde::{Deserialize, Serialize};
 use tower_http::cors::{Any, CorsLayer};
 
@@ -53,8 +53,7 @@ async fn health() -> &'static str {
 }
 
 async fn list_truths() -> Json<Vec<TruthListItem>> {
-    let items = governance_truths::TRUTHS
-        .iter()
+    let items = product_truths()
         .map(|t| TruthListItem {
             key: t.key.into(),
             display_name: t.display_name.into(),
@@ -70,6 +69,13 @@ async fn execute_truth(
     axum::extract::Path(key): axum::extract::Path<String>,
     Json(request): Json<ExecuteTruthRequest>,
 ) -> Result<Json<crate::truth_runtime::TruthExecutionResult>, (StatusCode, String)> {
+    if !is_product_truth(&key) {
+        return Err((
+            StatusCode::NOT_FOUND,
+            format!("truth '{key}' is not a product workflow; use vendor-selection"),
+        ));
+    }
+
     let persist = request.persist_projection.unwrap_or(true);
     // The converge Engine future is !Send (trait-object suggestors), so run on
     // a blocking thread with a local async runtime to satisfy axum's Send bound.
@@ -243,7 +249,18 @@ struct AgentModelOptions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_provider_api::DataSovereignty;
+    use axum::body::{Body, to_bytes};
+    use axum::http::{Method, Request};
+    use converge_provider::DataSovereignty;
+    use governance_kernel::InMemoryStore;
+    use tower::util::ServiceExt;
+
+    fn test_state() -> AppState {
+        AppState {
+            store: Arc::new(InMemoryStore::new()),
+            experience: Arc::new(ExperienceRegistry::new()),
+        }
+    }
 
     #[test]
     fn agent_selection_preserves_structured_output_and_context_requirements() {
@@ -300,5 +317,55 @@ mod tests {
         assert_eq!(criteria.latency, LatencyClass::Background);
         assert_eq!(criteria.complexity, TaskComplexity::Reasoning);
         assert!(criteria.capabilities.structured_output);
+    }
+
+    #[tokio::test]
+    async fn list_truths_exposes_only_vendor_selection() {
+        let response = build_router(test_state())
+            .oneshot(
+                Request::builder()
+                    .method(Method::GET)
+                    .uri("/v1/truths")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let payload: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let truths = payload.as_array().unwrap();
+
+        assert_eq!(truths.len(), 1);
+        assert_eq!(
+            truths[0].get("key").and_then(|value| value.as_str()),
+            Some("vendor-selection")
+        );
+    }
+
+    #[tokio::test]
+    async fn archived_truths_are_not_public_http_workflows() {
+        let response = build_router(test_state())
+            .oneshot(
+                Request::builder()
+                    .method(Method::POST)
+                    .uri("/v1/truths/evaluate-vendor/execute")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        serde_json::json!({
+                            "inputs": {
+                                "vendors": "Acme AI, Beta ML"
+                            }
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }

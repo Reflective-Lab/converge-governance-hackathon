@@ -1,6 +1,6 @@
-# Converge Governance Hackathon
+# Vendor Selection
 
-This is the canonical agent entrypoint — all agents (Claude, Codex, Gemini, or otherwise) start here. Long-form documentation lives in `kb/`.
+This is the canonical agent entrypoint. Claude, Codex, Gemini, and other agents start here. Long-form documentation lives in `kb/`.
 
 ## Philosophy
 
@@ -8,107 +8,120 @@ Strongly typed languages that compile to native code. Rust for the system. Svelt
 
 Converge is the execution model. Agents propose facts. Facts are promoted through governance gates. Decisions converge or honestly stop. Every fact has provenance. Every decision has evidence.
 
-## The Knowledgebase
+## Operating Model
 
-`kb/` is an Obsidian vault. It is THE documentation for this project.
+One product, one train, one product truth.
 
-**Do NOT read the entire kb on startup.** Lazy-load:
+- The product truth is `vendor-selection`.
+- Supporting runtimes may remain as examples, migration fixtures, or tests, but they are not product truths.
+- Do not add new product truths by default. Extend `vendor-selection` unless the milestone explicitly says otherwise.
+- Do not use git worktrees.
+- Do not create feature/topic branches for normal work.
+- Use `main` for the train and `release/<version>` branches only when preparing or stabilizing a release.
 
-1. Read `kb/Home.md` only when you need to find something (it's the index).
-2. Follow ONE wikilink to the specific page you need.
+## Product Direction
+
+This repo is now the starting point for a vendor-selection product, not a hackathon template.
+
+- Web app: Svelte/SvelteKit front end, Firebase Hosting, Firefox support.
+- Backend: Rust service boundary, evolving from the current HTTP harness toward gRPC.
+- Data: monitored Google Cloud database for durable decisions, evidence, audit, and telemetry.
+- Desktop: Tauri 2 + Svelte + Rust, packaged for macOS Apple silicon, macOS Intel, and Windows.
+- Cloud resources: Terraform first. `gcloud` is for checks and operational fixes, not provisioning.
+
+## Knowledge Base
+
+`kb/` is an Obsidian vault. Lazy-load it.
+
+1. Read `kb/Home.md` only when you need to find something.
+2. Follow one wikilink to the specific page you need.
 3. Never bulk-read `kb/`.
+
+Also follow `/Users/kpernyer/dev/work/kb` standards when project rules are unclear, especially:
+
+- `Standards/Project Scaffold.md`
+- `Standards/Conventions.md`
+- `Workflow/Cheat Sheet.md`
 
 ## Stack
 
 | Layer | Technology |
 |---|---|
-| System logic | Rust (edition 2024, 1.94+) |
-| Agent runtime | Converge v3.7.4 (`converge-pack`, `converge-kernel`, `converge-provider`) |
-| Optimization | Ferrox v0.3.12 |
-| Intelligence | Organism v1.4.0 (`organism-pack`, `organism-runtime`) |
-| Truth validation | Axiom v0.7.0 |
-| Desktop shell | Tauri 2 + SvelteKit 5 |
-| Package manager | Bun |
+| System logic | Rust edition 2024, rust-version 1.94+ |
+| Agent runtime | Converge 3.8.1 |
+| Intelligence | Organism 1.5.0 |
+| Truth validation | Axiom 0.7.x |
+| Desktop shell | Tauri 2 + Svelte |
+| Web shell | SvelteKit 5 + Bun |
+| Cloud | Google Cloud + Firebase |
 | Task runner | just |
 
 ## Architecture
 
-```
-governance-server (HTTP API — dev harness)
-  └── truth_runtime/
-        └── evaluate_vendor.rs    <- THE REFERENCE — study this first
+```text
+governance-server
+  truth_runtime/
+    vendor_selection.rs
+    vendor_selection_live.rs
+    evaluate_vendor.rs
 
-governance-app (shared layer for desktop)
-governance-kernel (domain model + in-memory store)
-governance-truths (truth catalog + converge bindings)
+governance-app      shared app layer
+governance-kernel   domain model and store
+governance-truths   vendor-selection truth and Converge bindings
+apps/desktop        Tauri/Svelte operator shell
 ```
+
+Study the vendor-selection runtime before changing governed decision behavior.
 
 ## Build
 
 ```bash
+just check             # cargo check --workspace
 just test              # cargo test --workspace
-just test-coverage     # tests with coverage report
-just server            # cargo run -p governance-server (localhost:8080)
 just lint              # cargo clippy --workspace
-just check             # cargo check --workspace (fast)
+just server            # cargo run -p governance-server
+just desktop           # Tauri desktop app
+just package-desktop   # desktop release bundle for current platform
 ```
 
 ## Rules
 
-- No `unsafe` code. Ever.
+- No `unsafe` code.
 - Use typed enums, not strings with semantics.
-- Suggestors emit proposals, not direct facts — Converge promotes them.
+- Suggestors emit proposals, not direct facts.
 - Every mutation needs an Actor.
-- `just lint` clean before considering work done.
-- No feature flags. No backwards-compat shims.
+- Providers stay behind trait boundaries.
+- No feature flags or backwards-compat shims unless the milestone explicitly calls for them.
 - If a real service is unavailable, mock it behind the same trait boundary.
+- `just lint` must be clean before work is considered done.
 
-## Converge
+## How To Change The Product Truth
 
-| Crate | What |
-|---|---|
-| `converge-pack` | Authoring: `Suggestor`, `AgentEffect`, `ProposedFact`, `ContextKey` |
-| `converge-kernel` | Runtime: `Engine`, `Context`, `Budget`, criteria, run hooks |
-| `converge-provider-api` | Chat contracts and capability-routing |
-| `converge-provider` | Chat backends, search adapters, tool clients |
-| `converge-domain` | Pre-built suggestor packs |
-
-## Organism
-
-| Crate | What |
-|---|---|
-| `organism-pack` | Intent, planning, adversarial, simulation, learning types |
-| `organism-runtime` | Registry, readiness, collaboration runner |
-| `organism-planning` | Reasoners, charters, topology transitions |
-
-See `kb/Converge/Organism Patterns.md` for the full pattern catalog: six-stage pipeline, four collaboration topologies, five skepticism kinds, five simulation dimensions, 15 domain packs.
-
-## How to Add a New Truth
-
-1. Define in `governance-truths/src/lib.rs` (key, packs, criteria)
-2. Create `governance-server/src/truth_runtime/your_truth.rs`
-3. Write suggestors implementing `converge_pack::Suggestor`
-4. Write a criterion evaluator implementing `CriterionEvaluator`
-5. Wire in `truth_runtime/mod.rs` dispatcher
-6. Add domain types to `governance-kernel` if needed
-7. `just test` green, `just lint` clean
+1. Start from `vendor-selection` in `governance-truths/src/lib.rs`.
+2. Change or add suggestors inside the vendor-selection runtime.
+3. Extend criteria on the existing `vendor-selection` truth.
+4. Add domain types to `governance-kernel` if needed.
+5. Keep every promoted fact tied to provenance.
+6. Add tests and documentation.
+7. Run `just test` and `just lint`.
 
 ## Testing
 
-Tests are part of the development process, not an afterthought.
+Tests are part of the development process.
 
 ```bash
-just test              # all tests
-just test-coverage     # with coverage report
+just test
+just test-coverage
 ```
 
-The test suite includes:
-- **Unit tests** — domain model, serialization, truth catalog
-- **Integration tests** — HTTP endpoint → engine → projection
-- **Negative tests** — invalid inputs, missing fields, failed writes
-- **Property tests** — domain invariants hold for arbitrary inputs
-- **Soak tests** — repeated execution stability
+Expected coverage areas:
+
+- Unit tests for domain model, serialization, and product-truth behavior.
+- Integration tests for backend endpoint to engine to projection.
+- Negative tests for invalid inputs, missing fields, and failed writes.
+- Property tests for domain invariants.
+- Soak tests for repeated execution stability where runtime behavior is risky.
 
 ## Milestones
 
-Read `MILESTONES.md` at the start of every session. Scope all work to the current milestone.
+Read `MILESTONES.md` at the start of every session and scope work to the current milestone.

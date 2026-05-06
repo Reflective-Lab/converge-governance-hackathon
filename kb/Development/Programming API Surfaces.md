@@ -13,8 +13,8 @@ Use these crates by role:
 |---|---|---|
 | Converge authoring | `converge-pack` | `Suggestor`, `AgentEffect`, `ProposedFact`, `ContextKey` |
 | Converge runtime | `converge-kernel` | `Engine`, `Context`, `Budget`, criteria, run hooks |
-| Converge capability contracts | `converge-provider-api` | `ChatBackend`, `DynChatBackend`, `ChatRequest`, `ChatResponse`, `SelectionCriteria` |
-| Converge ready-made adapters | `converge-provider` | capability adapters that satisfy those contracts, search, tools |
+| Converge capability contracts | `converge-provider` | `ChatBackend`, `DynChatBackend`, `ChatRequest`, `ChatResponse`, `SelectionCriteria` |
+| Converge ready-made adapters | `converge-provider-adapters` | Manifold adapters that satisfy those contracts, search, tools |
 | Axiom truth contract | `axiom-truth` | truth validation, Gherkin parsing, policy lens |
 | Organism authoring | `organism-pack` | `IntentPacket`, `Plan`, `PlanStep`, reasoning primitives |
 | Organism runtime | `organism-runtime` | `Registry`, readiness, built-in packs |
@@ -25,13 +25,13 @@ Use these crates by role:
 
 The participant-facing repo is pinned to these foundation tags:
 
-- Converge `v3.7.4` for runtime, formation substrate, provider contracts, policy, and domain packs.
-- Organism `v1.4.0` for intent, planning, collaboration, simulation, and learning examples.
+- Converge `v3.8.1` for runtime, formation substrate, provider contracts, policy, and extension pack contracts.
+- Organism `v1.5.0` for intent, planning, collaboration, simulation, and learning examples.
 - Axiom `v0.7.0` for truth validation, Gherkin parsing, and policy lens work.
 
-Do not switch this repo to sibling path dependencies for participant work. The hackathon template must remain cloneable without `../converge`, `../organism`, or `../axiom` checkouts.
+Keep the Cargo manifest authoritative: use published versions where available and local patches only for unpublished platform and extension crates.
 
-Foundation dependency chain: Organism `v1.4.0`, Axiom `v0.7.0`, and Ferrox `v0.3.12` are aligned to Converge `v3.7.4`, so participant code should see one Converge governance/provider contract across the user-side stack.
+Foundation dependency chain: Organism `v1.5.0`, Axiom `v0.7.0`, and Ferrox Solvers `v0.4.1` are aligned to Converge `v3.8.1`, so product code should see one Converge governance/provider contract across the stack.
 
 ## Axiom Contract
 
@@ -84,7 +84,7 @@ The stable programming boundary for model access is `ChatBackend` plus `ChatRequ
 Application code should look like this shape:
 
 ```rust
-use converge_provider_api::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
+use converge_provider::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
 ```
 
 Kong is one useful operational remote path for the hackathon, but it is not required right now. Participants should not have to learn one API for Converge and another API for Kong-routed Converge. Long term, a `KongProvider` or more general `RouterProvider` should sit under the same capability contract.
@@ -96,7 +96,7 @@ Do not present these as the default participant-facing surface in new docs or ex
 - `LlmProvider`
 - `LlmRequest`
 
-If infrastructure routing changes, the application-facing contract should stay on `converge-provider-api` chat types, `WebSearchBackend`, and the same MCP client surface.
+If infrastructure routing changes, the application-facing contract should stay on `converge-provider` chat types, `WebSearchBackend`, and the same MCP client surface.
 
 ## Organism Contract
 
@@ -119,7 +119,7 @@ That means Organism examples should stay typed and proposal-oriented, just like 
 
 There are still places in this repo family that do not match the target surface yet:
 
-- This hackathon repo still imports `converge-core` directly in some runtime code. That is acceptable internally, but participant-facing examples should prefer `converge-pack`, `converge-kernel`, and `converge-provider-api`.
+- This hackathon repo still imports `converge-core` directly in some runtime code. That is acceptable internally, but participant-facing examples should prefer `converge-pack`, `converge-kernel`, and `converge-provider`.
 - `apps/desktop/src-tauri` now uses `ChatBackend` selection plus offline fallback behavior; keep future participant examples on that same contract instead of reintroducing gateway-specific APIs.
 - `../monterro/crates/monterro-core/src/due_diligence.rs` is useful as a prototype, but its direct provider HTTP calls are not the template we want participants copying.
 - `../monterro/crates/monterro-core/src/convergent_dd.rs` is closer to the target shape because it uses curated Converge and Organism surfaces, but the hackathon repo should keep its participant-facing examples even smaller and more explicit.

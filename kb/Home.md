@@ -1,9 +1,10 @@
 ---
 tags: [moc]
+source: mixed
 ---
-# Converge Governance Hackathon
+# Vendor Selection
 
-Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor selection built on [[Converge/Core Concepts|Converge]].
+Knowledge base for the governed vendor-selection app. This repo is being migrated from a hackathon starter kit into a product baseline for web, backend, database, and desktop delivery.
 
 ## Architecture
 - [[Architecture/Overview]] — five-layer model, repo ownership split
@@ -13,22 +14,23 @@ Knowledge base for the AI governance hackathon starter kit. Multi-agent vendor s
 
 ## Domain
 - [[Domain/Vendor Selection]] — the challenge and success criteria
+- [[Domain/Landscape]] — where this project sits vs. Ramp, Coupa, Ariba, Zip, Brex, Airbase
 - [[Domain/Agents]] — the five suggestors to build
-- [[Domain/Truths]] — truth definitions and catalog
+- [[Domain/Truths]] — the single product truth and supporting migration fixtures
 - [[Domain/Key Types]] — Engine, Context, Fact, Criterion, etc.
 
 ## Development
 - [[Development/Getting Started]] — toolchain, build commands, quick reference
 - [[Development/Provider Configuration]] — Agent model matching, provider setup, customization
-- [[Development/Template Handoff]] — boundary between participant template and system-level integration
-- [[Development/Programming API Surfaces]] — the canonical participant-facing import and layering rules
+- [[Development/Template Handoff]] — boundary between template-era work and product integration
+- [[Development/Programming API Surfaces]] — canonical import and layering rules
 - [[Development/Writing Suggestors]] — suggestor trait, patterns, rules
-- [[Development/Writing Truths]] — step-by-step guide to adding a new truth
+- [[Development/Writing Truths]] — historical guide; product work should extend `vendor-selection`
 - [[Development/Streaming]] — real-time convergence callbacks
 
 ## Integrations
 - [[Integrations/Kong Gateway]] — LLM, MCP, and API access through Kong
-- [[Integrations/Why Kong]] — How Kong maps to every challenge requirement
+- [[Integrations/Why Kong]] — How Kong maps to governance requirements
 - [[Integrations/Kong Demo Story]] — End-to-end two-layer governance walkthrough
 - [[Integrations/Web Search Demo Story]] — Brave-wide and Tavily-deep provider mix for governed evidence gathering
 - [[Integrations/MCP Tools]] — Model Context Protocol for business services

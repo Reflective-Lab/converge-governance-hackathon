@@ -9,18 +9,24 @@ rust-version = "1.94"
 
 [workspace.dependencies]
 # Published stack crates
-converge-core = "3.7.5"
-converge-pack = "3.7.5"
-converge-kernel = "3.7.5"
-converge-model = "3.7.5"
-converge-provider-api = "3.7.5"
-converge-domain = "3.7.5"
-converge-policy = "3.7.5"
-converge-provider = { version = "3.7.5", default-features = false, features = ["anthropic", "gemini", "openai", "openrouter", "mistral", "brave", "tavily", "kong"] }
+converge-core = "3.8.1"
+converge-pack = "3.8.1"
+converge-kernel = "3.8.1"
+converge-model = "3.8.1"
+converge-provider = "3.8.1"
 
-organism-pack = "1.4.0"
-organism-runtime = "1.4.0"
-organism-planning = "1.4.0"
+# Converge extension stack, aligned to the 3.8.1 platform contract
+converge-policy = { package = "converge-arbiter-policy", version = "1.0.0", path = "../../extensions/arbiter-policy/crates/arbiter" }
+converge-domain = { package = "converge-atelier-domain", version = "1.0.0", path = "../../extensions/atelier-showcase/crates/atelier-domain" }
+converge-embassy-pack = { version = "1.0.0", path = "../../extensions/embassy-ports/crates/pack" }
+converge-ferrox-solver = { version = "0.4.1", path = "../../extensions/ferrox-solvers/crates/ferrox", default-features = false }
+converge-provider-adapters = { package = "converge-manifold-adapters", version = "1.0.0", path = "../../extensions/manifold-adapters/crates/manifold", default-features = false, features = ["anthropic", "gemini", "openai", "openrouter", "mistral", "brave", "tavily", "kong"] }
+converge-knowledge = { package = "converge-mnemos-knowledge", version = "1.0.0", path = "../../extensions/mnemos-knowledge/crates/mnemos" }
+converge-analytics = { package = "converge-prism-analytics", version = "1.0.0", path = "../../extensions/prism-analytics/crates/prism" }
+
+organism-pack = "1.5.0"
+organism-runtime = "1.5.0"
+organism-planning = "1.5.0"
 
 axiom-truth = "0.7.0"
 
@@ -48,27 +54,20 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Testing
 proptest = "1"
 
-# Track unreleased platform head (Converge 3.7.5, Axiom 0.7.0).
-# Remove this block once the corresponding versions are published to crates.io.
+# Track local platform head (Converge 3.8.1, Organism 1.5.0, Axiom 0.7.0).
+# Extension crates are path-pinned directly in workspace dependencies.
 [patch.crates-io]
-converge-analytics    = { package = "prism",          path = "../../extensions/prism/crates/prism" }
-converge-client       = { path = "../../work/converge/crates/client" }
-converge-core         = { path = "../../work/converge/crates/core" }
-converge-domain       = { package = "atelier-domain", path = "../../atelier/crates/atelier-domain" }
-converge-experience   = { path = "../../work/converge/crates/experience" }
-converge-kernel       = { path = "../../work/converge/crates/kernel" }
-converge-knowledge    = { package = "mnemos",         path = "../../extensions/mnemos/crates/mnemos" }
-converge-model        = { path = "../../work/converge/crates/model" }
-converge-optimization = { path = "../../work/converge/crates/optimization" }
-converge-pack         = { path = "../../work/converge/crates/pack" }
-converge-policy       = { package = "arbiter",        path = "../../extensions/arbiter/crates/arbiter" }
-converge-protocol     = { path = "../../work/converge/crates/protocol" }
-converge-provider     = { path = "../../work/converge/crates/provider" }
-converge-provider-api = { path = "../../work/converge/crates/provider-api" }
-converge-runtime      = { path = "../../work/converge/crates/runtime" }
-converge-storage      = { path = "../../work/converge/crates/storage" }
-organism-pack         = { path = "../../work/organism/crates/pack" }
-organism-runtime      = { path = "../../work/organism/crates/runtime" }
-organism-planning     = { path = "../../work/organism/crates/planning" }
-organism-intent       = { path = "../../work/organism/crates/intent" }
-axiom-truth           = { path = "../../work/axiom" }
+converge-core              = { path = "../../work/converge/crates/core" }
+converge-experience        = { path = "../../work/converge/crates/experience" }
+converge-kernel            = { path = "../../work/converge/crates/kernel" }
+converge-manifold-adapters = { path = "../../extensions/manifold-adapters/crates/manifold" }
+converge-model             = { path = "../../work/converge/crates/model" }
+converge-optimization      = { path = "../../work/converge/crates/optimization" }
+converge-pack              = { path = "../../work/converge/crates/pack" }
+converge-provider          = { path = "../../work/converge/crates/provider" }
+converge-storage           = { path = "../../work/converge/crates/storage" }
+organism-pack              = { path = "../../work/organism/crates/pack" }
+organism-runtime           = { path = "../../work/organism/crates/runtime" }
+organism-planning          = { path = "../../work/organism/crates/planning" }
+organism-intent            = { path = "../../work/organism/crates/intent" }
+axiom-truth                = { path = "../../work/axiom" }

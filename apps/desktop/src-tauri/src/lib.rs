@@ -450,28 +450,115 @@ fn invariant_class_label(class: InvariantClassTag) -> &'static str {
     }
 }
 
-// ─── Due Diligence (self-contained, copied from Monterro) ───
+// ─── Due Diligence (offline-first via governance-server mock corpus) ───
 
-mod dd;
 mod today;
 
 #[tauri::command]
 async fn run_due_diligence(
     company_name: String,
-    product_name: Option<String>,
-    #[allow(unused)] focus_areas: Vec<String>,
-) -> Result<dd::DdReport, String> {
-    dd::run_dd(&company_name, product_name.as_deref())
-        .await
-        .map_err(|e| format!("{e:#}"))
+    #[allow(unused)] product_name: Option<String>,
+    focus_areas: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    let effective_focus = if focus_areas.is_empty() {
+        vec![
+            "market".to_string(),
+            "technology".to_string(),
+            "competition".to_string(),
+            "financials".to_string(),
+        ]
+    } else {
+        focus_areas
+    };
+    let inputs = std::collections::HashMap::from([
+        ("company_name".into(), company_name.clone()),
+        ("focus_areas".into(), effective_focus.join(", ")),
+    ]);
+    let store = governance_kernel::InMemoryStore::new();
+    let result = governance_server::truth_runtime::dynamic_due_diligence::execute(
+        &store,
+        &inputs,
+        true,
+    )
+    .await?;
+    let report = result
+        .projection
+        .as_ref()
+        .and_then(|projection| projection.details.clone())
+        .unwrap_or_else(|| {
+            serde_json::json!({
+                "company_name": company_name,
+                "focus_areas": effective_focus,
+                "executive_summary": "Due-diligence report was not projected.",
+                "market_analysis": [],
+                "competitive_landscape": [],
+                "technology_assessment": [],
+                "ownership_and_financials": [],
+                "contradictions": [],
+                "remaining_gaps": [],
+                "recommendation": "Review required before proceeding.",
+                "confidence": 0.0,
+                "needs_human_review": true,
+            })
+        });
+    let summary = report
+        .get("executive_summary")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("Governed due-diligence report synthesized.");
+    let recommendation = report
+        .get("recommendation")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("Review required before proceeding.");
+    Ok(serde_json::json!({
+        "converged": result.converged,
+        "cycles": result.cycles,
+        "stop_reason": result.stop_reason,
+        "stages": [
+            {
+                "label": "Formation",
+                "kind": "formation",
+                "items": [{
+                    "id": "dd:formation",
+                    "label": "Due-diligence formation",
+                    "detail": format!("{} focus area(s) selected", effective_focus.len()),
+                    "category": null,
+                    "confidence": null
+                }]
+            },
+            {
+                "label": "Evidence",
+                "kind": "extraction",
+                "items": [{
+                    "id": "dd:evidence",
+                    "label": "Evidence synthesis",
+                    "detail": summary,
+                    "category": "evidence",
+                    "confidence": report.get("confidence").and_then(serde_json::Value::as_f64)
+                }]
+            },
+            {
+                "label": "Recommendation",
+                "kind": "synthesis",
+                "items": [{
+                    "id": "dd:recommendation",
+                    "label": "Recommendation",
+                    "detail": recommendation,
+                    "category": "decision",
+                    "confidence": report.get("confidence").and_then(serde_json::Value::as_f64)
+                }]
+            }
+        ],
+        "report": report
+    }))
 }
 
 #[tauri::command(rename_all = "snake_case")]
 async fn run_today_vendor_selection(
     stage: String,
     live: bool,
+    demo_mode: Option<String>,
 ) -> Result<today::TodayRunResponse, String> {
-    today::run_stage(&stage, live).await
+    today::run_stage_with_demo_mode(&stage, live, demo_mode.as_deref()).await
 }
 
 #[tauri::command]

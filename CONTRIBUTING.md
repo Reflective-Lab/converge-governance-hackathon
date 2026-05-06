@@ -2,45 +2,61 @@
 
 ## Getting Started
 
-1. Use GitHub's "Use this template" button to create your team's repo
-2. Clone your team repo and create feature branches
-3. Run `just hit-the-ground-running` to verify everything builds
-4. Make your changes
-5. Run `just test && just lint` before committing
-6. Submit a pull request to your team's `main` branch
+1. Clone the repo.
+2. Read [AGENTS.md](AGENTS.md) and [MILESTONES.md](MILESTONES.md).
+3. Run `just setup` on a fresh machine.
+4. Work on the current train. Use `main` locally, or `release/<version>` when a release branch exists.
+5. Run the relevant checks before opening a pull request.
 
-## Development
+## Git Workflow
 
-- Rust edition 2024, minimum rust-version 1.94
-- `unsafe` code is forbidden
-- Clippy warnings are enforced
+- Do not use git worktrees.
+- Do not create feature, topic, fix, docs, chore, or spike branches for normal work.
+- Use `main` as the single train.
+- Use `release/<version>` branches only for release stabilization.
+- Never push to `main` without explicit confirmation.
 
-## Testing
+## Development Rules
 
-Every change should include tests. The test suite has four categories:
+- Rust edition 2024, minimum rust-version 1.94.
+- Bun is the JavaScript package manager.
+- Svelte/SvelteKit for web UI.
+- Tauri 2 + Svelte for desktop.
+- No React.
+- No `unsafe` code.
+- Use typed enums for semantic state.
+- Cloud infrastructure must be Terraform-managed.
+- Firebase config belongs at the repo root when the web app is added.
+- `vendor-selection` is the only product truth; extend it instead of adding new product truths.
 
-| Category | What | Where |
-|---|---|---|
-| **Unit tests** | Domain model, serialization, catalog | `#[cfg(test)] mod tests` in source files |
-| **Negative tests** | Invalid inputs, missing fields, error paths | Same modules, prefixed with negative |
-| **Property tests** | Invariants hold for arbitrary inputs (proptest) | `#[cfg(test)] mod property_tests` |
-| **Integration / soak** | HTTP endpoints, repeated execution, stability | `crates/*/tests/` and inline soak tests |
+## Verification
+
+Run the smallest relevant checks while developing, then run the full gate before review:
 
 ```bash
-just test              # run all tests
-just test-coverage     # with coverage report (needs cargo-llvm-cov)
+just check
+just test
+just lint
+```
+
+For desktop packaging changes:
+
+```bash
+just package-desktop
 ```
 
 ## Pull Requests
 
-- Keep PRs focused — one logical change per PR
-- Write clear commit messages
-- Ensure `just check && just test && just lint` passes
+- Keep PRs focused on the current train or release branch.
+- Update documentation when setup, behavior, deployment, policy, or data handling changes.
+- Include tests for behavior changes.
+- Do not commit secrets, `.env` files, credentials, build artifacts, or generated targets.
+- Use the GitHub pull request template and note any checks that were not run.
 
-## Code of Conduct
+## Security
 
-See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+See [SECURITY.md](SECURITY.md). Do not open public issues for vulnerabilities.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions are licensed under the MIT License.

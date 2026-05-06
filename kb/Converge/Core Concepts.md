@@ -28,9 +28,9 @@ Participant-facing code in this repo family should think in terms of these surfa
 - `converge-pack` — Suggestor authoring contract
 - `converge-kernel` — Engine, Context, budgets, convergence loop
 - `converge-model` — governed semantic types and truth metadata
-- `converge-provider-api` — chat contracts and capability routing vocabulary
-- `converge-domain` — pre-built [[Converge/Domain Packs|domain packs]] (trust, money, delivery, knowledge, data_metrics)
-- `converge-provider` — [[Integrations/Kong Gateway|Kong]] integration and ready-made LLM/API adapters
+- `converge-provider` — chat contracts and capability routing vocabulary
+- `converge-domain` — dependency alias for `converge-atelier-domain` pre-built [[Converge/Domain Packs|domain packs]] (trust, money, delivery, knowledge, data_metrics)
+- `converge-provider-adapters` — dependency alias for `converge-manifold-adapters` [[Integrations/Kong Gateway|Kong]] integration and ready-made LLM/API adapters
 - `axiom-truth` — truth validation and Gherkin parsing
 
 > **TODO:** Scan converge crate sources for deeper documentation of internals.

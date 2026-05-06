@@ -6,10 +6,11 @@
   import AIProviderEvaluation from "./lib/AIProviderEvaluation.svelte";
 
   // ─── Phases ───
-  let phase = $state("slides"); // slides | providers | loop | demo | apps | dd
+  const primaryDeckSelection = "5,6,7,8,1,2,3,4,19,26,30,33,34";
+  let phase = $state("loop"); // slides | providers | loop | demo | apps | dd
   let currentSlide = $state(0);
-  let slideSelectionInput = $state("");
-  let slideSelectionStatus = $state("");
+  let slideSelectionInput = $state(primaryDeckSelection);
+  let slideSelectionStatus = $state("Showing primary demo deck");
 
   interface Slide {
     number: number;
@@ -36,181 +37,252 @@
   const allSlides: Slide[] = [
     {
       number: 1,
+      eyebrow: "The Core Sell",
+      headline: "Governance\nby construction.",
+      body: "Every AI framework today lets agents do things. We built one that makes agents prove they should. Every decision can be explained to a regulator. You know exactly why something was promoted or rejected. The system stops honestly when stuck. Policy gates are integral to convergence.",
+      image: "/images/slides/hero.jpg",
+    },
+    {
+      number: 2,
+      eyebrow: "Architecture Layers",
+      headline: "Converge + Kong.\nComplementary, not competitive.",
+      body: "Two governance layers with different responsibilities: access control before the model call, truth control after the model answers.",
+      image: "/images/slides/layers.jpg",
+      layout: "gateway",
+      gatewayPoints: [
+        {
+          name: "Kong protects the perimeter",
+          detail: "Kong decides whether your request reaches the LLM.",
+        },
+        {
+          name: "Converge protects the facts",
+          detail: "Converge decides whether the LLM's answer becomes truth.",
+        },
+        {
+          name: "Together",
+          detail: "Kong governs access. Converge governs promotion, evidence, and decision state.",
+        },
+      ],
+    },
+    {
+      number: 3,
+      eyebrow: "The Science",
+      headline: "Lamport Clocks.\nSAT/CSP. Hungarian Algorithm.\nDijkstra's Frontier.",
+      body: "This is not a chatbot architecture. Converge uses classical computer science to constrain language-based reasoning: proven causal ordering, mathematical feasibility checking, optimal matching, and efficient search.",
+      image: "/images/slides/circuit.jpg",
+    },
+    {
+      number: 4,
+      eyebrow: "Governance Model",
+      headline: "Four layers.\nFrom proposal to decision.",
+      body: "Every promoted fact moves through explicit authority, invariant, and review gates before it becomes decision state. The audit trail is created as part of the promotion path.",
+      image: "/images/slides/stack.jpg",
+      layout: "stack",
+      stackLayers: [
+        {
+          name: "Agents Propose",
+          role: "Constructible",
+          detail: "Agents freely construct proposals, but proposals are not facts yet.",
+        },
+        {
+          name: "Cedar Scopes Authority",
+          role: "Policy",
+          detail: "Policy decides who may promote, commit, approve, or escalate.",
+        },
+        {
+          name: "Invariants Gate Truth",
+          role: "Hard constraints",
+          detail: "Hard constraints block unsafe or unsupported promotions.",
+        },
+        {
+          name: "HITL Is First-Class",
+          role: "Human review",
+          detail: "Human approval is modeled directly, not bolted on after the run.",
+        },
+        {
+          name: "Audit Trail",
+          role: "Record",
+          detail: "Every promoted fact keeps actor, evidence, rationale, and path.",
+        },
+      ],
+    },
+    {
+      number: 5,
       eyebrow: "The Problem",
       headline: "Vendor decisions\nare a black box.",
       body: "Enterprises evaluate AI vendors with spreadsheets, email chains, and gut feel. No audit trail, no reproducibility, no governance.",
       image: "/images/slides/hero.jpg",
     },
     {
-      number: 2,
+      number: 6,
       eyebrow: "The Enterprise Reality",
       headline: "Towers of process.\nZero transparency.",
       body: "Procurement committees, legal review boards, security checklists — layers of approval that produce paper trails instead of machine-readable decisions.",
       image: "/images/slides/towers.jpg",
     },
     {
-      number: 3,
+      number: 7,
       eyebrow: "Why It Matters",
       headline: "Compliance fails\nwhen process is invisible.",
       body: "Regulators ask for evidence. Boards ask for rationale. Without machine-readable governance, you are rebuilding the story after the fact.",
       image: "/images/slides/problem.jpg",
     },
     {
-      number: 4,
+      number: 8,
       eyebrow: "The Scale",
       headline: "Every organization.\nEvery border.\nEvery decision.",
       body: "Vendor governance is not a local problem. Enterprises operate across jurisdictions, regulations, and risk profiles. The rules must travel with the data.",
       image: "/images/slides/earth.jpg",
     },
     {
-      number: 5,
+      number: 9,
       eyebrow: "The Converge Way",
       headline: "Governance\nas code.",
       body: "A Truth is a machine-readable governance spec. Intent, authority, constraints, and evidence — declared up front, validated automatically, auditable forever.",
       image: "/images/slides/converge.jpg",
     },
     {
-      number: 6,
+      number: 10,
       eyebrow: "The Pattern",
       headline: "Structure that\nemerges from flow.",
       body: "Governance is not a gate you pass through once. It is a continuous flow — living constraints that adapt as context shifts, not static checklists that rot.",
       image: "/images/slides/flow.jpg",
     },
     {
-      number: 7,
+      number: 11,
       eyebrow: "How It Works",
       headline: "Intent. Authority.\nConstraint. Evidence.",
       body: "Every vendor decision declares what outcome it seeks, who can approve it, what limits apply, and what proof is required. Agents propose. Humans promote.",
       image: "/images/slides/howit.jpg",
     },
     {
-      number: 8,
+      number: 12,
       eyebrow: "Deep Architecture",
       headline: "Layers that\ncompose cleanly.",
       body: "Domain packs, policy engines, promotion gates, and agent runtimes — each layer has a single responsibility. Compose them to build governance that fits your org.",
       image: "/images/slides/layers.jpg",
     },
     {
-      number: 9,
+      number: 13,
       eyebrow: "The Stack",
       headline: "Converge platform.\nOrganism runtime.\nHelm desktop.",
       body: "Write a truth. Validate it against policy. Act on it with confidence. Governance that learns from every decision — processes that strengthen under stress and keep your organization safe by default.",
       image: "/images/slides/stack.jpg",
     },
     {
-      number: 10,
+      number: 14,
       eyebrow: "Under The Hood",
       headline: "Silicon-level\nconfidence.",
       body: "From circuit board to policy decision — every layer is typed, validated, and auditable. Zero unsafe code. Zero runtime surprises. The machine earns trust.",
       image: "/images/slides/circuit.jpg",
     },
     {
-      number: 11,
+      number: 15,
       eyebrow: "The Grid",
       headline: "Structured decisions\nat enterprise scale.",
       body: "Not a single vendor scorecard — a composable grid of evaluations, constraints, and approvals that scales across teams, business units, and geographies.",
       image: "/images/slides/grid.jpg",
     },
     {
-      number: 12,
+      number: 16,
       eyebrow: "Living Systems",
       headline: "Governance that\nevolves organically.",
       body: "Organisms adapt. So should your vendor governance. As markets shift and regulations change, Truths update — and the audit trail shows exactly what changed and why.",
       image: "/images/slides/organic.jpg",
     },
     {
-      number: 13,
+      number: 17,
       eyebrow: "Corporate Trust",
       headline: "The board sees\nwhat the machine sees.",
       body: "No more translating between technical artifacts and executive summaries. One Truth spec serves the engineer, the auditor, and the board — same artifact, same source of truth.",
       image: "/images/slides/corporate.jpg",
     },
     {
-      number: 14,
+      number: 18,
       eyebrow: "Your Mission",
       headline: "Watch governance\nconverge.",
       body: "Today you will inspect a vendor-selection loop as formation, agents, optimization, policy, and gates turn proposals into an auditable decision.",
       image: "/images/slides/participants.jpg",
     },
     {
-      number: 15,
+      number: 19,
       eyebrow: "RFI / RFP Intake",
       headline: "Documents become\nmachine-readable flow.",
       body: "The buyer uploads an RFI/RFP package. Intake extracts requirements, candidate vendors, constraints, and source artifacts before any agent starts deciding.",
       image: "/images/slides/towers.jpg",
     },
     {
-      number: 16,
+      number: 20,
       eyebrow: "Formation",
       headline: "Declare needs.\nDo not pick tools too early.",
       body: "The top level asks for compliance evidence, pricing analysis, risk scoring, optimization, synthesis, and policy authorization. Lower layers choose the right provider/model/tool mix.",
       image: "/images/slides/converge.jpg",
     },
     {
-      number: 17,
+      number: 21,
       eyebrow: "Huddle",
       headline: "Agents coordinate\nthrough promoted facts.",
       body: "This is not a loose chat room. Agents propose facts into typed context; Converge decides what becomes shared evidence before the next step can depend on it.",
       image: "/images/slides/grid.jpg",
     },
     {
-      number: 18,
+      number: 22,
       eyebrow: "Steps",
       headline: "Compliance. Price.\nRisk. Optimization.",
       body: "Each step has a different shape: policy evidence, cost curves, operational risk, and mathematical trade-offs. The demo makes each step visible before consensus.",
       image: "/images/slides/flow.jpg",
     },
     {
-      number: 19,
+      number: 23,
       eyebrow: "Consensus",
       headline: "The record is\nnot a vibe.",
       body: "Consensus means no suggestor has a new promotable fact under the current context, budget, authority, and policy gates. If a gate fails, the system honestly stops.",
       image: "/images/slides/circuit.jpg",
     },
     {
-      number: 20,
+      number: 24,
       eyebrow: "Wide + Deep Search",
       headline: "Brave for breadth.\nTavily for depth.",
       body: "Risk wants broad market signals. Compliance wants canonical evidence. Cost often needs both: wide discovery to find pricing surfaces, then deep retrieval to ground the numbers.",
       image: "/images/slides/earth.jpg",
     },
     {
-      number: 21,
+      number: 25,
       eyebrow: "Not Every Agent Is An LLM",
       headline: "RAG is one\nteammate.",
       body: "The governed team also needs policy, optimization, statistics, data analysis, machine learning, and knowledgebase retrieval before a decision becomes trustworthy.",
       image: "/images/slides/layers.jpg",
     },
     {
-      number: 22,
+      number: 26,
       eyebrow: "Mode 1",
       headline: "Governed selection\nreplaces document exchange.",
       body: "This mode keeps the vendor choice inside the original RFI/RFP candidate set, while HITL and Cedar policy gates increasingly become formal delegation chains learned from prior runs.",
       image: "/images/slides/corporate.jpg",
     },
     {
-      number: 23,
+      number: 27,
       eyebrow: "Mode 2",
       headline: "Creative breakout\nchallenges the premise.",
       body: "Sometimes the local optimum is the wrong frame. The formation can propose a Pareto breakout: a multi-provider mix behind a governed router, not a single forced winner.",
       image: "/images/slides/organic.jpg",
     },
     {
-      number: 24,
+      number: 28,
       eyebrow: "Router Hypothesis",
       headline: "Kong or OpenRouter\nbecomes the answer.",
       body: "We thought we were evaluating AI vendors. The system can discover that the better architecture is a gateway/router: policy, audit, rate limits, search, models, and workload routing.",
       image: "/images/slides/stack.jpg",
     },
     {
-      number: 25,
+      number: 29,
       eyebrow: "Demo Close",
       headline: "A governed team,\nnot one magic model.",
       body: "We formed a team: Brave for breadth, Tavily for depth, specialized models for each role, and Converge to decide which evidence becomes part of the record.",
       image: "/images/slides/participants.jpg",
     },
     {
-      number: 26,
+      number: 30,
       eyebrow: "Technology Stack",
       headline: "The governed\nAI stack.",
       body: "Helm gives operators a control surface. Axiom defines truth. Organism does the reasoning work. Converge decides what may be promoted. Providers stay behind capability boundaries.",
@@ -245,7 +317,7 @@
       ],
     },
     {
-      number: 27,
+      number: 31,
       eyebrow: "Technology Flow",
       headline: "Truth becomes\noperator state.",
       body: "A governed run is not a prompt chain. It is a typed execution path from declared truth to promoted facts to projected product state.",
@@ -283,7 +355,7 @@
       ],
     },
     {
-      number: 28,
+      number: 32,
       eyebrow: "Business Architecture",
       headline: "Governed process.\nGateway control.",
       body: "The business value is not just a better answer. It is a governed vendor-selection process that improves as Kong becomes the AI Gateway for policy, access, cost, and audit.",
@@ -305,7 +377,7 @@
       ],
     },
     {
-      number: 29,
+      number: 33,
       eyebrow: "Kong AI Gateway",
       headline: "Responsible AI\nbecomes enforceable.",
       body: "With Kong as the AI Gateway, governed AI moves from hoping teams use models responsibly to an enforceable control plane for every model call.",
@@ -327,7 +399,7 @@
       ],
     },
     {
-      number: 30,
+      number: 34,
       eyebrow: "This Demo",
       headline: "AI extends\nhuman capability.",
       body: "We bring in more vendors, more requirement dimensions, and more evidence than a human team can comfortably hold in working memory. Converge turns that complexity into an understandable governed decision.",
@@ -358,10 +430,10 @@
     },
   ];
 
-  let slides = $state(allSlides);
-  const microDeckSelection = "1,26,29,30";
-  const shortDeckSelection = "1,7,19,26,29,30";
-  const longerDeckSelection = "1,7,15,18,19,24,26,27,28,29,30";
+  let slides = $state(slidesFromSelection(primaryDeckSelection));
+  const microDeckSelection = "5,6,7,8,1,2,3,4,30,33,34";
+  const shortDeckSelection = "5,6,7,8,1,2,3,4,19,26,30,33,34";
+  const longerDeckSelection = "5,6,7,8,1,2,3,4,19,26,27,28,30,33,34";
 
   function parseSlideNumbers(raw: string): number[] {
     const seen = new Set<number>();
@@ -375,6 +447,17 @@
         seen.add(number);
         return true;
       });
+  }
+
+  function slidesFromSelection(raw: string): Slide[] {
+    const selected = parseSlideNumbers(raw)
+      .map((number) => allSlides.find((slide) => slide.number === number))
+      .filter((slide): slide is Slide => Boolean(slide));
+    return selected.length > 0 ? selected : allSlides;
+  }
+
+  function displaySlideNumber(index: number) {
+    return index + 1;
   }
 
   function applySlideSelectionFrom(raw: string) {
@@ -880,8 +963,8 @@ Scenario: Parse should fail early
   const appCards: AppCard[] = [
     {
       id: "convergence-loop",
-      title: "Vendor Decision Lab",
-      description: "Try loop patterns, inspect root intent, resources, invariants, optimization, policy, and experience.",
+      title: "Vendor Selection Demos",
+      description: "Run Today Governed Selection or Creative Pareto Breakout with HITL, Cedar, and learning gates.",
       status: "active",
       icon: "◎",
       action: () => { phase = "loop"; },
@@ -924,203 +1007,160 @@ Scenario: Parse should fail early
 
   // ─── Due Diligence phase ───
 
-  interface DdStep {
-    step: string;
+  interface DdFlowItem {
+    id: string;
+    label: string;
     detail: string;
-    active: boolean;
+    category: string | null;
+    confidence: number | null;
   }
 
-  interface DdUsage {
-    prompt_tokens: number | null;
-    completion_tokens: number | null;
-    total_tokens: number | null;
+  interface DdFlowStage {
+    label: string;
+    kind: string;
+    items: DdFlowItem[];
   }
 
-  interface DdLlmCall {
-    context: string;
-    provider: string;
-    model: string;
-    elapsed_ms: number;
-    finish_reason: string | null;
-    usage: DdUsage | null;
-    metadata: Record<string, string>;
-  }
-
-  interface DdFact {
-    claim: string;
-    category: string;
-    confidence: number;
-  }
-
-  interface DdPass1 {
-    summary: string;
-    key_facts: DdFact[];
-  }
-
-  interface DdReport {
+  interface DdFlowReport {
     company_name: string;
-    product_name: string | null;
-    pass1: DdPass1;
-    final_report: {
-      market_analysis: string;
-      competitive_landscape: string;
-      technology_assessment: string;
-      risk_factors: string[];
-      growth_opportunities: string[];
-      recommendation: string;
-    };
-    pass1_hits: { title: string; url: string }[];
-    llm_calls?: DdLlmCall[];
+    focus_areas: string[];
+    executive_summary: string;
+    market_analysis: string[];
+    competitive_landscape: string[];
+    technology_assessment: string[];
+    ownership_and_financials: string[];
+    contradictions: string[];
+    remaining_gaps: string[];
+    recommendation: string;
+    confidence: number;
+    needs_human_review: boolean;
   }
 
-  interface TruthExecutionResult {
+  interface DdFlowResult {
     converged: boolean;
     cycles: number;
     stop_reason: string;
-    criteria_outcomes: { criterion: string; result: string }[];
-    projection: {
-      events_emitted: number;
-      details: Record<string, any> | null;
-    } | null;
-    llm_calls?: DdLlmCall[] | null;
+    stages: DdFlowStage[];
+    report: DdFlowReport;
   }
 
+  const stageIcons: Record<string, string> = {
+    formation: "\u25C6",
+    breadth: "\u2192",
+    depth: "\u2193",
+    extraction: "\u25A0",
+    contradiction: "\u26A0",
+    gap: "\u21BB",
+    synthesis: "\u2605",
+  };
+
+  const stageColors: Record<string, string> = {
+    formation: "var(--color-info, #60a5fa)",
+    breadth: "var(--color-ok, #34d399)",
+    depth: "var(--color-ok, #34d399)",
+    extraction: "var(--color-lime, #a3e635)",
+    contradiction: "var(--color-warn, #fbbf24)",
+    gap: "var(--color-info, #60a5fa)",
+    synthesis: "var(--color-lime, #a3e635)",
+  };
+
   let ddCompanyName = $state("");
-  let ddReport = $state<DdReport | null>(null);
+  let ddFlow = $state<DdFlowResult | null>(null);
   let ddLoading = $state(false);
   let ddError = $state("");
-  let ddSteps = $state<DdStep[]>([]);
-  let ddSpinnerVerb = $state(randomVerb());
+  let ddRevealedStages = $state(0);
+  let ddRevealedItems = $state(0);
+  let ddShowReport = $state(false);
   let ddPrintTimestamp = $state("");
-  let ddSpinnerInterval: ReturnType<typeof setInterval> | null = null;
-  let ddTimers: ReturnType<typeof setTimeout>[] = [];
+  let ddRevealTimers: ReturnType<typeof setTimeout>[] = [];
 
-  const ddPipelineSteps = [
-    { step: "Initializing", detail: "Setting up research pipeline", delay: 0 },
-    { step: "Broad Search", detail: "Querying Brave + Tavily for coverage", delay: 2000 },
-    { step: "Filtering", detail: "Removing irrelevant and duplicate results", delay: 8000 },
-    { step: "Fact Extraction", detail: "LLM extracting tagged facts from sources", delay: 12000 },
-    { step: "Deep Dives", detail: "Following loose ends with targeted research", delay: 25000 },
-    { step: "Synthesis", detail: "Producing market, competitive, and tech analysis", delay: 45000 },
-  ];
+  let ddRevealing = $derived(ddFlow !== null && !ddShowReport && ddRevealedStages <= (ddFlow?.stages.length ?? 0));
+  let ddProgress = $derived(() => {
+    if (!ddFlow || ddFlow.stages.length === 0) return 0;
+    const totalItems = ddFlow.stages.reduce((sum, s) => sum + s.items.length, 0);
+    let revealed = 0;
+    for (let i = 0; i < ddRevealedStages && i < ddFlow.stages.length; i++) {
+      revealed += ddFlow.stages[i].items.length;
+    }
+    if (ddRevealedStages < ddFlow.stages.length) {
+      revealed += Math.min(ddRevealedItems, ddFlow.stages[ddRevealedStages]?.items.length ?? 0);
+    }
+    return Math.round((revealed / totalItems) * 100);
+  });
 
   async function runDd() {
     if (!ddCompanyName.trim()) return;
     ddLoading = true;
     ddError = "";
-    ddSteps = [];
-    ddReport = null;
-    ddSpinnerVerb = randomVerb();
-    ddSpinnerInterval = setInterval(() => { ddSpinnerVerb = randomVerb(); }, 2000);
-
-    for (const [i, ps] of ddPipelineSteps.entries()) {
-      const timer = setTimeout(() => {
-        if (!ddLoading) return;
-        ddSteps = [
-          ...ddSteps.map((s) => ({ ...s, active: false })),
-          { step: ps.step, detail: ps.detail, active: true },
-        ];
-      }, ps.delay);
-      ddTimers.push(timer);
-    }
+    ddFlow = null;
+    ddShowReport = false;
+    ddRevealedStages = 0;
+    ddRevealedItems = 0;
+    ddRevealTimers.forEach(clearTimeout);
+    ddRevealTimers = [];
 
     try {
-      ddReport = await runDueDiligence(ddCompanyName.trim());
-    } catch (e) {
-      ddError = String(e);
-    } finally {
-      ddLoading = false;
-      ddTimers.forEach(clearTimeout);
-      ddTimers = [];
-      if (ddSpinnerInterval) { clearInterval(ddSpinnerInterval); ddSpinnerInterval = null; }
-    }
-  }
-
-  async function runDueDiligence(companyName: string): Promise<DdReport> {
-    if ((window as any).__TAURI_INTERNALS__) {
-      return invokeTauri("run_due_diligence", {
-        companyName,
+      const result = await invokeTauri<DdFlowResult>("run_due_diligence", {
+        companyName: ddCompanyName.trim(),
         productName: null,
         focusAreas: [],
       });
+      ddFlow = result;
+      ddLoading = false;
+      startFlowReveal();
+    } catch (e) {
+      ddError = String(e);
+      ddLoading = false;
     }
-
-    const response = await fetch("http://127.0.0.1:8080/v1/truths/dynamic-due-diligence/execute", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        inputs: {
-          company_name: companyName,
-          focus_areas: "market, technology, competition, financials",
-        },
-        persist_projection: true,
-      }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(body || `HTTP ${response.status}`);
-    }
-
-    const result: TruthExecutionResult = await response.json();
-    return mapDynamicDueDiligenceResult(companyName, result);
   }
 
-  function mapDynamicDueDiligenceResult(companyName: string, result: TruthExecutionResult): DdReport {
-    const details = result.projection?.details ?? {};
-    const market = asStringArray(details.market_analysis);
-    const competition = asStringArray(details.competitive_landscape);
-    const technology = asStringArray(details.technology_assessment);
-    const ownership = asStringArray(details.ownership_and_financials);
-    const contradictions = asStringArray(details.contradictions);
-    const gaps = asStringArray(details.remaining_gaps);
-    const focusAreas = asStringArray(details.focus_areas);
-
-    const keyFacts: DdFact[] = [
-      ...market.slice(0, 2).map((claim) => ({ claim, category: "market", confidence: 0.82 })),
-      ...technology.slice(0, 2).map((claim) => ({ claim, category: "technology", confidence: 0.8 })),
-      ...competition.slice(0, 2).map((claim) => ({ claim, category: "competition", confidence: 0.78 })),
-      ...ownership.slice(0, 1).map((claim) => ({ claim, category: "financials", confidence: 0.74 })),
-    ];
-
-    return {
-      company_name: typeof details.company_name === "string" ? details.company_name : companyName,
-      product_name: null,
-      pass1: {
-        summary: typeof details.executive_summary === "string"
-          ? details.executive_summary
-          : `Dynamic due diligence converged in ${result.cycles} cycles across ${focusAreas.join(", ") || "core"} focus areas.`,
-        key_facts: keyFacts,
-      },
-      final_report: {
-        market_analysis: market.join("\n\n"),
-        competitive_landscape: competition.join("\n\n"),
-        technology_assessment: technology.join("\n\n"),
-        risk_factors: [...contradictions, ...gaps],
-        growth_opportunities: focusAreas.map((area) => `Follow-up diligence available for ${area}.`),
-        recommendation: typeof details.recommendation === "string"
-          ? details.recommendation
-          : result.stop_reason,
-      },
-      pass1_hits: [],
-      llm_calls: result.llm_calls ?? [],
-    };
+  function startFlowReveal() {
+    if (!ddFlow || ddFlow.stages.length === 0) {
+      ddShowReport = true;
+      return;
+    }
+    ddRevealedStages = 0;
+    ddRevealedItems = 0;
+    revealNextItem();
   }
 
-  function asStringArray(value: unknown): string[] {
-    if (!Array.isArray(value)) return [];
-    return value.filter((item): item is string => typeof item === "string");
+  function revealNextItem() {
+    if (!ddFlow) return;
+    const stages = ddFlow.stages;
+
+    if (ddRevealedStages >= stages.length) {
+      const t = setTimeout(() => { ddShowReport = true; }, 800);
+      ddRevealTimers.push(t);
+      return;
+    }
+
+    const currentStage = stages[ddRevealedStages];
+    if (ddRevealedItems < currentStage.items.length) {
+      ddRevealedItems++;
+      const delay = currentStage.kind === "extraction" ? 150 : 250;
+      const t = setTimeout(revealNextItem, delay);
+      ddRevealTimers.push(t);
+    } else {
+      ddRevealedStages++;
+      ddRevealedItems = 0;
+      const t = setTimeout(revealNextItem, 600);
+      ddRevealTimers.push(t);
+    }
   }
 
   function ddNewSearch() {
-    ddReport = null;
-    ddSteps = [];
+    ddFlow = null;
+    ddShowReport = false;
+    ddRevealedStages = 0;
+    ddRevealedItems = 0;
     ddError = "";
     ddPrintTimestamp = "";
+    ddRevealTimers.forEach(clearTimeout);
+    ddRevealTimers = [];
   }
 
   function printDdReport() {
-    if (!ddReport) return;
+    if (!ddFlow) return;
     ddPrintTimestamp = new Date().toLocaleString();
     requestAnimationFrame(() => window.print());
   }
@@ -1211,7 +1251,7 @@ Scenario: Parse should fail early
             <div class="grid items-end gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(30rem,1fr)]">
               <div class="max-w-3xl">
                 <p class="slide-eyebrow mb-4">
-                  <span class="mr-3 text-subtle">#{slides[currentSlide].number}</span>{slides[currentSlide].eyebrow}
+                  <span class="mr-3 text-subtle">#{displaySlideNumber(currentSlide)}</span>{slides[currentSlide].eyebrow}
                 </p>
                 <h1 class="slide-headline mb-6 whitespace-pre-line">{slides[currentSlide].headline}</h1>
                 <p class="slide-body">{slides[currentSlide].body}</p>
@@ -1267,7 +1307,7 @@ Scenario: Parse should fail early
         {:else}
           <div class="fade-in max-w-3xl">
             <p class="slide-eyebrow mb-4">
-              <span class="mr-3 text-subtle">#{slides[currentSlide].number}</span>{slides[currentSlide].eyebrow}
+              <span class="mr-3 text-subtle">#{displaySlideNumber(currentSlide)}</span>{slides[currentSlide].eyebrow}
             </p>
             <h1 class="slide-headline mb-6 whitespace-pre-line">{slides[currentSlide].headline}</h1>
             <p class="slide-body">{slides[currentSlide].body}</p>
@@ -1294,15 +1334,15 @@ Scenario: Parse should fail early
               class="nav-dot"
               class:active={i === currentSlide}
               onclick={() => (currentSlide = i)}
-              aria-label="Go to slide {slide.number}"
-              title="Slide {slide.number}"
+              aria-label="Go to slide {displaySlideNumber(i)}"
+              title="Slide {displaySlideNumber(i)} (source {slide.number})"
             ></button>
           {/each}
         </div>
 
         <div class="flex items-center gap-3">
           <span class="font-mono text-xs text-muted">
-            #{slides[currentSlide].number} · {currentSlide + 1} / {slides.length} selected · {allSlides.length} total
+            #{displaySlideNumber(currentSlide)} · {currentSlide + 1} / {slides.length} selected · {allSlides.length} total
           </span>
           <button
             class="btn-ghost text-sm"
@@ -1847,15 +1887,22 @@ Scenario: Parse should fail early
         <button class="btn-ghost text-sm" onclick={goToApps}>&larr; Apps</button>
         <span class="font-mono text-xs tracking-widest text-muted uppercase">Due Diligence</span>
       </div>
+      {#if ddFlow}
+        <div class="flex items-center gap-3 text-xs text-muted">
+          <span>{ddFlow.cycles} cycles</span>
+          <span class="pill {ddFlow.converged ? 'pill-ok' : 'pill-warn'}">{ddFlow.converged ? "converged" : "stopped"}</span>
+        </div>
+      {/if}
     </header>
 
-    <div class="mx-auto max-w-3xl px-8 py-8 dd-stage" class:dd-print-page={Boolean(ddReport)}>
-      {#if ddReport}
-        <!-- Report -->
-        <div class="mb-8 flex items-center justify-between gap-4">
+    <div class="mx-auto max-w-4xl px-8 py-8 dd-stage" class:dd-print-page={ddShowReport}>
+
+      {#if ddShowReport && ddFlow}
+        <!-- ── Final Report ── -->
+        <div class="mb-8 flex items-center justify-between gap-4 fade-in">
           <div>
             <p class="slide-eyebrow mb-1">Due Diligence Report</p>
-            <h1 class="slide-headline text-3xl!">{ddReport.company_name}</h1>
+            <h1 class="slide-headline text-3xl!">{ddFlow.report.company_name}</h1>
             <p class="print-only mt-2 text-sm text-muted">
               Generated {ddPrintTimestamp || new Date().toLocaleString()} by Converge Governance
             </p>
@@ -1866,170 +1913,150 @@ Scenario: Parse should fail early
           </div>
         </div>
 
-        {#if ddReport.pass1?.summary}
-          <div class="callout callout-lime mb-6">
-            <span class="card-label mb-2 block">Executive Summary</span>
-            <p class="whitespace-pre-wrap text-sm text-text">{ddReport.pass1.summary}</p>
-          </div>
-        {/if}
+        <div class="callout callout-lime mb-6">
+          <span class="card-label mb-2 block">Executive Summary</span>
+          <p class="whitespace-pre-wrap text-sm text-text">{ddFlow.report.executive_summary}</p>
+        </div>
 
-        {#if ddReport.pass1?.key_facts?.length}
-          <section class="mb-6">
-            <span class="card-label mb-3 block">Key Facts ({ddReport.pass1.key_facts.length})</span>
-            <div class="grid grid-cols-2 gap-2">
-              {#each ddReport.pass1.key_facts as fact}
-                <div class="rounded-xl border border-border bg-raised p-3">
-                  <div class="mb-1 flex items-center gap-2">
-                    <span class="pill {fact.confidence >= 0.9 ? 'pill-ok' : fact.confidence >= 0.7 ? 'pill-warn' : 'pill-err'}">{fact.category}</span>
-                    <span class="text-xs text-muted">{Math.round(fact.confidence * 100)}%</span>
-                  </div>
-                  <p class="text-xs text-text">{fact.claim}</p>
-                </div>
-              {/each}
-            </div>
-          </section>
-        {/if}
-
-        {#if ddReport.llm_calls?.length}
-          <section class="mb-6 no-print">
-            <span class="card-label mb-3 block">LLM Telemetry ({ddReport.llm_calls.length})</span>
-            <div class="space-y-3">
-              {#each ddReport.llm_calls as call}
-                <article class="rounded-xl border border-border bg-raised p-3">
-                  <div class="flex flex-wrap items-center justify-between gap-2">
-                    <span class="text-sm font-semibold text-bright">{call.context}</span>
-                    <span class="pill pill-info">{call.elapsed_ms} ms</span>
-                  </div>
-
-                  <p class="mt-2 text-xs text-subtle">{call.provider} / {call.model}</p>
-
-                  {#if call.finish_reason}
-                    <p class="text-xs text-subtle">Finish: {call.finish_reason}</p>
-                  {/if}
-
-                  {#if call.usage}
-                    <div class="mt-2 grid grid-cols-3 gap-2 text-xs text-subtle">
-                      <div class="rounded-lg border border-border bg-deep px-2 py-1">
-                        <span class="text-muted">Prompt</span>
-                        <div class="text-text">{call.usage.prompt_tokens ?? "-"}</div>
-                      </div>
-                      <div class="rounded-lg border border-border bg-deep px-2 py-1">
-                        <span class="text-muted">Completion</span>
-                        <div class="text-text">{call.usage.completion_tokens ?? "-"}</div>
-                      </div>
-                      <div class="rounded-lg border border-border bg-deep px-2 py-1">
-                        <span class="text-muted">Total</span>
-                        <div class="text-text">{call.usage.total_tokens ?? "-"}</div>
-                      </div>
-                    </div>
-                  {/if}
-
-                  {#if Object.keys(call.metadata).length > 0}
-                    <ul class="mt-2 space-y-1 text-xs text-subtle">
-                      {#each Object.entries(call.metadata) as [key, value]}
-                        <li class="flex items-center gap-2"><span class="text-muted">{key}:</span> <span class="text-text">{value}</span></li>
-                      {/each}
-                    </ul>
-                  {/if}
-                </article>
-              {/each}
-            </div>
-          </section>
-        {/if}
-
-        {#if ddReport.final_report}
-          <div class="mb-6 grid grid-cols-3 gap-3">
-            {#if ddReport.final_report.market_analysis}
-              <div class="rounded-xl border border-border bg-raised p-4">
-                <span class="card-label mb-2 block">Market</span>
-                <p class="whitespace-pre-wrap text-xs text-subtle">{ddReport.final_report.market_analysis}</p>
-              </div>
-            {/if}
-            {#if ddReport.final_report.competitive_landscape}
-              <div class="rounded-xl border border-border bg-raised p-4">
-                <span class="card-label mb-2 block">Competition</span>
-                <p class="whitespace-pre-wrap text-xs text-subtle">{ddReport.final_report.competitive_landscape}</p>
-              </div>
-            {/if}
-            {#if ddReport.final_report.technology_assessment}
-              <div class="rounded-xl border border-border bg-raised p-4">
-                <span class="card-label mb-2 block">Technology</span>
-                <p class="whitespace-pre-wrap text-xs text-subtle">{ddReport.final_report.technology_assessment}</p>
-              </div>
-            {/if}
-          </div>
-
-          <div class="mb-6 grid grid-cols-2 gap-3">
-            {#if ddReport.final_report.risk_factors?.length}
-              <div class="rounded-xl border border-border bg-raised p-4">
-                <span class="card-label mb-2 block" style="color: var(--color-err)">Risks</span>
-                <ul class="space-y-1">
-                  {#each ddReport.final_report.risk_factors as risk}
-                    <li class="flex gap-2 text-xs text-text"><span class="text-err">&#x2022;</span>{risk}</li>
-                  {/each}
-                </ul>
-              </div>
-            {/if}
-            {#if ddReport.final_report.growth_opportunities?.length}
-              <div class="rounded-xl border border-border bg-raised p-4">
-                <span class="card-label mb-2 block" style="color: var(--color-ok)">Opportunities</span>
-                <ul class="space-y-1">
-                  {#each ddReport.final_report.growth_opportunities as opp}
-                    <li class="flex gap-2 text-xs text-text"><span class="text-ok">&#x2022;</span>{opp}</li>
-                  {/each}
-                </ul>
-              </div>
-            {/if}
-          </div>
-
-          {#if ddReport.final_report.recommendation}
-            <div class="callout callout-lime mb-6">
-              <span class="card-label mb-2 block">Recommendation</span>
-              <p class="text-sm text-text">{ddReport.final_report.recommendation}</p>
+        <div class="mb-6 grid grid-cols-3 gap-3">
+          {#if ddFlow.report.market_analysis.length}
+            <div class="rounded-xl border border-border bg-raised p-4">
+              <span class="card-label mb-2 block">Market</span>
+              <p class="whitespace-pre-wrap text-xs text-subtle">{ddFlow.report.market_analysis.join("\n\n")}</p>
             </div>
           {/if}
-        {/if}
+          {#if ddFlow.report.competitive_landscape.length}
+            <div class="rounded-xl border border-border bg-raised p-4">
+              <span class="card-label mb-2 block">Competition</span>
+              <p class="whitespace-pre-wrap text-xs text-subtle">{ddFlow.report.competitive_landscape.join("\n\n")}</p>
+            </div>
+          {/if}
+          {#if ddFlow.report.technology_assessment.length}
+            <div class="rounded-xl border border-border bg-raised p-4">
+              <span class="card-label mb-2 block">Technology</span>
+              <p class="whitespace-pre-wrap text-xs text-subtle">{ddFlow.report.technology_assessment.join("\n\n")}</p>
+            </div>
+          {/if}
+        </div>
 
-      {:else if ddLoading}
-        <!-- Progress -->
-        <div class="py-8">
-          <p class="slide-eyebrow mb-3">Researching</p>
-          <h2 class="slide-headline mb-8 text-3xl!">{ddCompanyName}</h2>
+        <div class="mb-6 grid grid-cols-2 gap-3">
+          {#if ddFlow.report.contradictions.length}
+            <div class="rounded-xl border border-border bg-raised p-4">
+              <span class="card-label mb-2 block" style="color: var(--color-warn)">Contradictions</span>
+              <ul class="space-y-1">
+                {#each ddFlow.report.contradictions as item}
+                  <li class="flex gap-2 text-xs text-text"><span class="text-warn">&#x26A0;</span>{item}</li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+          {#if ddFlow.report.remaining_gaps.length}
+            <div class="rounded-xl border border-border bg-raised p-4">
+              <span class="card-label mb-2 block" style="color: var(--color-err)">Remaining Gaps</span>
+              <ul class="space-y-1">
+                {#each ddFlow.report.remaining_gaps as item}
+                  <li class="flex gap-2 text-xs text-text"><span class="text-err">&#x2022;</span>{item}</li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+        </div>
 
-          <div class="space-y-3 mb-6">
-            {#each ddSteps as step}
-              <div class="flex items-start gap-3 fade-in">
-                <div class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
-                  class:bg-lime-glow={step.active} class:text-lime={step.active}
-                  style={!step.active ? "background: rgba(52,211,153,0.15); color: var(--color-ok)" : ""}>
-                  {#if step.active}
-                    <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-lime"></span>
-                  {:else}
-                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  {/if}
-                </div>
-                <div>
-                  <div class="text-sm font-medium" class:text-bright={step.active} class:text-subtle={!step.active}>{step.step}</div>
-                  <div class="text-xs text-muted">{step.detail}</div>
-                </div>
+        <div class="callout callout-lime mb-6">
+          <span class="card-label mb-2 block">Recommendation</span>
+          <p class="text-sm text-text">{ddFlow.report.recommendation}</p>
+          <div class="mt-2 flex items-center gap-3 text-xs text-muted">
+            <span>Confidence: {Math.round(ddFlow.report.confidence * 100)}%</span>
+            {#if ddFlow.report.needs_human_review}
+              <span class="pill pill-warn">Needs human review</span>
+            {/if}
+          </div>
+        </div>
+
+        <!-- Flow summary -->
+        <section class="mb-6 no-print">
+          <span class="card-label mb-3 block">Converge Flow ({ddFlow.stages.length} stages, {ddFlow.cycles} cycles)</span>
+          <div class="flex flex-wrap gap-2">
+            {#each ddFlow.stages as stage}
+              <div class="rounded-lg border border-border bg-deep px-3 py-1.5 text-xs">
+                <span style="color: {stageColors[stage.kind] ?? 'var(--color-text)'}">{stageIcons[stage.kind] ?? ""}</span>
+                {stage.label}
+                <span class="text-muted">({stage.items.length})</span>
               </div>
             {/each}
           </div>
+        </section>
 
-          <div class="h-1 overflow-hidden rounded-full bg-border">
-            <div class="h-full rounded-full bg-lime transition-all duration-1000"
-              style="width: {Math.max(5, (ddSteps.filter(s => !s.active).length / ddPipelineSteps.length) * 100)}%"></div>
+      {:else if ddFlow && !ddShowReport}
+        <!-- ── Flow Reveal ── -->
+        <div class="py-4">
+          <p class="slide-eyebrow mb-2">Converge Governance Flow</p>
+          <h2 class="slide-headline mb-6 text-3xl!">{ddCompanyName}</h2>
+
+          <div class="space-y-5 mb-6">
+            {#each ddFlow.stages as stage, stageIdx}
+              {#if stageIdx < ddRevealedStages || (stageIdx === ddRevealedStages && ddRevealedItems > 0)}
+                <div class="fade-in">
+                  <!-- Stage header -->
+                  <div class="flex items-center gap-3 mb-2">
+                    <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm"
+                      style="background: {stageColors[stage.kind] ?? 'var(--color-info)'}20; color: {stageColors[stage.kind] ?? 'var(--color-info)'}">
+                      {#if stageIdx === ddRevealedStages && ddRevealedItems < stage.items.length}
+                        <span class="inline-block h-2 w-2 animate-pulse rounded-full" style="background: {stageColors[stage.kind] ?? 'var(--color-info)'}"></span>
+                      {:else}
+                        {stageIcons[stage.kind] ?? "\u25CF"}
+                      {/if}
+                    </div>
+                    <div class="text-sm font-semibold" style="color: {stageColors[stage.kind] ?? 'var(--color-bright)'}">{stage.label}</div>
+                    <span class="text-xs text-muted">{stage.items.length} items</span>
+                  </div>
+
+                  <!-- Stage items -->
+                  <div class="ml-10 space-y-1.5">
+                    {#each stage.items as item, itemIdx}
+                      {#if stageIdx < ddRevealedStages || itemIdx < ddRevealedItems}
+                        <div class="flex items-start gap-2 rounded-lg border border-border/50 bg-raised/50 px-3 py-2 fade-in">
+                          {#if item.category}
+                            <span class="pill mt-0.5 shrink-0 text-[10px]" style="border-color: {stageColors[stage.kind] ?? 'var(--color-border)'}40">{item.category}</span>
+                          {/if}
+                          <div class="min-w-0 flex-1">
+                            <p class="text-xs text-text leading-snug">{item.label}</p>
+                            {#if stage.kind !== "extraction"}
+                              <p class="mt-0.5 text-[10px] text-muted truncate">{item.detail}</p>
+                            {/if}
+                          </div>
+                          {#if item.confidence}
+                            <span class="shrink-0 text-[10px] text-muted">{Math.round(item.confidence * 100)}%</span>
+                          {/if}
+                        </div>
+                      {/if}
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+            {/each}
           </div>
 
-          <p class="mt-4 text-center text-sm text-muted">{ddSpinnerVerb}...</p>
+          <!-- Progress bar -->
+          <div class="h-1 overflow-hidden rounded-full bg-border">
+            <div class="h-full rounded-full bg-lime transition-all duration-300"
+              style="width: {ddProgress()}%"></div>
+          </div>
+          <p class="mt-3 text-center text-xs text-muted">
+            {#if ddRevealedStages < ddFlow.stages.length}
+              {ddFlow.stages[ddRevealedStages]?.label ?? "Processing"}...
+            {:else}
+              Converged
+            {/if}
+          </p>
+        </div>
 
-          {#if ddError}
-            <div class="callout callout-error mt-6">
-              <p class="text-sm text-err">{ddError}</p>
-            </div>
-          {/if}
+      {:else if ddLoading}
+        <!-- Waiting for engine -->
+        <div class="py-8 text-center">
+          <p class="slide-eyebrow mb-3">Starting convergence engine</p>
+          <h2 class="slide-headline mb-8 text-3xl!">{ddCompanyName}</h2>
+          <span class="inline-block h-3 w-3 animate-pulse rounded-full bg-lime"></span>
         </div>
 
       {:else}
@@ -2038,8 +2065,8 @@ Scenario: Parse should fail early
           <p class="slide-eyebrow mb-3">Research</p>
           <h2 class="slide-headline mb-2 text-3xl!">Due Diligence</h2>
           <p class="slide-body mb-8">
-            Run convergent research on a company. Searches the web, extracts and consolidates
-            facts, detects contradictions, and produces a structured analysis with recommendations.
+            Convergent due diligence powered by Organism planning and Converge governance.
+            Formation, breadth research, depth research, fact extraction, contradiction detection, gap chasing, synthesis.
           </p>
 
           <form class="space-y-4" onsubmit={(e) => { e.preventDefault(); runDd(); }}>

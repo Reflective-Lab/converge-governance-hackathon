@@ -10,7 +10,8 @@ Read and follow `AGENTS.md` — it is the canonical project documentation.
 
 ## Claude-Specific Notes
 
-- **Available skills:** `/experiment` — hypothesis-driven development with evidence logging.
+- **Available skills:** `/help`, `/focus`, `/sync`, `/next`, `/dev`, `/check`, `/test`, `/fix`, `/pr`, `/review`, `/ticket`, `/wip`, `/done`, `/audit`, `/deploy`, `/branch`, `/merge-cleanup`, `/experiment`.
+- `/branch` is release-branch-only. Do not use worktrees or feature branches.
 - Prefer Edit over Write for existing files. Prefer Grep/Glob over Bash for search.
 - Knowledge belongs in `kb/`.
 - Run `just lint` before considering work done.

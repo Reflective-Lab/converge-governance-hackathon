@@ -17,13 +17,18 @@ import { invokeTauri } from "./tauri";
 export class VendorSelectionReplayAdapter implements ReplayAdapter {
   private isTauri: boolean;
   private todayVendors: Array<Record<string, any>>;
+  private creativeVendors: Array<Record<string, any>>;
   private replaySession: TodayReplaySession | null = null;
   recordingInProgress = false;
   buildingOfflineBackup = false;
 
-  constructor(todayVendors: Array<Record<string, any>>) {
+  constructor(
+    todayVendors: Array<Record<string, any>>,
+    creativeVendors: Array<Record<string, any>> = []
+  ) {
     this.isTauri = Boolean((window as any).__TAURI_INTERNALS__);
     this.todayVendors = todayVendors;
+    this.creativeVendors = creativeVendors;
   }
 
   /**
@@ -76,6 +81,7 @@ export class VendorSelectionReplayAdapter implements ReplayAdapter {
       return await invokeTauri<TodayRunResponse>("run_today_vendor_selection", {
         stage,
         live: inputs.live_mode === "true",
+        demo_mode: inputs.demo_mode,
       });
     }
 
@@ -200,13 +206,21 @@ export class VendorSelectionReplayAdapter implements ReplayAdapter {
    * Form inputs for a vendor-selection stage.
    * Handles stage normalization and live/mock mode.
    */
-  formInputs(stage: string, live = true): Record<string, string> {
+  formInputs(
+    stage: string,
+    live = true,
+    demoMode: "governed" | "pareto-breakout" = "governed"
+  ): Record<string, string> {
+    const vendors =
+      demoMode === "pareto-breakout" && this.creativeVendors.length > 0
+        ? this.creativeVendors
+        : this.todayVendors;
     const inputs: Record<string, string> = {
-      vendors_json: JSON.stringify(this.todayVendors),
+      vendors_json: JSON.stringify(vendors),
       min_score: "75",
       max_risk: "30",
       max_vendors: "3",
-      demo_mode: "governed",
+      demo_mode: demoMode,
       principal_authority: "supervisory",
     };
     if (live) inputs.live_mode = "true";

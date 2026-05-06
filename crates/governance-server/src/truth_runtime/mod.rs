@@ -1,5 +1,7 @@
+pub mod access_control;
 pub mod audit_vendor_decision;
 pub mod authorize_vendor_commitment;
+pub mod budget_approval;
 pub mod common;
 pub mod dynamic_due_diligence;
 pub mod evaluate_vendor;
@@ -7,6 +9,7 @@ pub mod model_competition;
 pub mod source_import;
 pub mod vendor_selection;
 pub mod vendor_selection_live;
+pub mod vendor_selection_simple;
 
 use std::collections::HashMap;
 
@@ -70,15 +73,20 @@ pub async fn execute_truth(
     experience: &crate::experience::ExperienceRegistry,
 ) -> Result<TruthExecutionResult, String> {
     match truth_key {
+        "access-control" => access_control::execute(store, &inputs, persist).await,
         "authorize-vendor-commitment" => {
             authorize_vendor_commitment::execute(store, &inputs, persist).await
         }
+        "budget-approval" => budget_approval::execute(store, &inputs, persist).await,
         "dynamic-due-diligence" => dynamic_due_diligence::execute(store, &inputs, persist).await,
         "evaluate-vendor" => evaluate_vendor::execute(store, &inputs, persist).await,
         "audit-vendor-decision" => audit_vendor_decision::execute(store, &inputs, persist).await,
         "vendor-selection" => {
             vendor_selection::execute_with_experience(store, &inputs, persist, Some(experience))
                 .await
+        }
+        "vendor-selection-simple" => {
+            vendor_selection_simple::execute(store, &inputs, persist).await
         }
         // ---------------------------------------------------------------
         // Add your truth executor here:

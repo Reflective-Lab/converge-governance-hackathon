@@ -147,7 +147,7 @@ impl Suggestor for PlanningSeedSuggestor {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         !ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|fact| fact.id.starts_with("strategy:vendor-eval:"))
+            .any(|fact| fact.id().starts_with("strategy:vendor-eval:"))
     }
 
     async fn execute(&self, _ctx: &dyn ContextView) -> AgentEffect {
@@ -190,14 +190,18 @@ impl Suggestor for ComplianceScreenerAgent {
     fn accepts(&self, ctx: &dyn ContextView) -> bool {
         ctx.get(ContextKey::Strategies)
             .iter()
-            .any(|fact| fact.id == "strategy:vendor-eval:compliance")
+            .any(|fact| fact.id().as_str() == "strategy:vendor-eval:compliance")
     }
 
     async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let mut proposals = vec![];
         for name in &self.vendor_names {
             let fact_id = format!("compliance:screen:{}", slug(name));
-            if ctx.get(ContextKey::Seeds).iter().any(|f| f.id == fact_id) {
+            if ctx
+                .get(ContextKey::Seeds)
+                .iter()
+                .any(|f| f.id().as_str() == fact_id)
+            {
                 continue;
             }
             proposals.push(
@@ -216,7 +220,7 @@ impl Suggestor for ComplianceScreenerAgent {
                 .with_confidence(0.85),
             );
         }
-        AgentEffect { proposals }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -236,28 +240,28 @@ impl Suggestor for CostAnalysisAgent {
         let has_plan = ctx
             .get(ContextKey::Strategies)
             .iter()
-            .any(|fact| fact.id == "strategy:vendor-eval:cost");
+            .any(|fact| fact.id().as_str() == "strategy:vendor-eval:cost");
         ctx.get(ContextKey::Seeds)
             .iter()
-            .any(|f| f.id.starts_with("compliance:screen:"))
+            .any(|f| f.id().starts_with("compliance:screen:"))
             && has_plan
     }
 
     async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let mut proposals = vec![];
         for fact in ctx.get(ContextKey::Seeds).iter() {
-            if !fact.id.starts_with("compliance:screen:") {
+            if !fact.id().starts_with("compliance:screen:") {
                 continue;
             }
             let vendor_slug = fact
-                .id
+                .id()
                 .strip_prefix("compliance:screen:")
                 .unwrap_or("unknown");
             let cost_id = format!("cost:estimate:{vendor_slug}");
             if ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id == cost_id)
+                .any(|f| f.id().as_str() == cost_id)
             {
                 continue;
             }
@@ -276,7 +280,7 @@ impl Suggestor for CostAnalysisAgent {
                 .with_confidence(0.75),
             );
         }
-        AgentEffect { proposals }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -300,37 +304,37 @@ impl Suggestor for VendorRiskAgent {
         let has_plan = ctx
             .get(ContextKey::Strategies)
             .iter()
-            .any(|fact| fact.id == "strategy:vendor-eval:risk");
+            .any(|fact| fact.id().as_str() == "strategy:vendor-eval:risk");
         let has_compliance = ctx
             .get(ContextKey::Seeds)
             .iter()
-            .any(|f| f.id.starts_with("compliance:screen:"));
+            .any(|f| f.id().starts_with("compliance:screen:"));
         let has_costs = ctx
             .get(ContextKey::Evaluations)
             .iter()
-            .any(|f| f.id.starts_with("cost:estimate:"));
+            .any(|f| f.id().starts_with("cost:estimate:"));
         let has_risks = ctx
             .get(ContextKey::Evaluations)
             .iter()
-            .any(|f| f.id.starts_with("risk:score:"));
+            .any(|f| f.id().starts_with("risk:score:"));
         has_plan && has_compliance && has_costs && !has_risks
     }
 
     async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let mut proposals = vec![];
         for fact in ctx.get(ContextKey::Seeds).iter() {
-            if !fact.id.starts_with("compliance:screen:") {
+            if !fact.id().starts_with("compliance:screen:") {
                 continue;
             }
             let vendor_slug = fact
-                .id
+                .id()
                 .strip_prefix("compliance:screen:")
                 .unwrap_or("unknown");
             let risk_id = format!("risk:score:{vendor_slug}");
             if ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id == risk_id)
+                .any(|f| f.id().as_str() == risk_id)
             {
                 continue;
             }
@@ -352,7 +356,7 @@ impl Suggestor for VendorRiskAgent {
                 .with_confidence(0.70),
             );
         }
-        AgentEffect { proposals }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -376,20 +380,20 @@ impl Suggestor for DecisionSynthesisAgent {
         let has_plan = ctx
             .get(ContextKey::Strategies)
             .iter()
-            .any(|fact| fact.id == "strategy:vendor-eval:decision");
+            .any(|fact| fact.id().as_str() == "strategy:vendor-eval:decision");
         has_plan
             && ctx
                 .get(ContextKey::Seeds)
                 .iter()
-                .any(|f| f.id.starts_with("compliance:screen:"))
+                .any(|f| f.id().starts_with("compliance:screen:"))
             && ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id.starts_with("cost:estimate:"))
+                .any(|f| f.id().starts_with("cost:estimate:"))
             && ctx
                 .get(ContextKey::Evaluations)
                 .iter()
-                .any(|f| f.id.starts_with("risk:score:"))
+                .any(|f| f.id().starts_with("risk:score:"))
     }
 
     async fn execute(&self, _ctx: &dyn ContextView) -> AgentEffect {
@@ -464,7 +468,7 @@ pub async fn execute(
                     .context
                     .get(ContextKey::Evaluations)
                     .iter()
-                    .find(|f| f.id == "decision:recommendation")
+                    .find(|f| f.id().as_str() == "decision:recommendation")
                 {
                     #[derive(Deserialize)]
                     struct Payload {
@@ -472,7 +476,7 @@ pub async fn execute(
                         confidence: f64,
                         needs_human_review: bool,
                     }
-                    if let Ok(p) = serde_json::from_str::<Payload>(&fact.content) {
+                    if let Ok(p) = serde_json::from_str::<Payload>(fact.content()) {
                         let actor = Actor::agent("decision-synthesis");
                         kernel.record_decision(
                             DecisionRecord {
